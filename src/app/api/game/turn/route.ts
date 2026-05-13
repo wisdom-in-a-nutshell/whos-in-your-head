@@ -125,13 +125,17 @@ export async function POST(request: Request) {
     }
 
     if (parsed.data.action === "start") {
-      const nextGame = applyAiMove(createInitialGameState(), OPENING_MOVE);
+      const status = getOpenAIRuntimeStatus();
+      const nextGame = applyAiMove(
+        createInitialGameState(status.reasoningEffort),
+        OPENING_MOVE
+      );
       warmOpeningMoveResponsesForReasoning(nextGame.reasoningEffort);
       logInfo("game_turn_started", {
         requestId,
         gameId: nextGame.gameId,
         reasoningEffort: nextGame.reasoningEffort,
-        reasoningSchedule: "low:1-8,medium:9-13,late:14+",
+        reasoningSchedule: "low:1-8,medium:9-16,late:17+",
         question: nextGame.latestQuestion,
         routeDurationMs: Date.now() - startedAt
       });

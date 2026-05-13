@@ -429,12 +429,12 @@ button {
 
 .result-meta {
   display: grid;
-  gap: 7px;
-  max-width: 560px;
+  gap: 6px;
+  max-width: 520px;
   margin-top: 10px;
   color: var(--muted);
-  font-size: 0.86rem;
-  font-weight: 700;
+  font-size: 0.82rem;
+  font-weight: 680;
   line-height: 1.45;
 }
 

@@ -27,16 +27,16 @@ describe("turn reasoning schedule", () => {
     expect(
       selectTurnReasoningEffort({
         lateGameReasoningEffort: "high",
-        questionCount: 13
+        questionCount: 16
       })
     ).toBe("medium");
   });
 
-  it("uses the configured late-game effort after question thirteen", () => {
+  it("uses the configured late-game effort after question sixteen", () => {
     expect(
       selectTurnReasoningEffort({
         lateGameReasoningEffort: "high",
-        questionCount: 14
+        questionCount: 17
       })
     ).toBe("high");
     expect(

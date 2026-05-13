@@ -103,7 +103,7 @@ describe("generateAiMove", () => {
     expect(request.reasoning).toEqual({ effort: "medium" });
   });
 
-  it("uses the configured late-game reasoning effort after question thirteen", async () => {
+  it("uses the configured late-game reasoning effort after question sixteen", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-high-test",
       outputText: JSON.stringify({
@@ -115,7 +115,7 @@ describe("generateAiMove", () => {
     }));
 
     const { generateAiMove } = await import("./game-master");
-    const state = createAnsweredState(14);
+    const state = createAnsweredState(17);
 
     const generated = await generateAiMove(state, "high-request");
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;

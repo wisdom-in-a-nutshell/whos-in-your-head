@@ -186,8 +186,6 @@ export default function Home() {
   const thinkingPrompt = thinkingPrompts[answeredCount % thinkingPrompts.length];
   const currentPrompt = phase === "thinking" ? thinkingPrompt : questionPrompt;
   const modelName = runtimeStatus ? formatModelName(runtimeStatus.model) : "the house model";
-  const lateReasoningLevel =
-    game?.reasoningEffort ?? runtimeStatus?.reasoningEffort ?? "high";
 
   useEffect(() => {
     let active = true;
@@ -566,66 +564,19 @@ export default function Home() {
           <div className="result-meta">
             {publicStats && publicStats.totalGames > 0 ? (
               <p>
-                Across{" "}
-                <span className="runtime-pill">{publicStats.totalGames}</span> rounds,
-                I&apos;m at{" "}
+                Current scoreboard:{" "}
                 <span className="runtime-pill">
                   {formatPercent(publicStats.correctRate)}
                 </span>{" "}
-                in{" "}
-                <span className="runtime-pill">
-                  {formatNumber(publicStats.averageQuestions)}
-                </span>{" "}
-                questions on average.
-              </p>
-            ) : null}
-            {publicStats && publicStats.startedGames > publicStats.totalGames ? (
-              <p>
-                <span className="runtime-pill">{publicStats.startedGames}</span> started.
-                <span className="runtime-pill">{publicStats.abandonedGames}</span>{" "}
-                wandered off mid-mystery.
-                {publicStats.reportedMisses > 0 ? (
-                  <>
-                    {" "}
-                    <span className="runtime-pill">{publicStats.reportedMisses}</span>{" "}
-                    misses reported back.
-                  </>
-                ) : null}
-              </p>
-            ) : null}
-            {publicStats && publicStats.averageTurnDurationMs !== null ? (
-              <p>
-                Average response:{" "}
-                <span className="runtime-pill">
-                  {formatSeconds(publicStats.averageTurnDurationMs)}
-                </span>
-                {publicStats.averageRoundDurationMs !== null ? (
-                  <>
-                    . Average round:{" "}
-                    <span className="runtime-pill">
-                      {formatSeconds(publicStats.averageRoundDurationMs)}
-                    </span>
-                  </>
-                ) : null}
-                {publicStats.fallbackTurns > 0 ? (
-                  <>
-                    . Fallback saved{" "}
-                    <span className="runtime-pill">{publicStats.fallbackTurns}</span>{" "}
-                    tricky turns.
-                  </>
-                ) : null}
+                guessed.
               </p>
             ) : null}
             <p>
-              You were playing with{" "}
-              <span className="runtime-pill">{modelName}</span> using{" "}
-              <span className="runtime-pill">low</span> to{" "}
-              <span className="runtime-pill">medium</span> to{" "}
-              <span className="runtime-pill">{lateReasoningLevel}</span> reasoning.
+              Powered by <span className="runtime-pill">{modelName}</span>. It starts
+              quick, then thinks harder near the end.
             </p>
             <p>
-              More models are coming soon to try this same trick.
-              <a href="/stats"> See the live scoreboard.</a>
+              More models are coming soon. <a href="/stats">Live scoreboard</a>
             </p>
             <p>
               Built by{" "}
@@ -684,18 +635,6 @@ function formatPercent(value: number | null): string {
   }
 
   return `${Math.round(value * 100)}%`;
-}
-
-function formatNumber(value: number | null): string {
-  if (value === null) {
-    return "new";
-  }
-
-  return value.toFixed(1);
-}
-
-function formatSeconds(valueMs: number): string {
-  return `${(valueMs / 1000).toFixed(1)}s`;
 }
 
 function getPreviewGame(): GameState | null {

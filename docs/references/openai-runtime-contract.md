@@ -53,8 +53,8 @@ as a successful LiteLLM `/responses` call instead of a router
 `LLM_REASONING_EFFORT` accepts `none`, `minimal`, `low`, `medium`, `high`, or
 `xhigh`; the code default is `high` for this game. The runtime uses a
 deterministic per-turn reasoning schedule for snappier play: turns generated
-after questions 1-8 use `low`, turns after questions 9-13 use `medium`, and
-turns after question 14+ use `LLM_REASONING_EFFORT`. This changes only the
+after questions 1-8 use `low`, turns after questions 9-16 use `medium`, and
+turns after question 17+ use `LLM_REASONING_EFFORT`. This changes only the
 request-level `reasoning.effort`; the stable prompt prefix, `prompt_cache_key`,
 and Responses state chain stay the same.
 

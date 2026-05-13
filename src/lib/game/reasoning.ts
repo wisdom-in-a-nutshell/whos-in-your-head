@@ -24,7 +24,7 @@ export function selectTurnReasoningEffort({
     return "low";
   }
 
-  if (questionCount < 14) {
+  if (questionCount < 17) {
     return "medium";
   }
 
