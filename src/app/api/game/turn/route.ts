@@ -17,6 +17,7 @@ import {
   warmOpeningMoveResponses,
   type GeneratedAiMove
 } from "@/lib/server/game-master";
+import { describeError, logError, logInfo, logWarn } from "@/lib/server/logging";
 
 export const runtime = "nodejs";
 const MODEL_MOVE_ATTEMPTS = 2;
@@ -30,10 +31,16 @@ export function GET() {
 }
 
 export async function POST(request: Request) {
+  const requestId = crypto.randomUUID();
   const body = await request.json().catch(() => null);
   const parsed = gameTurnRequestSchema.safeParse(body);
 
   if (!parsed.success) {
+    logWarn("game_turn_invalid_request", {
+      requestId,
+      issues: parsed.error.flatten()
+    });
+
     return NextResponse.json(
       {
         ok: false,
@@ -46,6 +53,13 @@ export async function POST(request: Request) {
 
   try {
     if (parsed.data.action === "judge_guess") {
+      logInfo("game_turn_judge_guess", {
+        requestId,
+        gameId: parsed.data.state.gameId,
+        correct: parsed.data.correct,
+        questionCount: parsed.data.state.questionCount
+      });
+
       return NextResponse.json({
         ok: true,
         game: finalizeGuess(parsed.data.state, parsed.data.correct)
@@ -55,6 +69,11 @@ export async function POST(request: Request) {
     if (parsed.data.action === "start") {
       const nextGame = applyAiMove(createInitialGameState(), OPENING_MOVE);
       warmOpeningMoveResponses();
+      logInfo("game_turn_started", {
+        requestId,
+        gameId: nextGame.gameId,
+        question: nextGame.latestQuestion
+      });
 
       return NextResponse.json({
         ok: true,
@@ -69,6 +88,11 @@ export async function POST(request: Request) {
     const status = getOpenAIRuntimeStatus();
 
     if (status.configurationError) {
+      logError("game_turn_openai_configuration_error", {
+        requestId,
+        error: status.configurationError
+      });
+
       return NextResponse.json(
         {
           ok: false,
@@ -81,6 +105,10 @@ export async function POST(request: Request) {
     }
 
     if (!status.configured) {
+      logError("game_turn_openai_not_configured", {
+        requestId
+      });
+
       return NextResponse.json(
         {
           ok: false,
@@ -93,13 +121,15 @@ export async function POST(request: Request) {
     }
 
     const game = recordPlayerAnswer(parsed.data.state, parsed.data.answer);
-    const { generated, nextGame, source } = await generateNextGameState(game);
+    const { generated, nextGame, source } = await generateNextGameState(game, requestId);
     const move = generated.move;
     logAnsweredTurn({
+      requestId,
       game,
       answer: parsed.data.answer,
       generated,
-      nextGame
+      nextGame,
+      source
     });
 
     return NextResponse.json({
@@ -116,13 +146,11 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const isRuleError = error instanceof GameRuleError;
-    console.error(
-      "[game-turn] turn failed",
-      JSON.stringify({
-        code: isRuleError ? "game_rule_error" : "game_master_error",
-        error: describeError(error)
-      })
-    );
+    logError("game_turn_failed", {
+      requestId,
+      code: isRuleError ? "game_rule_error" : "game_master_error",
+      error: describeError(error)
+    });
 
     return NextResponse.json(
       {
@@ -139,7 +167,8 @@ export async function POST(request: Request) {
 }
 
 async function generateNextGameState(
-  game: GameState
+  game: GameState,
+  requestId: string
 ): Promise<{ generated: GeneratedAiMove; nextGame: GameState; source: string }> {
   const warmedOpening = readWarmedOpeningGameState(game);
 
@@ -149,7 +178,7 @@ async function generateNextGameState(
 
   for (let attempt = 1; attempt <= MODEL_MOVE_ATTEMPTS; attempt += 1) {
     try {
-      const generated = await generateAiMove(game);
+      const generated = await generateAiMove(game, requestId);
       const nextGame = attachModelResponseId(
         applyAiMove(game, generated.move),
         generated.responseId
@@ -161,17 +190,15 @@ async function generateNextGameState(
         source: "model_move"
       };
     } catch (error) {
-      console.warn(
-        "[game-turn] model move attempt failed",
-        JSON.stringify({
-          attempt,
-          maxAttempts: MODEL_MOVE_ATTEMPTS,
-          gameId: game.gameId,
-          questionCount: game.questionCount,
-          transcriptLength: game.transcript.length,
-          error: describeError(error)
-        })
-      );
+      logWarn("game_turn_model_move_attempt_failed", {
+        requestId,
+        attempt,
+        maxAttempts: MODEL_MOVE_ATTEMPTS,
+        gameId: game.gameId,
+        questionCount: game.questionCount,
+        transcriptLength: game.transcript.length,
+        error: describeError(error)
+      });
     }
   }
 
@@ -204,45 +231,49 @@ function readWarmedOpeningGameState(
 }
 
 function logAnsweredTurn({
+  requestId,
   game,
   answer,
   generated,
-  nextGame
+  nextGame,
+  source
 }: {
+  requestId: string;
   game: GameState;
   answer: string;
   generated: GeneratedAiMove;
   nextGame: GameState;
+  source: string;
 }) {
   const move = generated.move;
 
-  console.info(
-    "[game-turn] answered",
-    JSON.stringify({
-      gameId: game.gameId,
-      answeredQuestionCount: game.transcript.length,
-      latestAnswer: answer,
-      transcript: game.transcript,
-      move: {
-        action: move.action,
-        question: move.question,
-        guess: move.guess,
-        shortRationale: move.shortRationale
-      },
-      nextState: {
-        phase: nextGame.phase,
-        questionCount: nextGame.questionCount,
-        latestQuestion: nextGame.latestQuestion,
-        finalGuess: nextGame.finalGuess
-      },
-      runtime: {
-        requestedServiceTier: generated.requestedServiceTier,
-        actualServiceTier: generated.actualServiceTier,
-        promptCacheKey: generated.promptCacheKey,
-        usage: summarizeUsage(generated.usage)
-      }
-    })
-  );
+  logInfo("game_turn_answered", {
+    requestId,
+    gameId: game.gameId,
+    answeredQuestionCount: game.transcript.length,
+    latestQuestion: game.transcript.at(-1)?.question ?? null,
+    latestAnswer: answer,
+    source,
+    move: {
+      action: move.action,
+      question: move.question,
+      guess: move.guess,
+      shortRationale: move.shortRationale
+    },
+    nextState: {
+      phase: nextGame.phase,
+      questionCount: nextGame.questionCount,
+      latestQuestion: nextGame.latestQuestion,
+      finalGuess: nextGame.finalGuess
+    },
+    runtime: {
+      requestedServiceTier: generated.requestedServiceTier,
+      actualServiceTier: generated.actualServiceTier,
+      promptCacheKey: generated.promptCacheKey,
+      responseId: generated.responseId,
+      usage: summarizeUsage(generated.usage)
+    }
+  });
 }
 
 function summarizeUsage(usage: GeneratedAiMove["usage"]) {
@@ -256,19 +287,5 @@ function summarizeUsage(usage: GeneratedAiMove["usage"]) {
     outputTokens: usage.output_tokens,
     reasoningTokens: usage.output_tokens_details.reasoning_tokens,
     totalTokens: usage.total_tokens
-  };
-}
-
-function describeError(error: unknown) {
-  if (error instanceof Error) {
-    return {
-      name: error.name,
-      message: error.message
-    };
-  }
-
-  return {
-    name: "UnknownError",
-    message: String(error)
   };
 }

@@ -5,6 +5,7 @@ import { aiMoveSchema, type AiMove, type PlayerAnswer } from "@/lib/game/ai-move
 import { createSharedOpeningAnswerState } from "@/lib/game/opening";
 import { buildGameMasterContinuationInput, buildGameMasterInput } from "@/lib/game/prompt";
 import type { GameState } from "@/lib/game/state";
+import { describeError, logError, logInfo, logWarn } from "./logging";
 import { getOpenAIRequestConfig } from "./openai";
 
 const AI_MOVE_FORMAT_NAME = "who_in_your_head_ai_move";
@@ -35,44 +36,98 @@ export function readWarmedOpeningMove(answer: PlayerAnswer): GeneratedAiMove | n
   return warmedOpenings.get(answer) ?? null;
 }
 
-export async function generateAiMove(state: GameState): Promise<GeneratedAiMove> {
+export async function generateAiMove(
+  state: GameState,
+  requestId?: string
+): Promise<GeneratedAiMove> {
   const { client, model, reasoningEffort, serviceTier } = getOpenAIRequestConfig();
 
   const usesPreviousResponse = state.modelResponseId !== null;
-  const response = await client.responses.parse({
+  const startedAt = Date.now();
+
+  logInfo("game_master_request_started", {
+    requestId,
+    gameId: state.gameId,
+    questionCount: state.questionCount,
+    transcriptLength: state.transcript.length,
     model,
-    instructions: GAME_MASTER_REQUEST_INSTRUCTIONS,
-    previous_response_id: state.modelResponseId ?? undefined,
-    input: [
-      {
-        role: "user",
-        content: usesPreviousResponse
-          ? buildGameMasterContinuationInput(state)
-          : buildGameMasterInput(state)
-      }
-    ],
-    reasoning: {
-      effort: reasoningEffort
-    },
-    text: {
-      verbosity: "low",
-      format: zodTextFormat(aiMoveSchema, AI_MOVE_FORMAT_NAME, {
-        description:
-          "The next game-master move: either one yes/no-compatible question or one final famous-person guess."
-      })
-    },
-    service_tier: serviceTier,
-    max_output_tokens: 1500,
-    prompt_cache_key: PROMPT_CACHE_KEY,
-    prompt_cache_retention: "24h",
-    store: true
+    reasoningEffort,
+    requestedServiceTier: serviceTier,
+    promptCacheKey: PROMPT_CACHE_KEY,
+    usesPreviousResponse,
+    hasModelResponseId: state.modelResponseId !== null,
+    latestAnswer: state.transcript.at(-1)?.answer ?? null
   });
+
+  const response = await client.responses
+    .parse({
+      model,
+      instructions: GAME_MASTER_REQUEST_INSTRUCTIONS,
+      previous_response_id: state.modelResponseId ?? undefined,
+      input: [
+        {
+          role: "user",
+          content: usesPreviousResponse
+            ? buildGameMasterContinuationInput(state)
+            : buildGameMasterInput(state)
+        }
+      ],
+      reasoning: {
+        effort: reasoningEffort
+      },
+      text: {
+        verbosity: "low",
+        format: zodTextFormat(aiMoveSchema, AI_MOVE_FORMAT_NAME, {
+          description:
+            "The next game-master move: either one yes/no-compatible question or one final famous-person guess."
+        })
+      },
+      service_tier: serviceTier,
+      max_output_tokens: 1500,
+      prompt_cache_key: PROMPT_CACHE_KEY,
+      prompt_cache_retention: "24h",
+      store: true
+    })
+    .catch((error: unknown) => {
+      logError("game_master_request_failed", {
+        requestId,
+        gameId: state.gameId,
+        questionCount: state.questionCount,
+        transcriptLength: state.transcript.length,
+        model,
+        reasoningEffort,
+        requestedServiceTier: serviceTier,
+        usesPreviousResponse,
+        durationMs: Date.now() - startedAt,
+        error: describeError(error)
+      });
+      throw error;
+    });
 
   const move = response.output_parsed;
 
   if (!move) {
+    logError("game_master_parse_empty", {
+      requestId,
+      gameId: state.gameId,
+      responseId: response.id,
+      durationMs: Date.now() - startedAt,
+      usage: summarizeResponseUsage(response.usage ?? null)
+    });
     throw new Error("OpenAI returned no parsed game-master move.");
   }
+
+  logInfo("game_master_request_succeeded", {
+    requestId,
+    gameId: state.gameId,
+    responseId: response.id,
+    durationMs: Date.now() - startedAt,
+    actualServiceTier: response.service_tier ?? null,
+    moveAction: move.action,
+    question: move.question,
+    guess: move.guess,
+    usage: summarizeResponseUsage(response.usage ?? null)
+  });
 
   return {
     move,
@@ -89,26 +144,42 @@ function warmOpeningMoveResponse(answer: PlayerAnswer) {
     return;
   }
 
-  const warmup = generateAiMove(createSharedOpeningAnswerState(answer))
+  const warmup = generateAiMove(
+    createSharedOpeningAnswerState(answer),
+    `opening-warmup-${answer}`
+  )
     .then((generated) => {
       warmedOpenings.set(answer, generated);
+      logInfo("opening_warmup_succeeded", {
+        answer,
+        responseId: generated.responseId,
+        usage: summarizeResponseUsage(generated.usage)
+      });
       return generated;
     })
     .catch((error: unknown) => {
-      console.warn(
-        "[game-master] opening warmup failed",
-        JSON.stringify({
-          answer,
-          error:
-            error instanceof Error
-              ? { name: error.name, message: error.message }
-              : { name: "UnknownError", message: String(error) }
-        })
-      );
+      logWarn("opening_warmup_failed", {
+        answer,
+        error: describeError(error)
+      });
       openingWarmups.delete(answer);
       throw error;
     });
 
   openingWarmups.set(answer, warmup);
   void warmup.catch(() => undefined);
+}
+
+function summarizeResponseUsage(usage: ResponseUsage | null) {
+  if (!usage) {
+    return null;
+  }
+
+  return {
+    inputTokens: usage.input_tokens,
+    cachedTokens: usage.input_tokens_details.cached_tokens,
+    outputTokens: usage.output_tokens,
+    reasoningTokens: usage.output_tokens_details.reasoning_tokens,
+    totalTokens: usage.total_tokens
+  };
 }

@@ -185,3 +185,22 @@ The game-master prompt lives in `src/lib/game/prompt.ts`. It is intentionally po
 The `Yes`, `No`, and `Maybe` controls are app UI choices, not OpenAI function tools for v0.
 
 Use function tools only if the model needs to call app-owned capabilities. For the MVP, the model should return a structured move and the server should apply deterministic game rules.
+
+## Production Log Client
+
+The app emits structured stdout lines with a `[whiyh]` prefix. These logs include
+turn request ids, game ids, model/runtime settings, response ids, token usage,
+cache counts, and sanitized error details. They intentionally do not include API
+keys or hidden prompt text.
+
+Use the repo client to download and inspect Azure App Service logs:
+
+```bash
+npm run logs:prod -- --json --limit 50
+npm run logs:prod -- --plain --contains "Tamil film"
+npm run logs:prod -- --event game_master_request_failed
+```
+
+The default output is a stable JSON envelope with `schema_version`, `status`,
+`data`, `error`, and `meta` fields so agents can consume it without scraping
+operator prose.
