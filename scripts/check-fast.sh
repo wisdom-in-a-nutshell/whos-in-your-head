@@ -40,7 +40,6 @@ if [[ -f package.json ]]; then
   require_npm_script lint
   require_npm_script typecheck
   require_npm_script test
-  require_npm_script build
 
   echo "check-fast: lint"
   npm run lint
@@ -50,9 +49,6 @@ if [[ -f package.json ]]; then
 
   echo "check-fast: tests"
   npm run test
-
-  echo "check-fast: build"
-  npm run build
 else
   echo "check-fast: package.json not present yet; npm validation will activate after app scaffold"
 fi

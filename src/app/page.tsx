@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const MAX_QUESTIONS = 21;
 
@@ -118,6 +118,7 @@ type Turn = {
 };
 
 export default function Home() {
+  const thinkingTimeoutRef = useRef<number | null>(null);
   const [phase, setPhase] = useState<Phase>("start");
   const [questionIndex, setQuestionIndex] = useState(0);
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -135,7 +136,25 @@ export default function Home() {
   const questionLabel = questionLabels[questionIndex % questionLabels.length];
   const thinkingLabel = thinkingLabels[answeredCount % thinkingLabels.length];
 
+  function clearThinkingTimeout() {
+    if (thinkingTimeoutRef.current === null) {
+      return;
+    }
+
+    window.clearTimeout(thinkingTimeoutRef.current);
+    thinkingTimeoutRef.current = null;
+  }
+
+  useEffect(() => {
+    return () => {
+      if (thinkingTimeoutRef.current !== null) {
+        window.clearTimeout(thinkingTimeoutRef.current);
+      }
+    };
+  }, []);
+
   function startGame() {
+    clearThinkingTimeout();
     setPhase("asking");
     setQuestionIndex(0);
     setTurns([]);
@@ -153,7 +172,9 @@ export default function Home() {
     setSelectedAnswer(answer);
     setPhase("thinking");
 
-    window.setTimeout(() => {
+    thinkingTimeoutRef.current = window.setTimeout(() => {
+      thinkingTimeoutRef.current = null;
+
       if (questionIndex >= sampleQuestions.length - 1) {
         setSelectedAnswer(null);
         setPhase("guessing");

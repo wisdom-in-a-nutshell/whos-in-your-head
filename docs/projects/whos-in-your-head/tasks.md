@@ -40,6 +40,8 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - Use current OpenAI docs when implementing. Relevant docs discovered on 2026-05-13:
   - OpenAI JS SDK quickstart: `https://developers.openai.com/api/docs/quickstart#install-the-openai-sdk-and-run-an-api-call`
   - SDK libraries: `https://developers.openai.com/api/docs/libraries#install-an-official-sdk`
+  - Structured Outputs: `https://developers.openai.com/api/docs/guides/structured-outputs`
+  - Prompt engineering / instructions: `https://developers.openai.com/api/docs/guides/prompt-engineering`
   - Conversation state / `previous_response_id`: `https://developers.openai.com/api/docs/guides/conversation-state#passing-context-from-the-previous-response`
   - GPT-5.5 / Responses guidance: `https://developers.openai.com/api/docs/guides/latest-model#using-reasoning-models`
 - Runtime contract is recorded in `docs/references/openai-runtime-contract.md`.
@@ -110,7 +112,9 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 | done | Finalize product/visual design direction for the clever party-game loop. | parent | `docs/architecture/overview.md` |
 | done | Scaffold a minimal Next.js + TypeScript app with package scripts and placeholder routes. | parent | `README.md`, `docs/references/openai-runtime-contract.md` |
 | done | Implement mocked game loop after design direction is agreed. | parent | `src/app/page.tsx`, `src/app/globals.css` |
-| todo | Wire the mocked frontend flow to the server-side Responses API route when credentials/base URL are ready. | parent | `docs/references/openai-runtime-contract.md` |
+| done | Implement backend game-state, structured output, and server-side Responses API turn route. | parent | `src/app/api/game/turn/route.ts`, `src/lib/game/state.ts`, `src/lib/server/game-master.ts` |
+| todo | Wire the mocked frontend flow to the server-side Responses API route when the parallel frontend work is ready. | parent | `docs/references/openai-runtime-contract.md` |
+| todo | Smoke a real model game after credentials/base URL are provided. | parent | `README.md`, `docs/references/game-master-strategy.md` |
 
 ## Backlog / Remaining Work
 
@@ -122,14 +126,15 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - [x] Build landing/start screen: title, subtitle, short instructions, start button.
 - [x] Build game UI: current question, count `n/21`, yes/no buttons, no visible transcript during play.
 - [x] Build mocked turn generator to prove UI/state loop independent of model.
-- [ ] Add OpenAI server route using official JS SDK and `OPENAI_API_KEY` server-side.
-- [ ] Define structured response schema for model output, e.g. `{ phase, question, guess, rationale_short }`.
-- [ ] Write prompt/instructions for the game master.
-- [ ] Enforce game rules in code: max 21 questions, one question per turn, final guess path, no open-ended user answers required.
-- [ ] Add basic error/loading states.
+- [x] Add OpenAI server route using official JS SDK and `OPENAI_API_KEY` server-side.
+- [x] Define structured response schema for model output, e.g. `{ action, question, guess, shortRationale }`.
+- [x] Write prompt/instructions for the game master.
+- [x] Enforce game rules in code: max 21 questions, one question per turn, final guess path, no open-ended user answers required.
+- [x] Add backend error states for invalid request, missing OpenAI config, rule violations, and invalid model moves.
+- [ ] Add frontend loading/error states when wiring the UI to the backend.
 - [ ] Polish UI enough for a 30-second demo.
 - [ ] Update README with exact setup/run/deploy steps after implementation choices are real.
-- [ ] Run validation and record exact results.
+- [x] Run validation and record exact results.
 - [ ] Review and finalize `docs/projects/whos-in-your-head/learnings/README.md` before archive if the project becomes long-running.
 - [ ] Close/archive tracker when scoped work is actually done.
 
@@ -148,3 +153,5 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - 2026-05-13: [DONE] Added agent-native repo guardrails: `scripts/check-fast.sh`, `scripts/check-full.sh`, `docs/references/agent-native-workflow.md`, and `docs/references/openai-runtime-contract.md`. App implementation still intentionally not started pending product/design direction.
 - 2026-05-13: [DONE] Scaffolded the Next.js package and backend shell: package scripts, TypeScript, ESLint, Vitest, placeholder app page, `/api/health`, `/api/openai/status`, `/api/game/turn`, OpenAI server client factory, and AI move schema/tests. Core game UI/logic still intentionally pending design direction.
 - 2026-05-13: [DONE] Implemented the approved clean editorial arcade frontend as a clickable mocked game loop in `src/app/page.tsx` and `src/app/globals.css`. Browser-smoked start, question, final guess, result, and mobile question screens. Validation: `npm run typecheck` and `npm run build` passed.
+- 2026-05-13: [DONE] Documented the parallel design/backend direction and implemented the backend game-master scaffold: explicit game state, structured OpenAI move parsing with `responses.parse` + `zodTextFormat`, server route actions, prompt strategy, rule enforcement, and unit tests. Real model smoke remains blocked until the user provides API key/base URL.
+- 2026-05-13: [DONE] Validation after backend scaffold: `scripts/check-fast.sh` passed with repo contract, secret scan, lint, typecheck, and 9 Vitest tests; `scripts/check-full.sh` passed with production `next build`.
