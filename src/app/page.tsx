@@ -193,6 +193,14 @@ export default function Home() {
             <button className="primary-action" onClick={startGame} type="button">
               I&apos;ve got someone
             </button>
+            <a
+              className="maker-link"
+              href="https://www.adithyan.io/"
+              rel="noreferrer"
+              target="_blank"
+            >
+              Built by Adithyan
+            </a>
           </div>
 
           <div className="progress-lockup" aria-label="21 question limit">
@@ -304,6 +312,14 @@ export default function Home() {
           <button className="primary-action" onClick={startGame} type="button">
             Play again
           </button>
+          <a
+            className="maker-link"
+            href="https://www.adithyan.io/"
+            rel="noreferrer"
+            target="_blank"
+          >
+            Built by Adithyan
+          </a>
         </section>
       ) : null}
     </main>
