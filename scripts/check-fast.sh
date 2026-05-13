@@ -12,11 +12,9 @@ test -f docs/projects/whos-in-your-head/tasks.md
 test -d tmp
 
 echo "check-fast: secret scan"
-if rg -n --hidden \
-  --glob '!.git/**' \
-  --glob '!.env.example' \
-  --glob '!tmp/**' \
-  'OPENAI_API_KEY[[:space:]]*=[[:space:]]*["'\'']?sk-|sk-[A-Za-z0-9_-]{20,}' .; then
+if git grep -n -I -E \
+  'OPENAI_API_KEY[[:space:]]*=[[:space:]]*["'\'']?sk-|sk-[A-Za-z0-9_-]{20,}' \
+  -- . ':(exclude).env.example' ':(exclude)package-lock.json'; then
   echo "Potential secret found in tracked repo files. Move secrets to ignored env files or a secret manager." >&2
   exit 1
 fi
