@@ -27,6 +27,12 @@ The user thinks of a famous person. The app/AI asks one yes/no-style question at
 - Validate model output with structured JSON before updating game state.
 - Keep the project shippable over clever.
 
+## Agent-native workflow
+
+- Use `docs/references/agent-native-workflow.md` for repo-owned checks and docs maintenance rules.
+- Use `docs/references/openai-runtime-contract.md` for the OpenAI integration boundary.
+- Run `scripts/check-fast.sh` before ending meaningful implementation work.
+
 ## Project tracking
 
 Use `docs/projects/whos-in-your-head/tasks.md` as the canonical active project tracker.

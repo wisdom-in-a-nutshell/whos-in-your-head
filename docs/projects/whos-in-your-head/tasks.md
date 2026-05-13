@@ -42,6 +42,8 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
   - SDK libraries: `https://developers.openai.com/api/docs/libraries#install-an-official-sdk`
   - Conversation state / `previous_response_id`: `https://developers.openai.com/api/docs/guides/conversation-state#passing-context-from-the-previous-response`
   - GPT-5.5 / Responses guidance: `https://developers.openai.com/api/docs/guides/latest-model#using-reasoning-models`
+- Runtime contract is recorded in `docs/references/openai-runtime-contract.md`.
+- Agent-native repo workflow and checks are recorded in `docs/references/agent-native-workflow.md`.
 - Implementation recommendation for first pass: Next.js + TypeScript with server route handlers, unless a later agent has a strong reason to choose differently.
 
 ## Done When
@@ -81,22 +83,30 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - 2026-05-13 — MVP is text-first with the Responses API, not Realtime voice.
 - 2026-05-13 — Avoid naming the app **Guess Who?** because that is a known board game/trademark; use the phrase only as internal inspiration.
 - 2026-05-13 — Prefer explicit app-owned game state over relying entirely on `previous_response_id`. `previous_response_id` can still be used for conversational continuity if useful, but state must remain inspectable and enforceable.
+- 2026-05-13 — Confirmed from OpenAI docs and sub-agent review: use the official OpenAI JS/TS SDK against the Responses API from a server-only Next.js boundary. Do not use Codex App Server, Agents SDK, or Realtime voice for v0.
+- 2026-05-13 — Treat `Yes`, `No`, and `Maybe` as app-owned UI controls and game-state inputs, not OpenAI function tools for the MVP.
+- 2026-05-13 — Add repo-owned fast checks in `scripts/check-fast.sh`; the machine-wide Stop hook can delegate to this script once app code exists.
 
 ## Open Questions / Blockers
 
 - Which exact model should be the default at implementation time? Use `OPENAI_MODEL` and check latest docs before hardcoding. Current placeholder: `gpt-5.5`.
 - Should the first public version restrict to famous real people only, or also support fictional characters? Default for MVP: famous real people only.
 - Should answers be buttons only, or buttons plus optional short clarification? Default for MVP: buttons first; optional note can be added if low-friction.
+- Product/design direction should be finalized before scaffolding the playable UI. User wants a clever party-game feel and silent chosen-person flow.
+- User may later provide a custom OpenAI-compatible base URL and API key. Implementation should support optional `OPENAI_BASE_URL`.
 
 ## Current Batch
 
 | Status | Work Item | Role | Resource |
 | --- | --- | --- | --- |
-| todo | Scaffold a minimal Next.js + TypeScript app with landing page and local run scripts. | parent | `README.md`, `docs/architecture/overview.md` |
-| todo | Implement a mocked game loop before adding OpenAI. | parent |  |
+| done | Add agent-native repo guardrails and durable runtime notes before app implementation. | parent | `docs/references/agent-native-workflow.md`, `docs/references/openai-runtime-contract.md` |
+| todo | Finalize product/visual design direction for the clever party-game loop. | parent | `docs/architecture/overview.md` |
+| todo | Scaffold a minimal Next.js + TypeScript app after design direction is agreed. | parent | `README.md`, `docs/architecture/overview.md` |
 
 ## Backlog / Remaining Work
 
+- [x] Add agent-native repo check entrypoints.
+- [x] Document OpenAI runtime contract and why Codex App Server / Agents SDK / Realtime are out of scope for v0.
 - [ ] Add package setup and choose exact app framework if deviating from Next.js.
 - [ ] Build landing/start screen: title, subtitle, short instructions, start button.
 - [ ] Build game UI: current question, count `n/21`, yes/no/maybe buttons, transcript.
@@ -115,6 +125,7 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 ## Validation / Test Plan
 
 - Repo setup validation: `npm install` then `npm run build` once package files exist.
+- Agent-native repo validation: `scripts/check-fast.sh`.
 - Local smoke: `npm run dev`, open local app, start a game, click through answers, reach final guess.
 - Model smoke: with `OPENAI_API_KEY` set, play at least 3 rounds with different people and record whether the AI follows constraints.
 - Regression checks to add if project grows: unit tests for game state reducer and server output parser.
@@ -123,3 +134,4 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 
 - 2026-05-13: [DONE] Created local repo folder and project tracker for a text-first Responses API version of Who's In Your Head?.
 - 2026-05-13: [DONE] Added bootstrap brief and handoff instructions; no app implementation started yet.
+- 2026-05-13: [DONE] Added agent-native repo guardrails: `scripts/check-fast.sh`, `scripts/check-full.sh`, `docs/references/agent-native-workflow.md`, and `docs/references/openai-runtime-contract.md`. App implementation still intentionally not started pending product/design direction.
