@@ -533,6 +533,7 @@ export default function Home() {
             </p>
             <p>
               More models are coming soon to try this same trick.
+              <a href="/stats"> See the live scoreboard.</a>
             </p>
             <p>
               Built by{" "}

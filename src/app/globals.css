@@ -450,6 +450,19 @@ button {
   line-height: 1.35;
 }
 
+.stats-actions {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.stats-actions .primary-action {
+  width: auto;
+  min-height: 52px;
+  padding: 0 24px;
+  text-decoration: none;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -521,11 +534,44 @@ button {
 }
 
 .stats-empty {
+  display: grid;
+  gap: 12px;
   width: min(1040px, 100%);
   margin: 36px auto 80px;
+  border-top: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
+  padding: 28px 0 32px;
   color: var(--muted);
-  font-size: 1.1rem;
+}
+
+.stats-empty h2 {
+  max-width: 720px;
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1.9rem, 4vw, 4rem);
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 0.96;
+}
+
+.stats-empty p {
+  max-width: 620px;
+  margin: 0;
+  font-size: 1.05rem;
   font-weight: 760;
+  line-height: 1.42;
+}
+
+.stats-empty a {
+  width: fit-content;
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-transform: uppercase;
+  text-underline-offset: 4px;
 }
 
 @media (max-width: 760px) {
@@ -646,6 +692,10 @@ button {
 
   .stats-hero {
     margin-top: 64px;
+  }
+
+  .stats-actions .primary-action {
+    width: 100%;
   }
 
   .stats-grid {

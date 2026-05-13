@@ -485,8 +485,15 @@ async function getGameTurnSummary(db: Db, gameId: string) {
 }
 
 async function getPublicModelStats(db: Db): Promise<PublicModelStats[]> {
-  return eventsCollection(db)
-    .aggregate<PublicModelStats>([
+  const rawStats = await eventsCollection(db)
+    .aggregate<
+      PublicModelStats & {
+        averageTurnDurationMs: number | null;
+        averageModelDurationMs: number | null;
+        averageReasoningTokens: number | null;
+        averageCachedTokens: number | null;
+      }
+    >([
       {
         $match: {
           eventType: "game_turn"
@@ -527,10 +534,10 @@ async function getPublicModelStats(db: Db): Promise<PublicModelStats[]> {
           turns: 1,
           guesses: 1,
           fallbackTurns: 1,
-          averageTurnDurationMs: { $round: ["$averageTurnDurationMs", 0] },
-          averageModelDurationMs: { $round: ["$averageModelDurationMs", 0] },
-          averageReasoningTokens: { $round: ["$averageReasoningTokens", 0] },
-          averageCachedTokens: { $round: ["$averageCachedTokens", 0] }
+          averageTurnDurationMs: 1,
+          averageModelDurationMs: 1,
+          averageReasoningTokens: 1,
+          averageCachedTokens: 1
         }
       },
       {
@@ -541,6 +548,14 @@ async function getPublicModelStats(db: Db): Promise<PublicModelStats[]> {
       }
     ])
     .toArray();
+
+  return rawStats.map((model) => ({
+    ...model,
+    averageTurnDurationMs: roundNullable(model.averageTurnDurationMs),
+    averageModelDurationMs: roundNullable(model.averageModelDurationMs),
+    averageReasoningTokens: roundNullable(model.averageReasoningTokens),
+    averageCachedTokens: roundNullable(model.averageCachedTokens)
+  }));
 }
 
 async function getAbandonmentStats(db: Db) {
@@ -752,6 +767,12 @@ function sanitizeFailureBody(body: unknown) {
 function round(value: number, places: number) {
   const factor = 10 ** places;
   return Math.round(value * factor) / factor;
+}
+
+function roundNullable(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.round(value)
+    : null;
 }
 
 export function logGameTelemetryStatus() {

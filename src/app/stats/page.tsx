@@ -3,6 +3,7 @@ import { getPublicGameStats } from "@/lib/server/game-telemetry";
 
 export default async function StatsPage() {
   const stats = await getPublicGameStats().catch(() => null);
+  const hasCompletedRounds = Boolean(stats && stats.totalGames > 0);
 
   return (
     <main className="stats-shell">
@@ -17,9 +18,14 @@ export default async function StatsPage() {
         <p className="kicker">The scoreboard</p>
         <h1 id="stats-title">How the mind-reader is doing.</h1>
         <p>
-          Aggregate game stats only. The public board does not show transcripts
-          or individual player rounds.
+          Aggregate stats only. No transcripts, answers, or individual rounds
+          are shown.
         </p>
+        <div className="stats-actions">
+          <Link className="primary-action" href="/">
+            Play a round
+          </Link>
+        </div>
       </section>
 
       {stats ? (
@@ -63,16 +69,39 @@ export default async function StatsPage() {
                 ))}
               </div>
             ) : (
-              <p className="stats-empty">No model turns recorded yet.</p>
+              <EmptyStats
+                title={
+                  hasCompletedRounds
+                    ? "Model turns are still warming up."
+                    : "The board is waiting for its first round."
+                }
+                body={
+                  hasCompletedRounds
+                    ? "Completed games are recorded. Model-level details will appear after the next turn event lands."
+                    : "Once a few friends finish games, this page will start showing how sharp the guesser is."
+                }
+              />
             )}
           </section>
         </>
       ) : (
-        <section className="stats-empty" aria-label="Stats unavailable">
-          Stats are not connected yet.
-        </section>
+        <EmptyStats
+          title="Stats are warming up."
+          body="The public page is ready. It will fill itself in as soon as telemetry is available."
+        />
       )}
     </main>
+  );
+}
+
+function EmptyStats({ title, body }: { title: string; body: string }) {
+  return (
+    <section className="stats-empty" aria-label={title}>
+      <p className="kicker">No public numbers yet</p>
+      <h2>{title}</h2>
+      <p>{body}</p>
+      <Link href="/">Start a game</Link>
+    </section>
   );
 }
 
