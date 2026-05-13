@@ -214,7 +214,7 @@ shortRationale to one private debugging sentence or null. The app may hide it
 from the player.
 `.trim();
 
-export function buildGameMasterInput(state: GameState): string {
+export function buildGameMasterInput(state: GameState, retryAttempt = 1): string {
   const snapshot = buildModelGameSnapshot(state);
   const directive = buildDirective(state, snapshot.remainingQuestionSlots);
 
@@ -229,11 +229,12 @@ export function buildGameMasterInput(state: GameState): string {
     JSON.stringify(snapshot, null, 2),
     "</game_state>",
     "",
+    ...buildRetryDirectiveLines(retryAttempt),
     `<directive>${directive}</directive>`
   ].join("\n");
 }
 
-export function buildGameMasterContinuationInput(state: GameState): string {
+export function buildGameMasterContinuationInput(state: GameState, retryAttempt = 1): string {
   const snapshot = buildModelGameSnapshot(state);
   const lastTurn = state.transcript.at(-1);
   const directive = buildDirective(state, snapshot.remainingQuestionSlots);
@@ -260,8 +261,21 @@ export function buildGameMasterContinuationInput(state: GameState): string {
     ),
     "</current_turn_limits>",
     "",
+    ...buildRetryDirectiveLines(retryAttempt),
     `<directive>${directive}</directive>`
   ].join("\n");
+}
+
+function buildRetryDirectiveLines(retryAttempt: number): string[] {
+  if (retryAttempt <= 1) {
+    return [];
+  }
+
+  return [
+    `<retry_attempt>${retryAttempt}</retry_attempt>`,
+    "<retry_note>The previous model move was unusable. Produce a fresh schema-valid move for the same game state.</retry_note>",
+    ""
+  ];
 }
 
 function buildDirective(state: GameState, remainingQuestionSlots: number): string {

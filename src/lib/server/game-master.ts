@@ -38,11 +38,13 @@ export function readWarmedOpeningMove(answer: PlayerAnswer): GeneratedAiMove | n
 
 export async function generateAiMove(
   state: GameState,
-  requestId?: string
+  requestId?: string,
+  retryAttempt = 1
 ): Promise<GeneratedAiMove> {
   const { client, model, reasoningEffort, serviceTier } = getOpenAIRequestConfig();
 
   const usesPreviousResponse = state.modelResponseId !== null;
+  const bypassResponseCache = retryAttempt > 1;
   const startedAt = Date.now();
 
   logInfo("game_master_request_started", {
@@ -54,6 +56,8 @@ export async function generateAiMove(
     reasoningEffort,
     requestedServiceTier: serviceTier,
     promptCacheKey: PROMPT_CACHE_KEY,
+    retryAttempt,
+    bypassResponseCache,
     usesPreviousResponse,
     hasModelResponseId: state.modelResponseId !== null,
     latestAnswer: state.transcript.at(-1)?.answer ?? null
@@ -68,8 +72,8 @@ export async function generateAiMove(
         {
           role: "user",
           content: usesPreviousResponse
-            ? buildGameMasterContinuationInput(state)
-            : buildGameMasterInput(state)
+            ? buildGameMasterContinuationInput(state, retryAttempt)
+            : buildGameMasterInput(state, retryAttempt)
         }
       ],
       reasoning: {
@@ -85,7 +89,15 @@ export async function generateAiMove(
       service_tier: serviceTier,
       prompt_cache_key: PROMPT_CACHE_KEY,
       prompt_cache_retention: "24h",
-      store: true
+      store: true,
+      ...(bypassResponseCache
+        ? {
+            cache: {
+              "no-cache": true,
+              "no-store": true
+            }
+          }
+        : {})
     })
     .catch((error: unknown) => {
       logError("game_master_request_failed", {
@@ -96,6 +108,8 @@ export async function generateAiMove(
         model,
         reasoningEffort,
         requestedServiceTier: serviceTier,
+        retryAttempt,
+        bypassResponseCache,
         usesPreviousResponse,
         durationMs: Date.now() - startedAt,
         error: describeError(error)
@@ -111,6 +125,8 @@ export async function generateAiMove(
       gameId: state.gameId,
       responseId: response.id,
       durationMs: Date.now() - startedAt,
+      retryAttempt,
+      bypassResponseCache,
       usage: summarizeResponseUsage(response.usage ?? null)
     });
     throw new Error("OpenAI returned no parsed game-master move.");
@@ -122,6 +138,8 @@ export async function generateAiMove(
     responseId: response.id,
     durationMs: Date.now() - startedAt,
     actualServiceTier: response.service_tier ?? null,
+    retryAttempt,
+    bypassResponseCache,
     moveAction: move.action,
     question: move.question,
     guess: move.guess,

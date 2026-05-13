@@ -127,6 +127,13 @@ server-side cause. If both attempts fail, it returns a failed-turn response so
 the browser can keep the same preserved game state and let the player retry the
 same answer. The app does not invent local recovery questions.
 
+The first model-move attempt uses the normal LiteLLM response cache behavior.
+If that attempt fails schema parsing or game-rule application, the second
+attempt adds a retry marker to the model input and sends LiteLLM cache controls
+to bypass response-cache replay and avoid storing the failed retry response.
+This keeps the healthy path fast while preventing one bad cached response from
+trapping a game turn.
+
 OpenAI's GPT-5.5 guidance says to use the Responses API, reasoning controls,
 Structured Outputs, conversation state, prompt caching, and static prompt
 prefixes for this style of reasoning workload. The game-master call follows

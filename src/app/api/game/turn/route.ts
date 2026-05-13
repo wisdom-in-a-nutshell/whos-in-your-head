@@ -178,7 +178,7 @@ async function generateNextGameState(
 
   for (let attempt = 1; attempt <= MODEL_MOVE_ATTEMPTS; attempt += 1) {
     try {
-      const generated = await generateAiMove(game, requestId);
+      const generated = await generateAiMove(game, requestId, attempt);
       const nextGame = attachModelResponseId(
         applyAiMove(game, generated.move),
         generated.responseId
