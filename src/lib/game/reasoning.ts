@@ -20,6 +20,14 @@ export function selectTurnReasoningEffort({
   lateGameReasoningEffort: GameReasoningEffort;
   questionCount: number;
 }): GameReasoningEffort {
+  if (
+    lateGameReasoningEffort === "none" ||
+    lateGameReasoningEffort === "minimal" ||
+    lateGameReasoningEffort === "low"
+  ) {
+    return lateGameReasoningEffort;
+  }
+
   if (questionCount < 9) {
     return "low";
   }

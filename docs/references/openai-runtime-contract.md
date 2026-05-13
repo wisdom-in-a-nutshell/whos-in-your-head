@@ -157,6 +157,12 @@ to explicit game state, but its response id is not preserved for future primary
 model turns; the next turn rebuilds from transcript rather than crossing model
 response chains.
 
+The server only stores response ids that begin with `resp_` for future
+`previous_response_id` use. If LiteLLM internally falls back to a
+chat-completions-shaped provider and returns a `chatcmpl-...` id, the move is
+still accepted after schema validation, but the next turn rebuilds from the
+explicit transcript instead of sending that chat id to the Responses API.
+
 OpenAI's GPT-5.5 guidance says to use the Responses API, reasoning controls,
 Structured Outputs, conversation state, prompt caching, and static prompt
 prefixes for this style of reasoning workload. The game-master call follows

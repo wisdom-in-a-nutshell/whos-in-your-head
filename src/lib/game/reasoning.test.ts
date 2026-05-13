@@ -2,6 +2,21 @@ import { describe, expect, it } from "vitest";
 import { selectTurnReasoningEffort } from "./reasoning";
 
 describe("turn reasoning schedule", () => {
+  it("respects deliberately cheap game profiles", () => {
+    expect(
+      selectTurnReasoningEffort({
+        lateGameReasoningEffort: "minimal",
+        questionCount: 12
+      })
+    ).toBe("minimal");
+    expect(
+      selectTurnReasoningEffort({
+        lateGameReasoningEffort: "low",
+        questionCount: 18
+      })
+    ).toBe("low");
+  });
+
   it("uses low reasoning for the first eight answered-question states", () => {
     expect(
       selectTurnReasoningEffort({
