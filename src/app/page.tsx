@@ -158,6 +158,16 @@ export default function Home() {
 
   useEffect(() => {
     let active = true;
+    const previewGame = getPreviewGame();
+
+    if (previewGame) {
+      queueMicrotask(() => {
+        if (active) {
+          setGame(previewGame);
+          setPhase("result");
+        }
+      });
+    }
 
     async function loadRuntimeStatus() {
       const response = await fetch("/api/openai/status");
@@ -396,8 +406,12 @@ export default function Home() {
           </button>
           <div className="result-meta">
             <p>
-              You were talking to {modelName} at {reasoningLevel} reasoning.
-              More models are coming soon to guess who&apos;s in your head.
+              You were playing with{" "}
+              <span className="runtime-pill">{modelName}</span> at{" "}
+              <span className="runtime-pill">{reasoningLevel}</span> reasoning.
+            </p>
+            <p>
+              More models are coming soon to try this same trick.
             </p>
             <p>
               Built by{" "}
@@ -448,4 +462,28 @@ function readErrorMessage(error: unknown): string {
 
 function formatModelName(model: string): string {
   return model.replace(/^gpt/i, "GPT");
+}
+
+function getPreviewGame(): GameState | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  if (new URLSearchParams(window.location.search).get("preview") !== "result") {
+    return null;
+  }
+
+  return {
+    gameId: "preview",
+    phase: "result",
+    questionCount: 11,
+    maxQuestions: 21,
+    transcript: Array.from({ length: 11 }, (_, index) => ({
+      question: `Preview question ${index + 1}?`,
+      answer: "yes"
+    })),
+    latestQuestion: null,
+    finalGuess: "Taylor Swift",
+    result: "correct"
+  };
 }

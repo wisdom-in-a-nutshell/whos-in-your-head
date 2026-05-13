@@ -269,7 +269,7 @@ button {
   max-width: min(1020px, 100%);
   overflow-wrap: anywhere;
   hyphens: auto;
-  font-size: clamp(2.15rem, 4.2vw, 3.7rem);
+  font-size: 3.25rem;
   font-weight: 900;
   line-height: 1.03;
 }
@@ -368,11 +368,11 @@ button {
 
 .result-meta {
   display: grid;
-  gap: 6px;
+  gap: 7px;
   max-width: 560px;
-  margin-top: 12px;
+  margin-top: 10px;
   color: var(--muted);
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   font-weight: 700;
   line-height: 1.45;
 }
@@ -387,6 +387,21 @@ button {
   text-decoration: underline;
   text-decoration-color: var(--accent);
   text-underline-offset: 3px;
+}
+
+.runtime-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75em;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 0 0.6em;
+  color: var(--ink);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 @media (max-width: 760px) {
@@ -459,7 +474,7 @@ button {
   .question-stage h2,
   .guess-screen h2,
   .result-screen h2 {
-    font-size: clamp(2rem, 10vw, 2.45rem);
+    font-size: 2.2rem;
     line-height: 1;
   }
 
@@ -485,5 +500,9 @@ button {
 
   .result-meta {
     font-size: 0.78rem;
+  }
+
+  .runtime-pill {
+    font-size: 0.68rem;
   }
 }
