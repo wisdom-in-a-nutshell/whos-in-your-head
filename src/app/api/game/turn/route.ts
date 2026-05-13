@@ -114,6 +114,12 @@ export async function POST(request: Request) {
     const game = recordPlayerAnswer(parsed.data.state, parsed.data.answer);
     const { generated, nextGame } = await generateNextGameState(game);
     const move = generated.move;
+    logAnsweredTurn({
+      game,
+      answer: parsed.data.answer,
+      generated,
+      nextGame
+    });
 
     return NextResponse.json({
       ok: true,
@@ -199,6 +205,46 @@ async function generateNextGameState(
     },
     nextGame
   };
+}
+
+function logAnsweredTurn({
+  game,
+  answer,
+  generated,
+  nextGame
+}: {
+  game: GameState;
+  answer: string;
+  generated: GeneratedAiMove;
+  nextGame: GameState;
+}) {
+  const move = generated.move;
+
+  console.info(
+    "[game-turn] answered",
+    JSON.stringify({
+      gameId: game.gameId,
+      answeredQuestionCount: game.transcript.length,
+      latestAnswer: answer,
+      transcript: game.transcript,
+      move: {
+        action: move.action,
+        question: move.question,
+        guess: move.guess,
+        shortRationale: move.shortRationale
+      },
+      nextState: {
+        phase: nextGame.phase,
+        questionCount: nextGame.questionCount,
+        latestQuestion: nextGame.latestQuestion,
+        finalGuess: nextGame.finalGuess
+      },
+      runtime: {
+        requestedServiceTier: generated.requestedServiceTier,
+        actualServiceTier: generated.actualServiceTier
+      }
+    })
+  );
 }
 
 function buildStrategicLocalMove(game: GameState): AiMove | null {
