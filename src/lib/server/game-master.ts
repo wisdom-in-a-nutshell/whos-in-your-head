@@ -8,6 +8,7 @@ import { zodTextFormat } from "openai/helpers/zod";
 import { aiMoveSchema, type AiMove, type PlayerAnswer } from "@/lib/game/ai-move";
 import { createSharedOpeningAnswerState } from "@/lib/game/opening";
 import { buildGameMasterContinuationInput, buildGameMasterInput } from "@/lib/game/prompt";
+import type { GameReasoningEffort } from "@/lib/game/reasoning";
 import type { GameState } from "@/lib/game/state";
 import { describeError, logError, logInfo, logWarn } from "./logging";
 import { getOpenAIRequestConfig } from "./openai";
@@ -19,13 +20,14 @@ const GAME_MASTER_REQUEST_INSTRUCTIONS =
 const OPENING_WARMUP_ANSWERS: PlayerAnswer[] = ["yes", "no"];
 const OUTPUT_PREVIEW_CHARACTERS = 220;
 
-const openingWarmups = new Map<PlayerAnswer, Promise<GeneratedAiMove>>();
-const warmedOpenings = new Map<PlayerAnswer, GeneratedAiMove>();
+const openingWarmups = new Map<string, Promise<GeneratedAiMove>>();
+const warmedOpenings = new Map<string, GeneratedAiMove>();
 
 export type GeneratedAiMove = {
   move: AiMove;
   requestedModel: string;
   actualModel: string | null;
+  reasoningEffort: GameReasoningEffort;
   requestedServiceTier: string;
   actualServiceTier: string | null;
   promptCacheKey: string | null;
@@ -60,13 +62,22 @@ export function isContentFilterIncompleteResponseError(
 }
 
 export function warmOpeningMoveResponses() {
+  warmOpeningMoveResponsesForReasoning("high");
+}
+
+export function warmOpeningMoveResponsesForReasoning(
+  reasoningEffort: GameReasoningEffort
+) {
   for (const answer of OPENING_WARMUP_ANSWERS) {
-    warmOpeningMoveResponse(answer);
+    warmOpeningMoveResponse(answer, reasoningEffort);
   }
 }
 
-export function readWarmedOpeningMove(answer: PlayerAnswer): GeneratedAiMove | null {
-  return warmedOpenings.get(answer) ?? null;
+export function readWarmedOpeningMove(
+  answer: PlayerAnswer,
+  reasoningEffort: GameReasoningEffort
+): GeneratedAiMove | null {
+  return warmedOpenings.get(warmupKey(answer, reasoningEffort)) ?? null;
 }
 
 export async function generateAiMove(
@@ -78,9 +89,9 @@ export async function generateAiMove(
   const {
     client,
     model: configuredModel,
-    reasoningEffort,
     serviceTier
-  } = getOpenAIRequestConfig();
+  } = getOpenAIRequestConfig(state.reasoningEffort);
+  const reasoningEffort = state.reasoningEffort;
   const model = modelOverride ?? configuredModel;
 
   const bypassResponseCache = retryAttempt > 1;
@@ -180,6 +191,7 @@ export async function generateAiMove(
     durationMs: Date.now() - startedAt,
     requestedModel: model,
     actualModel: response.model ?? null,
+    reasoningEffort,
     actualServiceTier: response.service_tier ?? null,
     retryAttempt,
     bypassResponseCache,
@@ -193,6 +205,7 @@ export async function generateAiMove(
     move,
     requestedModel: model,
     actualModel: response.model ?? null,
+    reasoningEffort,
     requestedServiceTier: serviceTier,
     actualServiceTier: response.service_tier ?? null,
     promptCacheKey: PROMPT_CACHE_KEY,
@@ -264,19 +277,25 @@ function parseGameMasterMove(
   return parsedMove.data;
 }
 
-function warmOpeningMoveResponse(answer: PlayerAnswer) {
-  if (warmedOpenings.has(answer) || openingWarmups.has(answer)) {
+function warmOpeningMoveResponse(
+  answer: PlayerAnswer,
+  reasoningEffort: GameReasoningEffort
+) {
+  const key = warmupKey(answer, reasoningEffort);
+
+  if (warmedOpenings.has(key) || openingWarmups.has(key)) {
     return;
   }
 
   const warmup = generateAiMove(
-    createSharedOpeningAnswerState(answer),
-    `opening-warmup-${answer}`
+    createSharedOpeningAnswerState(answer, reasoningEffort),
+    `opening-warmup-${reasoningEffort}-${answer}`
   )
     .then((generated) => {
-      warmedOpenings.set(answer, generated);
+      warmedOpenings.set(key, generated);
       logInfo("opening_warmup_succeeded", {
         answer,
+        reasoningEffort,
         responseId: generated.responseId,
         usage: summarizeResponseUsage(generated.usage)
       });
@@ -285,14 +304,19 @@ function warmOpeningMoveResponse(answer: PlayerAnswer) {
     .catch((error: unknown) => {
       logWarn("opening_warmup_failed", {
         answer,
+        reasoningEffort,
         error: describeError(error)
       });
-      openingWarmups.delete(answer);
+      openingWarmups.delete(key);
       throw error;
     });
 
-  openingWarmups.set(answer, warmup);
+  openingWarmups.set(key, warmup);
   void warmup.catch(() => undefined);
+}
+
+function warmupKey(answer: PlayerAnswer, reasoningEffort: GameReasoningEffort) {
+  return `${reasoningEffort}:${answer}`;
 }
 
 function summarizeResponseUsage(usage: ResponseUsage | null) {

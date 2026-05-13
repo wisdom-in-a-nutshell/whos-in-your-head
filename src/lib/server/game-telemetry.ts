@@ -16,6 +16,7 @@ type RuntimeSnapshot = {
   source: string;
   requestedModel: string | null;
   actualModel: string | null;
+  reasoningEffort: string | null;
   requestedServiceTier: string | null;
   actualServiceTier: string | null;
   promptCacheKey: string | null;
@@ -48,8 +49,12 @@ export type PublicGameStats = {
 
 export type PublicModelStats = {
   model: string;
+  reasoningEffort: string;
   turns: number;
   guesses: number;
+  completedGames: number;
+  correctGames: number;
+  correctRate: number | null;
   fallbackTurns: number;
   averageTurnDurationMs: number | null;
   averageModelDurationMs: number | null;
@@ -83,6 +88,7 @@ export function recordGameStartedTelemetry({
       requestId,
       gameId: game.gameId,
       createdAt: new Date(),
+      reasoningEffort: game.reasoningEffort,
       questionCount: game.questionCount,
       routeDurationMs
     });
@@ -205,6 +211,12 @@ export function recordGameResultTelemetry({
             "actualModel" in finalGuessEvent.runtime
               ? finalGuessEvent.runtime.actualModel
               : null,
+          finalReasoningEffort:
+            typeof finalGuessEvent?.runtime === "object" &&
+            finalGuessEvent.runtime !== null &&
+            "reasoningEffort" in finalGuessEvent.runtime
+              ? finalGuessEvent.runtime.reasoningEffort
+              : state.reasoningEffort,
           finalMoveSource:
             typeof finalGuessEvent?.runtime === "object" &&
             finalGuessEvent.runtime !== null &&
@@ -225,6 +237,7 @@ export function recordGameResultTelemetry({
       gameId: state.gameId,
       createdAt: now,
       correct,
+      reasoningEffort: state.reasoningEffort,
       questionCount: state.questionCount,
       finalGuess: state.finalGuess,
       answerPath: buildAnswerPath(state),
@@ -485,9 +498,15 @@ async function getGameTurnSummary(db: Db, gameId: string) {
 }
 
 async function getPublicModelStats(db: Db): Promise<PublicModelStats[]> {
-  const rawStats = await eventsCollection(db)
+  const [turnStats, resultStats] = await Promise.all([
+    eventsCollection(db)
     .aggregate<
-      PublicModelStats & {
+      {
+        model: string;
+        reasoningEffort: string;
+        turns: number;
+        guesses: number;
+        fallbackTurns: number;
         averageTurnDurationMs: number | null;
         averageModelDurationMs: number | null;
         averageReasoningTokens: number | null;
@@ -502,7 +521,12 @@ async function getPublicModelStats(db: Db): Promise<PublicModelStats[]> {
       {
         $group: {
           _id: {
-            $ifNull: ["$runtime.actualModel", "$runtime.requestedModel"]
+            model: {
+              $ifNull: ["$runtime.actualModel", "$runtime.requestedModel"]
+            },
+            reasoningEffort: {
+              $ifNull: ["$runtime.reasoningEffort", "unknown"]
+            }
           },
           turns: { $sum: 1 },
           guesses: {
@@ -529,7 +553,10 @@ async function getPublicModelStats(db: Db): Promise<PublicModelStats[]> {
         $project: {
           _id: 0,
           model: {
-            $ifNull: ["$_id", "unknown"]
+            $ifNull: ["$_id.model", "unknown"]
+          },
+          reasoningEffort: {
+            $ifNull: ["$_id.reasoningEffort", "unknown"]
           },
           turns: 1,
           guesses: 1,
@@ -547,15 +574,103 @@ async function getPublicModelStats(db: Db): Promise<PublicModelStats[]> {
         }
       }
     ])
-    .toArray();
+    .toArray(),
+    resultsCollection(db)
+      .aggregate<{
+        model: string;
+        reasoningEffort: string;
+        completedGames: number;
+        correctGames: number;
+        averageQuestions: number | null;
+      }>([
+        {
+          $group: {
+            _id: {
+              model: {
+                $ifNull: ["$finalModel", "unknown"]
+              },
+              reasoningEffort: {
+                $ifNull: ["$finalReasoningEffort", "$reasoningEffort"]
+              }
+            },
+            completedGames: { $sum: 1 },
+            correctGames: {
+              $sum: {
+                $cond: ["$correct", 1, 0]
+              }
+            },
+            averageQuestions: { $avg: "$questionCount" }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            model: {
+              $ifNull: ["$_id.model", "unknown"]
+            },
+            reasoningEffort: {
+              $ifNull: ["$_id.reasoningEffort", "unknown"]
+            },
+            completedGames: 1,
+            correctGames: 1,
+            averageQuestions: 1
+          }
+        }
+      ])
+      .toArray()
+  ]);
 
-  return rawStats.map((model) => ({
-    ...model,
-    averageTurnDurationMs: roundNullable(model.averageTurnDurationMs),
-    averageModelDurationMs: roundNullable(model.averageModelDurationMs),
-    averageReasoningTokens: roundNullable(model.averageReasoningTokens),
-    averageCachedTokens: roundNullable(model.averageCachedTokens)
-  }));
+  const modelMap = new Map<string, PublicModelStats>();
+
+  for (const turn of turnStats) {
+    const key = modelStatsKey(turn.model, turn.reasoningEffort);
+    modelMap.set(key, {
+      model: turn.model,
+      reasoningEffort: turn.reasoningEffort,
+      turns: turn.turns,
+      guesses: turn.guesses,
+      completedGames: 0,
+      correctGames: 0,
+      correctRate: null,
+      fallbackTurns: turn.fallbackTurns,
+      averageTurnDurationMs: roundNullable(turn.averageTurnDurationMs),
+      averageModelDurationMs: roundNullable(turn.averageModelDurationMs),
+      averageReasoningTokens: roundNullable(turn.averageReasoningTokens),
+      averageCachedTokens: roundNullable(turn.averageCachedTokens)
+    });
+  }
+
+  for (const result of resultStats) {
+    const key = modelStatsKey(result.model, result.reasoningEffort);
+    const existing = modelMap.get(key);
+    const correctRate =
+      result.completedGames > 0
+        ? round(result.correctGames / result.completedGames, 4)
+        : null;
+
+    modelMap.set(key, {
+      model: result.model,
+      reasoningEffort: result.reasoningEffort,
+      turns: existing?.turns ?? 0,
+      guesses: existing?.guesses ?? 0,
+      completedGames: result.completedGames,
+      correctGames: result.correctGames,
+      correctRate,
+      fallbackTurns: existing?.fallbackTurns ?? 0,
+      averageTurnDurationMs: existing?.averageTurnDurationMs ?? null,
+      averageModelDurationMs: existing?.averageModelDurationMs ?? null,
+      averageReasoningTokens: existing?.averageReasoningTokens ?? null,
+      averageCachedTokens: existing?.averageCachedTokens ?? null
+    });
+  }
+
+  return Array.from(modelMap.values()).sort(
+    (left, right) =>
+      right.completedGames - left.completedGames ||
+      right.turns - left.turns ||
+      left.model.localeCompare(right.model) ||
+      left.reasoningEffort.localeCompare(right.reasoningEffort)
+  );
 }
 
 async function getAbandonmentStats(db: Db) {
@@ -621,6 +736,7 @@ function buildRuntimeSnapshot(source: string, generated: GeneratedAiMove): Runti
     source,
     requestedModel: generated.requestedModel,
     actualModel: generated.actualModel,
+    reasoningEffort: generated.reasoningEffort,
     requestedServiceTier: generated.requestedServiceTier,
     actualServiceTier: generated.actualServiceTier,
     promptCacheKey: generated.promptCacheKey,
@@ -773,6 +889,10 @@ function roundNullable(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value)
     ? Math.round(value)
     : null;
+}
+
+function modelStatsKey(model: string, reasoningEffort: string) {
+  return `${model}\n${reasoningEffort}`;
 }
 
 export function logGameTelemetryStatus() {

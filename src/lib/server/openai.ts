@@ -1,23 +1,25 @@
 import "server-only";
 import OpenAI from "openai";
+import {
+  gameReasoningEffortSchema,
+  reasoningEffortValues,
+  type GameReasoningEffort
+} from "@/lib/game/reasoning";
 
 const DEFAULT_MODEL = "gpt-5.5";
 const DEFAULT_REASONING_EFFORT: OpenAIReasoningEffort = "high";
 const DEFAULT_SERVICE_TIER: OpenAIServiceTier = "priority";
-
-const REASONING_EFFORTS = [
-  "none",
-  "minimal",
-  "low",
-  "medium",
-  "high",
-  "xhigh"
-] as const;
+const DEFAULT_REASONING_MIX = "";
 
 const SERVICE_TIERS = ["auto", "default", "priority"] as const;
 
-export type OpenAIReasoningEffort = (typeof REASONING_EFFORTS)[number];
+export type OpenAIReasoningEffort = GameReasoningEffort;
 export type OpenAIServiceTier = (typeof SERVICE_TIERS)[number];
+
+export type ReasoningMixEntry = {
+  effort: OpenAIReasoningEffort;
+  weight: number;
+};
 
 type OpenAIConfig = {
   apiKey?: string;
@@ -34,11 +36,14 @@ export type OpenAIRuntimeStatus = {
   model: string;
   fallbackModels: string[];
   reasoningEffort: OpenAIReasoningEffort;
+  reasoningMix: ReasoningMixEntry[];
   serviceTier: OpenAIServiceTier;
   configurationError: string | null;
 };
 
-function readOpenAIConfig(): OpenAIConfig {
+function readOpenAIConfig(
+  reasoningEffortOverride?: OpenAIReasoningEffort
+): OpenAIConfig {
   const apiKey =
     process.env.LLM_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim();
   const baseURL =
@@ -46,7 +51,7 @@ function readOpenAIConfig(): OpenAIConfig {
   const model =
     process.env.LLM_MODEL?.trim() || process.env.OPENAI_MODEL?.trim() || DEFAULT_MODEL;
   const fallbackModels = readFallbackModels(model);
-  const reasoningEffort = readReasoningEffort();
+  const reasoningEffort = reasoningEffortOverride ?? readReasoningEffort();
   const serviceTier = readServiceTier();
 
   return {
@@ -69,6 +74,7 @@ export function getOpenAIRuntimeStatus(): OpenAIRuntimeStatus {
       model: config.model,
       fallbackModels: config.fallbackModels,
       reasoningEffort: config.reasoningEffort,
+      reasoningMix: readReasoningMix(),
       serviceTier: config.serviceTier,
       configurationError: null
     };
@@ -86,6 +92,7 @@ export function getOpenAIRuntimeStatus(): OpenAIRuntimeStatus {
       model,
       fallbackModels: [],
       reasoningEffort: DEFAULT_REASONING_EFFORT,
+      reasoningMix: [],
       serviceTier: DEFAULT_SERVICE_TIER,
       configurationError:
         error instanceof Error ? error.message : "Unknown OpenAI configuration error."
@@ -106,8 +113,10 @@ export function getOpenAIClient(): OpenAI {
   });
 }
 
-export function getOpenAIRequestConfig() {
-  const config = readOpenAIConfig();
+export function getOpenAIRequestConfig(
+  reasoningEffortOverride?: OpenAIReasoningEffort
+) {
+  const config = readOpenAIConfig(reasoningEffortOverride);
 
   return {
     client: getOpenAIClient(),
@@ -120,6 +129,27 @@ export function getOpenAIRequestConfig() {
 
 export function getOpenAIModelFallbacks() {
   return readOpenAIConfig().fallbackModels;
+}
+
+export function selectGameReasoningEffort(random = Math.random): OpenAIReasoningEffort {
+  const mix = readReasoningMix();
+
+  if (mix.length === 0) {
+    return readReasoningEffort();
+  }
+
+  const totalWeight = mix.reduce((total, entry) => total + entry.weight, 0);
+  let cursor = random() * totalWeight;
+
+  for (const entry of mix) {
+    cursor -= entry.weight;
+
+    if (cursor <= 0) {
+      return entry.effort;
+    }
+  }
+
+  return mix.at(-1)?.effort ?? readReasoningEffort();
 }
 
 export async function pingOpenAI() {
@@ -141,13 +171,47 @@ function readReasoningEffort(): OpenAIReasoningEffort {
     return DEFAULT_REASONING_EFFORT;
   }
 
-  if (REASONING_EFFORTS.includes(raw as OpenAIReasoningEffort)) {
-    return raw as OpenAIReasoningEffort;
+  const parsed = gameReasoningEffortSchema.safeParse(raw);
+
+  if (parsed.success) {
+    return parsed.data;
   }
 
   throw new Error(
-    `LLM_REASONING_EFFORT or OPENAI_REASONING_EFFORT must be one of: ${REASONING_EFFORTS.join(", ")}.`
+    `LLM_REASONING_EFFORT or OPENAI_REASONING_EFFORT must be one of: ${reasoningEffortValues.join(", ")}.`
   );
+}
+
+function readReasoningMix(): ReasoningMixEntry[] {
+  const raw =
+    process.env.LLM_REASONING_MIX?.trim() ||
+    process.env.OPENAI_REASONING_MIX?.trim() ||
+    DEFAULT_REASONING_MIX;
+
+  if (!raw) {
+    return [];
+  }
+
+  return raw
+    .split(/[,\n]/)
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const [rawEffort, rawWeight] = entry.split(":").map((part) => part.trim());
+      const parsedEffort = gameReasoningEffortSchema.safeParse(rawEffort);
+      const weight = rawWeight === undefined ? 1 : Number(rawWeight);
+
+      if (!parsedEffort.success || !Number.isFinite(weight) || weight <= 0) {
+        throw new Error(
+          "LLM_REASONING_MIX must look like high:2,medium:1,low:1 using supported reasoning efforts and positive weights."
+        );
+      }
+
+      return {
+        effort: parsedEffort.data,
+        weight
+      };
+    });
 }
 
 function readServiceTier(): OpenAIServiceTier {

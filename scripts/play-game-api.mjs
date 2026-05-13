@@ -158,6 +158,7 @@ function summarizeGame(game) {
     gameId: game.gameId,
     phase: game.phase,
     questionCount: game.questionCount,
+    reasoningEffort: game.reasoningEffort,
     transcriptLength: game.transcript.length,
     latestQuestion: game.latestQuestion,
     finalGuess: game.finalGuess,

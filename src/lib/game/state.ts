@@ -5,8 +5,10 @@ import {
   type AiMove,
   type PlayerAnswer
 } from "./ai-move";
+import { gameReasoningEffortSchema, type GameReasoningEffort } from "./reasoning";
 
 export const MAX_QUESTIONS = 21;
+export const DEFAULT_GAME_REASONING_EFFORT: GameReasoningEffort = "high";
 
 export const gamePhaseSchema = z.enum(["asking", "guessing", "result"]);
 export const gameResultSchema = z.enum(["unknown", "correct", "incorrect"]);
@@ -26,6 +28,7 @@ export const gameStateSchema = z
     latestQuestion: z.string().trim().min(1).max(180).nullable(),
     finalGuess: z.string().trim().min(1).max(120).nullable(),
     result: gameResultSchema,
+    reasoningEffort: gameReasoningEffortSchema.default(DEFAULT_GAME_REASONING_EFFORT),
     modelResponseId: z.string().trim().min(1).nullable()
   })
   .strict();
@@ -59,7 +62,9 @@ export class GameRuleError extends Error {
   }
 }
 
-export function createInitialGameState(): GameState {
+export function createInitialGameState(
+  reasoningEffort: GameReasoningEffort = DEFAULT_GAME_REASONING_EFFORT
+): GameState {
   return {
     gameId: crypto.randomUUID(),
     phase: "asking",
@@ -69,6 +74,7 @@ export function createInitialGameState(): GameState {
     latestQuestion: null,
     finalGuess: null,
     result: "unknown",
+    reasoningEffort,
     modelResponseId: null
   };
 }
@@ -168,6 +174,7 @@ export function buildModelGameSnapshot(state: GameState) {
     remainingQuestionSlots,
     latestUnansweredQuestion: state.latestQuestion,
     lastAnswer: state.transcript.at(-1)?.answer ?? null,
+    reasoningEffort: state.reasoningEffort,
     transcript: state.transcript
   };
 }

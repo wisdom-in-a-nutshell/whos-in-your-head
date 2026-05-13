@@ -61,6 +61,27 @@ describe("generateAiMove", () => {
     expect(request.store).toBe(true);
   });
 
+  it("uses the reasoning effort assigned to the game", async () => {
+    createMock.mockResolvedValue(createResponse({
+      id: "resp-low-test",
+      outputText: JSON.stringify({
+        action: "ask_question",
+        question: "Are they mainly known for entertainment?",
+        guess: null,
+        shortRationale: null
+      })
+    }));
+
+    const { generateAiMove } = await import("./game-master");
+    const state = createSharedOpeningAnswerState("yes", "low");
+
+    const generated = await generateAiMove(state, "low-request");
+    const request = createMock.mock.calls[0][0] as Record<string, unknown>;
+
+    expect(generated.reasoningEffort).toBe("low");
+    expect(request.reasoning).toEqual({ effort: "low" });
+  });
+
   it("bypasses LiteLLM response caching only on retry attempts", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-retry-test",

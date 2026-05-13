@@ -11,12 +11,16 @@ import {
   type GameState
 } from "@/lib/game/state";
 import { isFirstOpeningAnswer, OPENING_MOVE } from "@/lib/game/opening";
-import { getOpenAIModelFallbacks, getOpenAIRuntimeStatus } from "@/lib/server/openai";
+import {
+  getOpenAIModelFallbacks,
+  getOpenAIRuntimeStatus,
+  selectGameReasoningEffort
+} from "@/lib/server/openai";
 import {
   generateAiMove,
   isContentFilterIncompleteResponseError,
   readWarmedOpeningMove,
-  warmOpeningMoveResponses,
+  warmOpeningMoveResponsesForReasoning,
   type GeneratedAiMove
 } from "@/lib/server/game-master";
 import {
@@ -94,11 +98,13 @@ export async function POST(request: Request) {
     }
 
     if (parsed.data.action === "start") {
-      const nextGame = applyAiMove(createInitialGameState(), OPENING_MOVE);
-      warmOpeningMoveResponses();
+      const reasoningEffort = selectGameReasoningEffort();
+      const nextGame = applyAiMove(createInitialGameState(reasoningEffort), OPENING_MOVE);
+      warmOpeningMoveResponsesForReasoning(reasoningEffort);
       logInfo("game_turn_started", {
         requestId,
         gameId: nextGame.gameId,
+        reasoningEffort,
         question: nextGame.latestQuestion,
         routeDurationMs: Date.now() - startedAt
       });
@@ -201,6 +207,7 @@ export async function POST(request: Request) {
         source,
         requestedModel: generated.requestedModel,
         actualModel: generated.actualModel,
+        reasoningEffort: generated.reasoningEffort,
         requestedServiceTier: generated.requestedServiceTier,
         actualServiceTier: generated.actualServiceTier,
         promptCacheKey: generated.promptCacheKey,
@@ -209,8 +216,14 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const isRuleError = error instanceof GameRuleError;
+    const failureState =
+      parsed.success && "state" in parsed.data ? parsed.data.state : readBodyState(body);
     logError("game_turn_failed", {
       requestId,
+      gameId: failureState?.gameId ?? null,
+      questionCount: failureState?.questionCount ?? null,
+      latestQuestion: failureState?.latestQuestion ?? null,
+      finalGuess: failureState?.finalGuess ?? null,
       code: isRuleError ? "game_rule_error" : "game_master_error",
       error: describeError(error),
       routeDurationMs: Date.now() - startedAt
@@ -218,7 +231,7 @@ export async function POST(request: Request) {
     recordGameFailureTelemetry({
       requestId,
       action: parsed.success ? parsed.data.action : readBodyAction(body),
-      state: parsed.success && "state" in parsed.data ? parsed.data.state : readBodyState(body),
+      state: failureState,
       code: isRuleError ? "game_rule_error" : "game_master_error",
       error,
       routeDurationMs: Date.now() - startedAt,
@@ -279,8 +292,6 @@ async function generateNextGameState(
         if (fallback) {
           return fallback;
         }
-
-        break;
       }
     }
   }
@@ -359,7 +370,10 @@ function readWarmedOpeningGameState(
     return null;
   }
 
-  const generated = readWarmedOpeningMove(game.transcript[0].answer);
+  const generated = readWarmedOpeningMove(
+    game.transcript[0].answer,
+    game.reasoningEffort
+  );
 
   if (!generated || generated.move.action !== "ask_question") {
     return null;
@@ -419,6 +433,7 @@ function logAnsweredTurn({
     runtime: {
       requestedModel: generated.requestedModel,
       actualModel: generated.actualModel,
+      reasoningEffort: generated.reasoningEffort,
       requestedServiceTier: generated.requestedServiceTier,
       actualServiceTier: generated.actualServiceTier,
       promptCacheKey: generated.promptCacheKey,

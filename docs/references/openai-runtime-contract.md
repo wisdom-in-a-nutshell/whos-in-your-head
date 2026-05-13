@@ -51,7 +51,10 @@ as a successful LiteLLM `/responses` call instead of a router
 `ContentPolicyViolationError`, so the app owns this narrow fallback case.
 
 `LLM_REASONING_EFFORT` accepts `none`, `minimal`, `low`, `medium`, `high`, or
-`xhigh`; the default is `medium`.
+`xhigh`; the code default is `high` for this game. `LLM_REASONING_MIX` may be
+set to a weighted list such as `high:2,medium:1,low:1`. When present, each new
+game is assigned one reasoning effort from that mix and keeps it for the full
+round so result stats can compare reasoning levels fairly.
 
 `LLM_SERVICE_TIER` accepts `auto`, `default`, or `priority`; the default is
 `priority`. The value is sent as the Responses API request-level `service_tier`,

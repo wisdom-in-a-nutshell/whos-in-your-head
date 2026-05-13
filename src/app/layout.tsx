@@ -5,6 +5,9 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://mindreader.adithyan.io"),
   title: "Who's In Your Head?",
   description: "Think of someone famous. I get 21 questions and one guess.",
+  icons: {
+    icon: "/favicon.ico"
+  },
   openGraph: {
     title: "Who's In Your Head?",
     description: "Think of someone famous. I get 21 questions and one guess.",

@@ -40,7 +40,9 @@ Runtime LLM config lives on the Azure Web App as Key Vault references:
 Non-secret runtime defaults:
 
 - `LLM_MODEL=gpt-5.5`
-- `LLM_REASONING_EFFORT=medium`
+- `LLM_FALLBACK_MODELS=claude-4.6-opus`
+- `LLM_REASONING_EFFORT=high`
+- `LLM_REASONING_MIX=high:2,medium:1,low:1`
 - `LLM_SERVICE_TIER=priority`
 - `MONGODB_DB_NAME=content_production`
 - `GAME_TELEMETRY_ENABLED=true`

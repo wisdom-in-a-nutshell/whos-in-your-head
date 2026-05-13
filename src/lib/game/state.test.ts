@@ -18,7 +18,22 @@ describe("game state transitions", () => {
     expect(state.latestQuestion).toBeNull();
     expect(state.finalGuess).toBeNull();
     expect(state.result).toBe("unknown");
+    expect(state.reasoningEffort).toBe("high");
     expect(state.modelResponseId).toBeNull();
+  });
+
+  it("keeps the assigned reasoning effort on the game state", () => {
+    const state = createInitialGameState("low");
+
+    expect(state.reasoningEffort).toBe("low");
+    expect(
+      applyAiMove(state, {
+        action: "ask_question",
+        question: "Are they alive?",
+        guess: null,
+        shortRationale: null
+      }).reasoningEffort
+    ).toBe("low");
   });
 
   it("applies an AI question and records the player's answer", () => {

@@ -117,6 +117,7 @@ type GameState = {
   latestQuestion: string | null;
   finalGuess: string | null;
   result: "unknown" | "correct" | "incorrect";
+  reasoningEffort: string;
   modelResponseId: string | null;
 };
 
@@ -134,6 +135,10 @@ type GameTurnResponse =
 type RuntimeStatus = {
   model: string;
   reasoningEffort: string;
+  reasoningMix?: Array<{
+    effort: string;
+    weight: number;
+  }>;
 };
 
 type PublicStats = {
@@ -178,7 +183,7 @@ export default function Home() {
   const thinkingPrompt = thinkingPrompts[answeredCount % thinkingPrompts.length];
   const currentPrompt = phase === "thinking" ? thinkingPrompt : questionPrompt;
   const modelName = runtimeStatus ? formatModelName(runtimeStatus.model) : "the house model";
-  const reasoningLevel = runtimeStatus?.reasoningEffort ?? "medium";
+  const reasoningLevel = game?.reasoningEffort ?? runtimeStatus?.reasoningEffort ?? "medium";
 
   useEffect(() => {
     let active = true;
@@ -627,6 +632,7 @@ function getPreviewGame(): GameState | null {
     latestQuestion: null,
     finalGuess: "Taylor Swift",
     result: "correct",
+    reasoningEffort: "high",
     modelResponseId: null
   };
 }

@@ -58,12 +58,19 @@ export default async function StatsPage() {
             {stats.modelStats.length > 0 ? (
               <div className="model-rows">
                 {stats.modelStats.map((model) => (
-                  <div className="model-row" key={model.model}>
+                  <div
+                    className="model-row"
+                    key={`${model.model}-${model.reasoningEffort}`}
+                  >
                     <strong>{formatModelName(model.model)}</strong>
+                    <span>{model.reasoningEffort} reasoning</span>
+                    <span>{formatPercent(model.correctRate)} correct</span>
+                    <span>{model.completedGames} games</span>
                     <span>{model.turns} turns</span>
-                    <span>{model.guesses} guesses</span>
                     <span>{formatDuration(model.averageTurnDurationMs)}</span>
-                    <span>{formatCompactNumber(model.averageReasoningTokens)} reasoning</span>
+                    <span>
+                      {formatCompactNumber(model.averageReasoningTokens)} reason tokens
+                    </span>
                     <span>{model.fallbackTurns} fallback</span>
                   </div>
                 ))}

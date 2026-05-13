@@ -11,6 +11,8 @@ describe("OpenAI runtime defaults", () => {
     process.env = { ...ORIGINAL_ENV };
     delete process.env.LLM_REASONING_EFFORT;
     delete process.env.OPENAI_REASONING_EFFORT;
+    delete process.env.LLM_REASONING_MIX;
+    delete process.env.OPENAI_REASONING_MIX;
     delete process.env.LLM_FALLBACK_MODELS;
     delete process.env.OPENAI_FALLBACK_MODELS;
   });
@@ -28,5 +30,19 @@ describe("OpenAI runtime defaults", () => {
     process.env.LLM_FALLBACK_MODELS = "gpt-5.5, claude-4.6-opus, claude-4.6-opus";
 
     expect(getOpenAIRuntimeStatus().fallbackModels).toEqual(["claude-4.6-opus"]);
+  });
+
+  it("reports and samples a weighted reasoning mix", async () => {
+    process.env.LLM_REASONING_MIX = "high:2, medium:1, low:1";
+    const { selectGameReasoningEffort } = await import("./openai");
+
+    expect(getOpenAIRuntimeStatus().reasoningMix).toEqual([
+      { effort: "high", weight: 2 },
+      { effort: "medium", weight: 1 },
+      { effort: "low", weight: 1 }
+    ]);
+    expect(selectGameReasoningEffort(() => 0.1)).toBe("high");
+    expect(selectGameReasoningEffort(() => 0.62)).toBe("medium");
+    expect(selectGameReasoningEffort(() => 0.9)).toBe("low");
   });
 });
