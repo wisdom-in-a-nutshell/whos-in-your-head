@@ -64,6 +64,12 @@ clear. By Q12, you should be choosing among a small candidate set, not still
 asking broad category questions. If the set is still broad around Q10, ask the
 missing highest-level axis immediately.
 
+Once a broad domain is known, avoid U.S.-default checklisting. Split geography
+and language sphere early when the likely field is global. For musicians, after
+music is confirmed, test the U.S./English-language versus Latin/Spanish-language
+or other regional sphere before asking country, rock, R&B, DJ, or instrument
+questions one by one.
+
 Middle questions should narrow the cluster using public role, first source of
 fame, dominant public association, signature medium, decade, region, awards,
 sport, industry, public office, internet fame, one iconic work, or name shape
@@ -90,14 +96,17 @@ If one famous candidate is already likely after this answer, prefer making the
 canonical-name guess over asking more sensitive follow-up questions.
 
 For non-living public figures, do not spend many turns eliminating ordinary
-jobs. If conventional entertainment, politics, sports, science, and arts
-categories are weak, quickly test public notoriety, violent conflict, crime, or
-extremism as broad fame-source categories.
+jobs. Royal-family and monarchy status is a major early historical/public-figure
+split; test it before notoriety unless the transcript already points toward
+scandal, crime, war, violent conflict, or extremism. If conventional
+entertainment, politics, sports, science, arts, and royalty categories are weak,
+quickly test public notoriety, violent conflict, crime, or extremism as broad
+fame-source categories.
 
 For a non-living person, after No to entertainment/arts, politics/government,
-science/technology, and sports, the next broad question should usually test
-public notoriety, violent conflict, crime, or extremism before religion,
-royalty, or narrow historical subtypes.
+science/technology, sports, and royal-family/monarchy status, the next broad
+question should usually test public notoriety, violent conflict, crime, or
+extremism before religion or narrow historical subtypes.
 
 Avoid wasting questions on a long chain of job titles. Do not ask actor, singer,
 athlete, politician, influencer one by one unless prior answers point there.
@@ -109,11 +118,19 @@ figures after a different original source of fame.
 
 For media personalities who first became famous on television but are not hosts
 or presenters, quickly test reality TV or famous-family fame before guessing.
+Inside a famous-family cluster, use literal public-name discriminators before
+guessing. For example, Kardashian versus Jenner is a better split than asking a
+vague cosmetics/model question.
 
 For actors in modern TV comedy or sitcom clusters, do not enumerate sitcom
 titles one by one while the field is still broad. First test mixed-career
 signals such as whether they are also known for music, writing/creating a show,
 stand-up, or a distinctive stage name.
+
+For individual-sport or athletic-competition fame with No to team sports, do not
+walk through every sport. Quickly test unusual celebrity crossover paths such as
+bodybuilding/fitness, combat sports, motorsports, and Olympic fame, then switch
+to later public association if one path points to a famous crossover celebrity.
 
 Late questions should become discriminating. When the transcript points to a
 small candidate set, ask about a distinctive public clue or make a guess. Name
@@ -194,6 +211,26 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
     return [
       "The last answer confirmed a mixed acting-and-music public profile.",
       "Ask one neutral discriminator or make the likely canonical-name guess if clear."
+    ].join(" ");
+  }
+
+  if (
+    lastTurn?.answer === "yes" &&
+    /(reggaeton|latin urban|puerto rican|puerto rico)/.test(lastQuestion)
+  ) {
+    return [
+      "The last answer confirmed a contemporary Latin/reggaeton music cluster.",
+      "Make the likely canonical-name guess if clear; otherwise ask one distinctive public-name or country discriminator."
+    ].join(" ");
+  }
+
+  if (
+    lastTurn?.answer === "yes" &&
+    /(bodybuilding|bodybuilder|fitness|hollywood action)/.test(lastQuestion)
+  ) {
+    return [
+      "The last answer confirmed an individual-sport celebrity crossover cluster.",
+      "Make the likely canonical-name guess if clear; otherwise ask one neutral public-career discriminator."
     ].join(" ");
   }
 

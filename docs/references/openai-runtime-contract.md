@@ -43,7 +43,7 @@ The server also accepts the OpenAI SDK names `OPENAI_API_KEY`,
 depend on ambient global OpenAI provider routing.
 
 `LLM_REASONING_EFFORT` accepts `none`, `minimal`, `low`, `medium`, `high`, or
-`xhigh`; the default is `high`.
+`xhigh`; the default is `medium`.
 
 `LLM_SERVICE_TIER` accepts `auto`, `default`, or `priority`; the default is
 `priority`. The value is sent as the Responses API request-level `service_tier`,
@@ -119,6 +119,13 @@ Structured Outputs can still produce refusal or incomplete edge cases. The game
 route retries a failed model move once, logs the server-side cause, and then
 uses a deterministic recovery move so a playable round does not break.
 
+OpenAI's GPT-5.5 guidance says to use the Responses API, reasoning controls,
+Structured Outputs, prompt caching, and static prompt prefixes for this style of
+reasoning workload. The game-master call follows that shape: stable
+instructions first, dynamic state last, `zodTextFormat` for the move schema,
+`reasoning.effort=medium` by default, `service_tier=priority`, and a stable
+`prompt_cache_key`.
+
 ## Game-Master Prompt
 
 The game-master prompt lives in `src/lib/game/prompt.ts`. It is intentionally policy-heavy but schema-light:
@@ -136,6 +143,24 @@ The game-master prompt lives in `src/lib/game/prompt.ts`. It is intentionally po
 - the strategy explicitly covers modern mixed-source fame, including internet
   creators, reality TV, adult entertainment as a tactful public fame-source
   category, controversy-first public figures, and media personalities.
+- server-side local strategy nudges cover observed eval weak spots: reality or
+  famous-family media personalities, mature-audience public fame sources,
+  notoriety/extremism splits, mixed acting/music profiles, Latin/reggaeton
+  musicians, and bodybuilding-to-Hollywood crossover celebrities.
+
+## Eval Loop
+
+Use the real self-play eval runner when changing the prompt or local strategy:
+
+```bash
+npm run eval:game-master -- --model=gpt-5.5 --effort=medium --service-tier=priority
+```
+
+The runner uses the same structured move schema as production and an answer
+oracle model to simulate a player. It records misses, schema/runtime failures,
+question count, and the last transcript turns for each target. Keep the target
+set broad enough to include mixed-source, global, pseudonymous, controversial,
+adult-entertainment, and non-admired public figures.
 
 ## Tooling Note
 

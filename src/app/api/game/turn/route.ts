@@ -25,12 +25,13 @@ const OPENING_MOVE: AiMove = {
 const RECOVERY_QUESTIONS = [
   "Are they primarily famous for entertainment?",
   "Are they primarily famous for music?",
+  "Are they primarily famous outside the United States?",
+  "Are they primarily associated with Latin or Spanish-language culture?",
   "Are they primarily famous for acting or screen work?",
   "Are they primarily famous through social media or online video?",
   "Are they better described as a media personality than a traditional performer?",
   "Did they first become famous through adult entertainment?",
   "Are they publicly associated with a major controversy?",
-  "Are they primarily famous outside the United States?",
   "Did they become famous before 2010?",
   "Are they associated with one signature work?",
   "Are they also known for business or entrepreneurship?",
@@ -210,9 +211,16 @@ function buildStrategicLocalMove(game: GameState): AiMove | null {
   const hasKnownForNo = (pattern: RegExp) =>
     answered.some((turn) => {
       const question = turn.question.toLowerCase();
+      const isNarrowSubtypeQuestion =
+        /\b(english-language|english language|spanish-language|spanish language|latin|country music|rock music|r&b|soul music|reggaeton|latin urban|instrumentalist|composer|dj|team sport|combat sports|professional wrestling|olympics|tennis|golf|motorsports|auto racing)\b/.test(
+          question
+        );
       return (
         turn.answer === "no" &&
-        /\b(best known|primarily known|mainly known|main fame|primary fame)\b/.test(question) &&
+        !isNarrowSubtypeQuestion &&
+        /\b(best known|primarily known|mainly known|known for|primarily famous|mainly famous|main fame|primary fame|first became famous|first become famous|famous through|known through)\b/.test(
+          question
+        ) &&
         pattern.test(question)
       );
     });
@@ -246,6 +254,112 @@ function buildStrategicLocalMove(game: GameState): AiMove | null {
       question: "Did they first become famous through mature-audience entertainment?",
       guess: null,
       shortRationale: "Local high-signal split for modern media personalities."
+    };
+  }
+
+  if (
+    game.questionCount < game.maxQuestions &&
+    hasYes(/\b(kardashian-jenner|kardashian jenner)\b/) &&
+    !hasAsked(/\b(public last name|last name kardashian|last name jenner)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Is their public last name Kardashian?",
+      guess: null,
+      shortRationale: "Local Kardashian-Jenner split before guessing."
+    };
+  }
+
+  if (
+    game.questionCount < game.maxQuestions &&
+    hasYes(/\b(public last name kardashian|last name kardashian)\b/) &&
+    !hasAsked(/\b(skims)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Are they closely associated with SKIMS?",
+      guess: null,
+      shortRationale: "Local signature-brand split inside the Kardashian cluster."
+    };
+  }
+
+  if (
+    hasYes(/\b(skims)\b/) &&
+    !hasAsked(/\b(kim kardashian)\b/)
+  ) {
+    return {
+      action: "make_guess",
+      question: null,
+      guess: "Kim Kardashian",
+      shortRationale: "Local canonical guess from a signature Kardashian-family clue."
+    };
+  }
+
+  if (
+    game.questionCount < game.maxQuestions &&
+    hasYes(/\b(music|musician|singer|song|album)\b/) &&
+    (hasNo(/\b(united states|american|u\.s\.|usa|english-language|english language)\b/) ||
+      hasAsked(/\b(country music|rock music|r&b|soul music|instrumentalist|composer|dj)\b/)) &&
+    !hasAsked(/\b(latin|spanish-language|spanish language|reggaeton|latin urban)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Are they primarily associated with Latin music?",
+      guess: null,
+      shortRationale: "Local global-music split before genre checklisting."
+    };
+  }
+
+  if (
+    game.questionCount < game.maxQuestions &&
+    hasYes(/\b(latin music|latin or spanish-language culture)\b/) &&
+    !hasAsked(/\b(reggaeton|latin urban)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Are they primarily known for reggaeton or Latin urban music?",
+      guess: null,
+      shortRationale: "Local high-signal split for contemporary Latin musicians."
+    };
+  }
+
+  if (
+    game.questionCount < game.maxQuestions &&
+    hasYes(/\b(reggaeton|latin urban)\b/) &&
+    !hasAsked(/\b(puerto rican|puerto rico)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Are they Puerto Rican?",
+      guess: null,
+      shortRationale: "Local high-signal split for reggaeton stars."
+    };
+  }
+
+  if (
+    game.questionCount < game.maxQuestions &&
+    hasYes(/\b(sports|athletic competition|athlete)\b/) &&
+    hasNo(/\b(team sport)\b/) &&
+    !hasAsked(/\b(bodybuilding|bodybuilder|fitness)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Did they first become famous through bodybuilding or fitness?",
+      guess: null,
+      shortRationale: "Local high-signal split for individual-sport celebrities."
+    };
+  }
+
+  if (
+    game.questionCount < game.maxQuestions &&
+    hasYes(/\b(bodybuilding|bodybuilder|fitness)\b/) &&
+    !hasAsked(/\b(hollywood|action movie|action film|actor)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Did they later become a major Hollywood action star?",
+      guess: null,
+      shortRationale: "Local celebrity crossover split after bodybuilding."
     };
   }
 
@@ -336,6 +450,10 @@ function chooseRecoveryGuess(game: GameState): string {
     return "Kim Kardashian";
   }
 
+  if (/\b(reggaeton|latin urban|puerto rican)\b/.test(yesAnswers)) {
+    return "Bad Bunny";
+  }
+
   if (/\b(adult entertainment|mature-audience entertainment)\b/.test(yesAnswers)) {
     return "Mia Khalifa";
   }
@@ -345,7 +463,15 @@ function chooseRecoveryGuess(game: GameState): string {
   }
 
   if (/\b(music|singer|song|album|pop)\b/.test(yesAnswers)) {
+    if (/\b(latin|spanish-language|spanish language)\b/.test(yesAnswers)) {
+      return "Bad Bunny";
+    }
+
     return "Taylor Swift";
+  }
+
+  if (/\b(bodybuilding|bodybuilder|fitness)\b/.test(yesAnswers)) {
+    return "Arnold Schwarzenegger";
   }
 
   if (/\b(actor|acting|screen|movie|film|tv|television)\b/.test(yesAnswers)) {

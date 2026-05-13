@@ -38,7 +38,7 @@ Optional env:
 
 ```bash
 LLM_MODEL=gpt-5.5
-LLM_REASONING_EFFORT=high
+LLM_REASONING_EFFORT=medium
 LLM_SERVICE_TIER=priority
 ```
 
@@ -52,6 +52,12 @@ Local validation:
 
 ```bash
 scripts/check-fast.sh
+```
+
+Real game-master eval:
+
+```bash
+npm run eval:game-master -- --model=gpt-5.5 --effort=medium --service-tier=priority
 ```
 
 Useful scaffold endpoints:

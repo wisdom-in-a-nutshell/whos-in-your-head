@@ -66,7 +66,11 @@ const TARGET_PROFILES = new Map([
       "American media personality and businesswoman.",
       "Best known through reality TV and the Kardashian-Jenner famous family.",
       "Part of the Kardashian-Jenner family and a daughter of Kris Jenner.",
+      "Her public last name is Kardashian, not Jenner.",
       "Not one of Kris Jenner's two youngest daughters; those are Kendall and Kylie.",
+      "Not Kylie Jenner or Kendall Jenner.",
+      "Not best known as a model.",
+      "Associated with SKIMS and KKW Beauty; not a cosmetics brand literally bearing her first name.",
       "Associated with Keeping Up with the Kardashians, fashion, beauty, social media, and business.",
       "Not primarily known as a musician, mainstream actor, sports competitor, or TV host."
     ].join(" ")
@@ -80,6 +84,26 @@ const TARGET_PROFILES = new Map([
       "Also known for music under the stage name Childish Gambino.",
       "Created and starred in Atlanta.",
       "Not primarily known as an athlete, politician, reality-TV/famous-family figure, or mature-audience entertainer."
+    ].join(" ")
+  ],
+  [
+    "Bad Bunny",
+    [
+      "Living Puerto Rican man.",
+      "Music performer, rapper, singer, and songwriter.",
+      "Primarily associated with Latin music, reggaeton, and Latin urban music.",
+      "Uses a stage name that includes an animal.",
+      "Not primarily known for country, rock, R&B/soul, DJ work, acting, sports, politics, or reality TV."
+    ].join(" ")
+  ],
+  [
+    "Arnold Schwarzenegger",
+    [
+      "Living man born in Austria, later associated with the United States.",
+      "First became famous through bodybuilding and fitness.",
+      "Later became a major Hollywood action movie star.",
+      "Also served as Governor of California.",
+      "Not primarily known for a team sport, combat sport, professional wrestling, tennis, golf, motorsports, or Olympic competition."
     ].join(" ")
   ]
 ]);
@@ -442,9 +466,16 @@ function buildStrategicLocalMove(state) {
   const hasKnownForNo = (pattern) =>
     answered.some((turn) => {
       const question = turn.question.toLowerCase();
+      const isNarrowSubtypeQuestion =
+        /\b(english-language|english language|spanish-language|spanish language|latin|country music|rock music|r&b|soul music|reggaeton|latin urban|instrumentalist|composer|dj|team sport|combat sports|professional wrestling|olympics|tennis|golf|motorsports|auto racing)\b/.test(
+          question
+        );
       return (
         turn.answer === "no" &&
-        /\b(best known|primarily known|mainly known|main fame|primary fame)\b/.test(question) &&
+        !isNarrowSubtypeQuestion &&
+        /\b(best known|primarily known|mainly known|known for|primarily famous|mainly famous|main fame|primary fame|first became famous|first become famous|famous through|known through)\b/.test(
+          question
+        ) &&
         pattern.test(question)
       );
     });
@@ -478,6 +509,109 @@ function buildStrategicLocalMove(state) {
       question: "Did they first become famous through mature-audience entertainment?",
       guess: null,
       shortRationale: "Local high-signal split for modern media personalities."
+    };
+  }
+
+  if (
+    state.questionCount < state.maxQuestions &&
+    hasYes(/\b(kardashian-jenner|kardashian jenner)\b/) &&
+    !hasAsked(/\b(public last name|last name kardashian|last name jenner)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Is their public last name Kardashian?",
+      guess: null,
+      shortRationale: "Local Kardashian-Jenner split before guessing."
+    };
+  }
+
+  if (
+    state.questionCount < state.maxQuestions &&
+    hasYes(/\b(public last name kardashian|last name kardashian)\b/) &&
+    !hasAsked(/\b(skims)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Are they closely associated with SKIMS?",
+      guess: null,
+      shortRationale: "Local signature-brand split inside the Kardashian cluster."
+    };
+  }
+
+  if (hasYes(/\b(skims)\b/) && !hasAsked(/\b(kim kardashian)\b/)) {
+    return {
+      action: "make_guess",
+      question: null,
+      guess: "Kim Kardashian",
+      shortRationale: "Local canonical guess from a signature Kardashian-family clue."
+    };
+  }
+
+  if (
+    state.questionCount < state.maxQuestions &&
+    hasYes(/\b(music|musician|singer|song|album)\b/) &&
+    (hasNo(/\b(united states|american|u\.s\.|usa|english-language|english language)\b/) ||
+      hasAsked(/\b(country music|rock music|r&b|soul music|instrumentalist|composer|dj)\b/)) &&
+    !hasAsked(/\b(latin|spanish-language|spanish language|reggaeton|latin urban)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Are they primarily associated with Latin music?",
+      guess: null,
+      shortRationale: "Local global-music split before genre checklisting."
+    };
+  }
+
+  if (
+    state.questionCount < state.maxQuestions &&
+    hasYes(/\b(latin music|latin or spanish-language culture)\b/) &&
+    !hasAsked(/\b(reggaeton|latin urban)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Are they primarily known for reggaeton or Latin urban music?",
+      guess: null,
+      shortRationale: "Local high-signal split for contemporary Latin musicians."
+    };
+  }
+
+  if (
+    state.questionCount < state.maxQuestions &&
+    hasYes(/\b(reggaeton|latin urban)\b/) &&
+    !hasAsked(/\b(puerto rican|puerto rico)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Are they Puerto Rican?",
+      guess: null,
+      shortRationale: "Local high-signal split for reggaeton stars."
+    };
+  }
+
+  if (
+    state.questionCount < state.maxQuestions &&
+    hasYes(/\b(sports|athletic competition|athlete)\b/) &&
+    hasNo(/\b(team sport)\b/) &&
+    !hasAsked(/\b(bodybuilding|bodybuilder|fitness)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Did they first become famous through bodybuilding or fitness?",
+      guess: null,
+      shortRationale: "Local high-signal split for individual-sport celebrities."
+    };
+  }
+
+  if (
+    state.questionCount < state.maxQuestions &&
+    hasYes(/\b(bodybuilding|bodybuilder|fitness)\b/) &&
+    !hasAsked(/\b(hollywood|action movie|action film|actor)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Did they later become a major Hollywood action star?",
+      guess: null,
+      shortRationale: "Local celebrity crossover split after bodybuilding."
     };
   }
 
@@ -563,6 +697,20 @@ function buildDirective(state, remainingQuestionSlots) {
     return [
       "The last answer confirmed a mixed acting-and-music public profile.",
       "Ask one neutral discriminator or make the likely canonical-name guess if clear."
+    ].join(" ");
+  }
+
+  if (lastTurn?.answer === "yes" && /(reggaeton|latin urban|puerto rican|puerto rico)/.test(lastQuestion)) {
+    return [
+      "The last answer confirmed a contemporary Latin/reggaeton music cluster.",
+      "Make the likely canonical-name guess if clear; otherwise ask one distinctive public-name or country discriminator."
+    ].join(" ");
+  }
+
+  if (lastTurn?.answer === "yes" && /(bodybuilding|bodybuilder|fitness|hollywood action)/.test(lastQuestion)) {
+    return [
+      "The last answer confirmed an individual-sport celebrity crossover cluster.",
+      "Make the likely canonical-name guess if clear; otherwise ask one neutral public-career discriminator."
     ].join(" ");
   }
 
