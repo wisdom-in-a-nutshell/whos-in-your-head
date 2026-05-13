@@ -1,4 +1,5 @@
 import "server-only";
+import type { ResponseUsage } from "openai/resources/responses/responses";
 import { zodTextFormat } from "openai/helpers/zod";
 import { aiMoveSchema, type AiMove } from "@/lib/game/ai-move";
 import { GAME_MASTER_INSTRUCTIONS, buildGameMasterInput } from "@/lib/game/prompt";
@@ -6,11 +7,14 @@ import type { GameState } from "@/lib/game/state";
 import { getOpenAIRequestConfig } from "./openai";
 
 const AI_MOVE_FORMAT_NAME = "who_in_your_head_ai_move";
+const PROMPT_CACHE_KEY = "whos-in-your-head-game-master-v1";
 
 export type GeneratedAiMove = {
   move: AiMove;
   requestedServiceTier: string;
   actualServiceTier: string | null;
+  promptCacheKey: string | null;
+  usage: ResponseUsage | null;
 };
 
 export async function generateAiMove(state: GameState): Promise<GeneratedAiMove> {
@@ -37,7 +41,7 @@ export async function generateAiMove(state: GameState): Promise<GeneratedAiMove>
     },
     service_tier: serviceTier,
     max_output_tokens: 1500,
-    prompt_cache_key: "whos-in-your-head-game-master-v1",
+    prompt_cache_key: PROMPT_CACHE_KEY,
     store: false
   });
 
@@ -50,6 +54,8 @@ export async function generateAiMove(state: GameState): Promise<GeneratedAiMove>
   return {
     move,
     requestedServiceTier: serviceTier,
-    actualServiceTier: response.service_tier ?? null
+    actualServiceTier: response.service_tier ?? null,
+    promptCacheKey: PROMPT_CACHE_KEY,
+    usage: response.usage ?? null
   };
 }

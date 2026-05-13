@@ -127,15 +127,20 @@ export async function POST(request: Request) {
       move,
       runtime: {
         requestedServiceTier: generated.requestedServiceTier,
-        actualServiceTier: generated.actualServiceTier
+        actualServiceTier: generated.actualServiceTier,
+        promptCacheKey: generated.promptCacheKey,
+        usage: summarizeUsage(generated.usage)
       }
     });
   } catch (error) {
     const isRuleError = error instanceof GameRuleError;
-    console.error("[game-turn] turn failed", {
-      code: isRuleError ? "game_rule_error" : "game_master_error",
-      error: describeError(error)
-    });
+    console.error(
+      "[game-turn] turn failed",
+      JSON.stringify({
+        code: isRuleError ? "game_rule_error" : "game_master_error",
+        error: describeError(error)
+      })
+    );
 
     return NextResponse.json(
       {
@@ -154,19 +159,6 @@ export async function POST(request: Request) {
 async function generateNextGameState(
   game: GameState
 ): Promise<{ generated: GeneratedAiMove; nextGame: GameState }> {
-  const strategicMove = buildStrategicLocalMove(game);
-
-  if (strategicMove) {
-    return {
-      generated: {
-        move: strategicMove,
-        requestedServiceTier: "local_strategy",
-        actualServiceTier: null
-      },
-      nextGame: applyAiMove(game, strategicMove)
-    };
-  }
-
   for (let attempt = 1; attempt <= MODEL_MOVE_ATTEMPTS; attempt += 1) {
     try {
       const generated = await generateAiMove(game);
@@ -177,31 +169,40 @@ async function generateNextGameState(
         nextGame
       };
     } catch (error) {
-      console.warn("[game-turn] model move attempt failed", {
-        attempt,
-        maxAttempts: MODEL_MOVE_ATTEMPTS,
-        gameId: game.gameId,
-        questionCount: game.questionCount,
-        transcriptLength: game.transcript.length,
-        error: describeError(error)
-      });
+      console.warn(
+        "[game-turn] model move attempt failed",
+        JSON.stringify({
+          attempt,
+          maxAttempts: MODEL_MOVE_ATTEMPTS,
+          gameId: game.gameId,
+          questionCount: game.questionCount,
+          transcriptLength: game.transcript.length,
+          error: describeError(error)
+        })
+      );
     }
   }
 
   const recoveryMove = buildRecoveryMove(game);
   const nextGame = applyAiMove(game, recoveryMove);
 
-  console.warn("[game-turn] using deterministic recovery move", {
-    gameId: game.gameId,
-    questionCount: game.questionCount,
-    move: recoveryMove
-  });
+  console.warn(
+    "[game-turn] using deterministic recovery move",
+    JSON.stringify({
+      gameId: game.gameId,
+      questionCount: game.questionCount,
+      transcriptLength: game.transcript.length,
+      move: recoveryMove
+    })
+  );
 
   return {
     generated: {
       move: recoveryMove,
       requestedServiceTier: "local_recovery",
-      actualServiceTier: null
+      actualServiceTier: null,
+      promptCacheKey: null,
+      usage: null
     },
     nextGame
   };
@@ -241,202 +242,26 @@ function logAnsweredTurn({
       },
       runtime: {
         requestedServiceTier: generated.requestedServiceTier,
-        actualServiceTier: generated.actualServiceTier
+        actualServiceTier: generated.actualServiceTier,
+        promptCacheKey: generated.promptCacheKey,
+        usage: summarizeUsage(generated.usage)
       }
     })
   );
 }
 
-function buildStrategicLocalMove(game: GameState): AiMove | null {
-  const answered = game.transcript;
-  const askedQuestions = answered.map((turn) => turn.question.toLowerCase());
-  const hasYes = (pattern: RegExp) =>
-    answered.some((turn) => turn.answer === "yes" && pattern.test(turn.question.toLowerCase()));
-  const hasNo = (pattern: RegExp) =>
-    answered.some((turn) => turn.answer === "no" && pattern.test(turn.question.toLowerCase()));
-  const hasKnownForNo = (pattern: RegExp) =>
-    answered.some((turn) => {
-      const question = turn.question.toLowerCase();
-      const isNarrowSubtypeQuestion =
-        /\b(english-language|english language|spanish-language|spanish language|latin|country music|rock music|r&b|soul music|reggaeton|latin urban|instrumentalist|composer|dj|team sport|combat sports|professional wrestling|olympics|tennis|golf|motorsports|auto racing)\b/.test(
-          question
-        );
-      return (
-        turn.answer === "no" &&
-        !isNarrowSubtypeQuestion &&
-        /\b(best known|primarily known|mainly known|known for|primarily famous|mainly famous|main fame|primary fame|first became famous|first become famous|famous through|known through)\b/.test(
-          question
-        ) &&
-        pattern.test(question)
-      );
-    });
-  const hasAsked = (pattern: RegExp) => askedQuestions.some((question) => pattern.test(question));
-
-  if (
-    game.questionCount < game.maxQuestions &&
-    hasYes(/\b(entertainment|media)\b/) &&
-    hasKnownForNo(/\b(acting|actor|movies|movie|television|tv)\b/) &&
-    hasKnownForNo(/\b(music|musician|singer)\b/) &&
-    !hasAsked(/\b(reality|famous family)\b/)
-  ) {
-    return {
-      action: "ask_question",
-      question: "Are they best known through reality TV or a famous family?",
-      guess: null,
-      shortRationale: "Local high-signal split for media personalities."
-    };
+function summarizeUsage(usage: GeneratedAiMove["usage"]) {
+  if (!usage) {
+    return null;
   }
 
-  if (
-    game.questionCount < game.maxQuestions &&
-    hasYes(/\b(entertainment|media)\b/) &&
-    hasKnownForNo(/\b(acting|actor|movies|movie|television|tv)\b/) &&
-    hasKnownForNo(/\b(music|musician|singer)\b/) &&
-    hasNo(/\b(reality|famous family)\b/) &&
-    !hasAsked(/\b(mature-audience entertainment|adult entertainment)\b/)
-  ) {
-    return {
-      action: "ask_question",
-      question: "Did they first become famous through mature-audience entertainment?",
-      guess: null,
-      shortRationale: "Local high-signal split for modern media personalities."
-    };
-  }
-
-  if (
-    game.questionCount < game.maxQuestions &&
-    hasYes(/\b(kardashian-jenner|kardashian jenner)\b/) &&
-    !hasAsked(/\b(public last name|last name kardashian|last name jenner)\b/)
-  ) {
-    return {
-      action: "ask_question",
-      question: "Is their public last name Kardashian?",
-      guess: null,
-      shortRationale: "Local Kardashian-Jenner split before guessing."
-    };
-  }
-
-  if (
-    game.questionCount < game.maxQuestions &&
-    hasYes(/\b(public last name kardashian|last name kardashian)\b/) &&
-    !hasAsked(/\b(skims)\b/)
-  ) {
-    return {
-      action: "ask_question",
-      question: "Are they closely associated with SKIMS?",
-      guess: null,
-      shortRationale: "Local signature-brand split inside the Kardashian cluster."
-    };
-  }
-
-  if (
-    hasYes(/\b(skims)\b/) &&
-    !hasAsked(/\b(kim kardashian)\b/)
-  ) {
-    return {
-      action: "make_guess",
-      question: null,
-      guess: "Kim Kardashian",
-      shortRationale: "Local canonical guess from a signature Kardashian-family clue."
-    };
-  }
-
-  if (
-    game.questionCount < game.maxQuestions &&
-    hasYes(/\b(music|musician|singer|song|album)\b/) &&
-    (hasNo(/\b(united states|american|u\.s\.|usa|english-language|english language)\b/) ||
-      hasAsked(/\b(country music|rock music|r&b|soul music|instrumentalist|composer|dj)\b/)) &&
-    !hasAsked(/\b(latin|spanish-language|spanish language|reggaeton|latin urban)\b/)
-  ) {
-    return {
-      action: "ask_question",
-      question: "Are they primarily associated with Latin music?",
-      guess: null,
-      shortRationale: "Local global-music split before genre checklisting."
-    };
-  }
-
-  if (
-    game.questionCount < game.maxQuestions &&
-    hasYes(/\b(latin music|latin or spanish-language culture)\b/) &&
-    !hasAsked(/\b(reggaeton|latin urban)\b/)
-  ) {
-    return {
-      action: "ask_question",
-      question: "Are they primarily known for reggaeton or Latin urban music?",
-      guess: null,
-      shortRationale: "Local high-signal split for contemporary Latin musicians."
-    };
-  }
-
-  if (
-    game.questionCount < game.maxQuestions &&
-    hasYes(/\b(reggaeton|latin urban)\b/) &&
-    !hasAsked(/\b(puerto rican|puerto rico)\b/)
-  ) {
-    return {
-      action: "ask_question",
-      question: "Are they Puerto Rican?",
-      guess: null,
-      shortRationale: "Local high-signal split for reggaeton stars."
-    };
-  }
-
-  if (
-    game.questionCount < game.maxQuestions &&
-    hasYes(/\b(sports|athletic competition|athlete)\b/) &&
-    hasNo(/\b(team sport)\b/) &&
-    !hasAsked(/\b(bodybuilding|bodybuilder|fitness)\b/)
-  ) {
-    return {
-      action: "ask_question",
-      question: "Did they first become famous through bodybuilding or fitness?",
-      guess: null,
-      shortRationale: "Local high-signal split for individual-sport celebrities."
-    };
-  }
-
-  if (
-    game.questionCount < game.maxQuestions &&
-    hasYes(/\b(bodybuilding|bodybuilder|fitness)\b/) &&
-    !hasAsked(/\b(hollywood|action movie|action film|actor)\b/)
-  ) {
-    return {
-      action: "ask_question",
-      question: "Did they later become a major Hollywood action star?",
-      guess: null,
-      shortRationale: "Local celebrity crossover split after bodybuilding."
-    };
-  }
-
-  if (
-    game.questionCount < game.maxQuestions &&
-    hasYes(/\b(public notoriety|crime|violent conflict|violence|extremism)\b/) &&
-    !hasAsked(/\b(terrorism|extremist|extremism)\b/)
-  ) {
-    return {
-      action: "ask_question",
-      question: "Was their notoriety mainly connected to terrorism or extremist violence?",
-      guess: null,
-      shortRationale: "Local high-signal split for notoriety-first public figures."
-    };
-  }
-
-  if (
-    game.questionCount < game.maxQuestions &&
-    hasYes(/\b(acting|actor|movies|movie|television|tv)\b/) &&
-    hasYes(/\b(comedy|sitcom)\b/) &&
-    !hasAsked(/\b(also known for music|stage name|rapper|musician)\b/)
-  ) {
-    return {
-      action: "ask_question",
-      question: "Are they also known for music under a stage name?",
-      guess: null,
-      shortRationale: "Local mixed-career split before sitcom-title chaining."
-    };
-  }
-
-  return null;
+  return {
+    inputTokens: usage.input_tokens,
+    cachedTokens: usage.input_tokens_details.cached_tokens,
+    outputTokens: usage.output_tokens,
+    reasoningTokens: usage.output_tokens_details.reasoning_tokens,
+    totalTokens: usage.total_tokens
+  };
 }
 
 function describeError(error: unknown) {
@@ -455,12 +280,7 @@ function describeError(error: unknown) {
 
 function buildRecoveryMove(game: GameState): AiMove {
   if (game.questionCount >= game.maxQuestions) {
-    return {
-      action: "make_guess",
-      question: null,
-      guess: chooseRecoveryGuess(game),
-      shortRationale: "Local recovery guess after model move failures."
-    };
+    throw new Error("The model failed to produce a final guess after retries.");
   }
 
   const askedQuestions = new Set(
@@ -469,9 +289,13 @@ function buildRecoveryMove(game: GameState): AiMove {
       .concat(game.latestQuestion ? [normalizeQuestionForComparison(game.latestQuestion)] : [])
   );
 
+  const contextualQuestion = chooseContextualRecoveryQuestion(game, askedQuestions);
   const question =
+    contextualQuestion ??
     RECOVERY_QUESTIONS.find(
-      (candidate) => !askedQuestions.has(normalizeQuestionForComparison(candidate))
+      (candidate) =>
+        !askedQuestions.has(normalizeQuestionForComparison(candidate)) &&
+        !questionConflictsWithTranscript(candidate, game)
     ) ?? "Are they still professionally active today?";
 
   return {
@@ -482,59 +306,95 @@ function buildRecoveryMove(game: GameState): AiMove {
   };
 }
 
+function chooseContextualRecoveryQuestion(
+  game: GameState,
+  askedQuestions: Set<string>
+): string | null {
+  const candidates: string[] = [];
+
+  if (hasAnswer(game, "yes", /\b(business|entrepreneurship)\b/)) {
+    if (hasAnswer(game, "yes", /\b(finance|payments|banking|cryptocurrency)\b/)) {
+      candidates.push(
+        "Is this person primarily known as an investor or hedge fund manager rather than as a banker?",
+        "Is this person best known for investment management rather than running a bank?"
+      );
+    }
+
+    candidates.push(
+      "Is this person best known for founding or leading a technology company?",
+      "Is this person best known for a consumer-facing company?"
+    );
+  }
+
+  if (hasAnswer(game, "yes", /\b(entertainment|media)\b/)) {
+    candidates.push(
+      "Did they first become famous through television?",
+      "Are they better described as a media personality than a traditional performer?"
+    );
+  }
+
+  if (hasAnswer(game, "yes", /\b(music|musician|singer|song|album)\b/)) {
+    candidates.push(
+      "Are they primarily associated with music from outside the United States?",
+      "Are they mainly known as a solo performer?"
+    );
+  }
+
+  return (
+    candidates.find(
+      (candidate) =>
+        !askedQuestions.has(normalizeQuestionForComparison(candidate)) &&
+        !questionConflictsWithTranscript(candidate, game)
+    ) ?? null
+  );
+}
+
 function normalizeQuestionForComparison(question: string): string {
   return question.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
-function chooseRecoveryGuess(game: GameState): string {
-  const yesAnswers = game.transcript
-    .filter((turn) => turn.answer === "yes")
-    .map((turn) => turn.question.toLowerCase())
-    .join(" ");
+function questionConflictsWithTranscript(question: string, game: GameState): boolean {
+  const normalizedQuestion = question.toLowerCase();
+  const hasBusinessYes = hasAnswer(game, "yes", /\b(business|entrepreneurship)\b/);
 
-  if (/\b(instagram|social media|online|vine|youtube|internet)\b/.test(yesAnswers)) {
-    return "Kim Kardashian";
+  if (
+    hasAnswer(game, "no", /\b(entertainment|media)\b/) &&
+    /\b(entertainment|music|acting|screen|social media|media personality|adult entertainment|signature work)\b/.test(
+      normalizedQuestion
+    )
+  ) {
+    return true;
   }
 
-  if (/\b(reggaeton|latin urban|puerto rican)\b/.test(yesAnswers)) {
-    return "Bad Bunny";
+  if (hasAnswer(game, "no", /\b(music|musician|singer)\b/) && /\bmusic\b/.test(normalizedQuestion)) {
+    return true;
   }
 
-  if (/\b(adult entertainment|mature-audience entertainment)\b/.test(yesAnswers)) {
-    return "Mia Khalifa";
+  if (
+    hasAnswer(game, "no", /\b(sports|athletic competition|athlete)\b/) &&
+    /\b(sport|athlete)\b/.test(normalizedQuestion)
+  ) {
+    return true;
   }
 
-  if (/\b(public notoriety|violent conflict|extremism|terrorism|al-qaeda)\b/.test(yesAnswers)) {
-    return "Osama bin Laden";
+  if (
+    hasAnswer(game, "no", /\b(politics|government)\b/) &&
+    /\b(public office|politics|government)\b/.test(normalizedQuestion)
+  ) {
+    return true;
   }
 
-  if (/\b(music|singer|song|album|pop)\b/.test(yesAnswers)) {
-    if (/\b(latin|spanish-language|spanish language)\b/.test(yesAnswers)) {
-      return "Bad Bunny";
-    }
+  return (
+    hasBusinessYes &&
+    game.transcript.length >= 8 &&
+    /\b(entertainment|music|acting|athlete|public office|historical figure)\b/.test(
+      normalizedQuestion
+    )
+  );
+}
 
-    return "Taylor Swift";
-  }
-
-  if (/\b(bodybuilding|bodybuilder|fitness)\b/.test(yesAnswers)) {
-    return "Arnold Schwarzenegger";
-  }
-
-  if (/\b(actor|acting|screen|movie|film|tv|television)\b/.test(yesAnswers)) {
-    return "Tom Cruise";
-  }
-
-  if (/\b(sport|athlete|football|soccer|basketball|tennis)\b/.test(yesAnswers)) {
-    return "Cristiano Ronaldo";
-  }
-
-  if (/\b(politic|president|public office|government)\b/.test(yesAnswers)) {
-    return "Barack Obama";
-  }
-
-  if (/\b(science|scientist|inventor|historical|before 1900)\b/.test(yesAnswers)) {
-    return "Albert Einstein";
-  }
-
-  return "Taylor Swift";
+function hasAnswer(game: GameState, answer: "yes" | "no" | "maybe", pattern: RegExp) {
+  return game.transcript.some(
+    (turn) => turn.answer === answer && pattern.test(turn.question.toLowerCase())
+  );
 }

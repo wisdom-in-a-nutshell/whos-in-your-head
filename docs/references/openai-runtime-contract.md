@@ -143,24 +143,9 @@ The game-master prompt lives in `src/lib/game/prompt.ts`. It is intentionally po
 - the strategy explicitly covers modern mixed-source fame, including internet
   creators, reality TV, adult entertainment as a tactful public fame-source
   category, controversy-first public figures, and media personalities.
-- server-side local strategy nudges cover observed eval weak spots: reality or
-  famous-family media personalities, mature-audience public fame sources,
-  notoriety/extremism splits, mixed acting/music profiles, Latin/reggaeton
-  musicians, and bodybuilding-to-Hollywood crossover celebrities.
-
-## Eval Loop
-
-Use the real self-play eval runner when changing the prompt or local strategy:
-
-```bash
-npm run eval:game-master -- --model=gpt-5.5 --effort=medium --service-tier=priority
-```
-
-The runner uses the same structured move schema as production and an answer
-oracle model to simulate a player. It records misses, schema/runtime failures,
-question count, and the last transcript turns for each target. Keep the target
-set broad enough to include mixed-source, global, pseudonymous, controversial,
-adult-entertainment, and non-admired public figures.
+- server-side recovery asks generic fallback questions only after model move
+  retries fail, so a transient provider issue does not leave the active round
+  stuck.
 
 ## Tooling Note
 

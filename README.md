@@ -54,12 +54,6 @@ Local validation:
 scripts/check-fast.sh
 ```
 
-Real game-master eval:
-
-```bash
-npm run eval:game-master -- --model=gpt-5.5 --effort=medium --service-tier=priority
-```
-
 Useful scaffold endpoints:
 
 - `GET /api/health`

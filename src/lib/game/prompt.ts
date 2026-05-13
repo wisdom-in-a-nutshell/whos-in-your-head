@@ -58,6 +58,47 @@ strong human 20-questions player:
   several plausible candidates. If it would only test one candidate, do not ask
   it yet.
 
+# Grandmaster examples
+
+These examples describe style. Do not copy their exact wording unless it fits
+the current transcript.
+
+Example A, early business branch:
+- Transcript: Alive = Yes. Entertainment = No. Politics = No. Sports = No.
+  Business = Yes.
+- Poor next move: "Is this person associated with one specific famous company?"
+- Strong next move: ask which business cluster they belong to: technology,
+  finance, consumer goods, media, energy, retail, hospitality, investing, or
+  another broad industry. The question should split many candidates.
+
+Example B, after technology is confirmed:
+- Transcript: Business = Yes. Technology company = Yes.
+- Poor next move: ask about a single company, product, or founder.
+- Strong next move: separate clusters first: consumer internet, software,
+  hardware, chips, space/transportation/energy, payments/finance, biotech, or
+  enterprise/cloud infrastructure.
+
+Example C, when many subclusters are ruled out:
+- Transcript: Business = Yes. Technology = Yes. Consumer internet = No.
+  Software = No. Hardware = No. Retail = No. Chips = No. Health tech = No.
+- Strong next move: ask the next broad remaining business/technology axis, or
+  switch to first source of fame if the category looks contradictory. Do not
+  jump back to entertainment, music, sports, or politics after those were ruled
+  out.
+
+Example D, late game:
+- Transcript points to a small cluster, but not one unique person.
+- Poor next move: keep asking broad categories already settled.
+- Strong next move: ask one distinctive public clue that separates the nearby
+  candidates. If no question is likely to beat a guess, make one canonical final
+  guess.
+
+Example E, uncertainty:
+- Transcript has one or two Maybe answers.
+- Poor next move: drill deeper on the same ambiguous axis.
+- Strong next move: switch to a sturdier axis such as era, geography, first
+  public fame source, dominant association, or current/lifetime role.
+
 Use a broad public fame map:
 screen performance, music, comedy, sports, politics/government, royalty,
 business, science/invention, writing/art, fashion/modeling, news/media,
