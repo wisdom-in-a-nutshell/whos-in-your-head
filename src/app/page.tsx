@@ -90,6 +90,8 @@ const thinkingLabels = [
   "Consulting the invisible corkboard"
 ];
 
+const stageMarks = ["✦", "👀", "🤫", "🎯", "🧠", "🔎", "✨", "🎲", "⚡"];
+
 function ThinkingDots() {
   return (
     <span className="thinking-dots" aria-label="Thinking">
@@ -153,6 +155,11 @@ export default function Home() {
   const questionLabel =
     questionLabels[Math.max(0, questionNumber - 1) % questionLabels.length];
   const thinkingLabel = thinkingLabels[answeredCount % thinkingLabels.length];
+  const stageMark =
+    stageMarks[
+      (phase === "thinking" ? answeredCount + 3 : questionNumber - 1) %
+        stageMarks.length
+    ];
   const modelName = runtimeStatus ? formatModelName(runtimeStatus.model) : "the house model";
   const reasoningLevel = runtimeStatus?.reasoningEffort ?? "medium";
 
@@ -279,7 +286,12 @@ export default function Home() {
       {phase === "start" ? (
         <section className="start-screen" aria-labelledby="start-title">
           <div className="start-copy">
-            <p className="kicker">Let&apos;s play, human</p>
+            <p className="kicker">
+              <span className="stage-mark" aria-hidden="true">
+                ✨
+              </span>
+              Let&apos;s play, human
+            </p>
             <h1 id="start-title">Think of someone famous.</h1>
             <p className="start-subtitle">
               Keep them in your head. I get 21 questions and one final guess.
@@ -321,6 +333,9 @@ export default function Home() {
 
           <div className="question-stage">
             <p className="stage-label">
+              <span className="stage-mark" aria-hidden="true">
+                {stageMark}
+              </span>
               {phase === "thinking" ? thinkingLabel : questionLabel}
             </p>
             <h2 id="question-title">
@@ -367,7 +382,12 @@ export default function Home() {
 
       {phase === "guessing" ? (
         <section className="guess-screen" aria-labelledby="guess-title">
-          <p className="stage-label">Final call</p>
+          <p className="stage-label">
+            <span className="stage-mark" aria-hidden="true">
+              🎯
+            </span>
+            Final call
+          </p>
           <h2 id="guess-title">I&apos;m locking in {game?.finalGuess ?? "this guess"}.</h2>
           <p className="guess-stat">{answeredCount} questions used</p>
           <div className="guess-actions" aria-label="Judge the final guess">
@@ -393,6 +413,9 @@ export default function Home() {
       {phase === "result" ? (
         <section className="result-screen" aria-labelledby="result-title">
           <p className="stage-label">
+            <span className="stage-mark" aria-hidden="true">
+              {game?.result === "correct" ? "✨" : "🫣"}
+            </span>
             {game?.result === "correct" ? "Revealed" : "You got away"}
           </p>
           <h2 id="result-title">

@@ -24,7 +24,12 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Who's In Your Head?",
     description: "Think of someone famous. I get 21 questions and one guess.",
-    images: ["https://mindreader.adithyan.io/opengraph-image"]
+    images: [
+      {
+        url: "https://mindreader.adithyan.io/opengraph-image",
+        alt: "Who's In Your Head? Think of someone famous. I'll guess in 21 questions."
+      }
+    ]
   }
 };
 
