@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 const MAX_QUESTIONS = 21;
 
@@ -132,6 +132,8 @@ type GameTurnResponse =
       code?: string;
     };
 
+type ActualAnswerStatus = "idle" | "sending" | "sent" | "error";
+
 type RuntimeStatus = {
   model: string;
   reasoningEffort: string;
@@ -159,6 +161,7 @@ type PublicStats = {
   averageCachedTokens: number | null;
   fallbackGames: number;
   fallbackTurns: number;
+  reportedMisses: number;
 };
 
 export default function Home() {
@@ -168,6 +171,10 @@ export default function Home() {
   const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus | null>(null);
   const [publicStats, setPublicStats] = useState<PublicStats | null>(null);
+  const [actualAnswer, setActualAnswer] = useState("");
+  const [actualAnswerStatus, setActualAnswerStatus] =
+    useState<ActualAnswerStatus>("idle");
+  const [actualAnswerError, setActualAnswerError] = useState<string | null>(null);
   const pendingTurnRef = useRef(false);
 
   const progressMarks = useMemo(
@@ -260,6 +267,9 @@ export default function Home() {
     setGame(null);
     setSelectedAnswer(null);
     setPublicStats(null);
+    setActualAnswer("");
+    setActualAnswerStatus("idle");
+    setActualAnswerError(null);
     setPhase("thinking");
 
     try {
@@ -321,6 +331,44 @@ export default function Home() {
       setPhase("guessing");
     } finally {
       pendingTurnRef.current = false;
+    }
+  }
+
+  async function reportActualAnswer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (
+      actualAnswerStatus === "sending" ||
+      !game ||
+      game.phase !== "result" ||
+      game.result !== "incorrect"
+    ) {
+      return;
+    }
+
+    const cleanedAnswer = actualAnswer.trim();
+
+    if (!cleanedAnswer) {
+      setActualAnswerError("Tell me who beat me.");
+      return;
+    }
+
+    setActualAnswerStatus("sending");
+    setActualAnswerError(null);
+
+    try {
+      const nextGame = await postGameTurn({
+        action: "report_actual_answer",
+        state: game,
+        actualAnswer: cleanedAnswer
+      });
+
+      setGame(nextGame);
+      setActualAnswer(cleanedAnswer);
+      setActualAnswerStatus("sent");
+    } catch (nextError) {
+      setActualAnswerStatus("error");
+      setActualAnswerError(readErrorMessage(nextError));
     }
   }
 
@@ -482,6 +530,39 @@ export default function Home() {
               : "You beat me this round."}
           </h2>
           <p className="guess-stat">{answeredCount} questions used</p>
+          {game?.result === "incorrect" ? (
+            <form className="actual-answer-form" onSubmit={reportActualAnswer}>
+              <label htmlFor="actual-answer">Who were you thinking of?</label>
+              {actualAnswerStatus === "sent" ? (
+                <p className="actual-answer-saved">
+                  Logged. That miss is useful now.
+                </p>
+              ) : (
+                <div className="actual-answer-row">
+                  <input
+                    autoComplete="off"
+                    disabled={actualAnswerStatus === "sending"}
+                    id="actual-answer"
+                    maxLength={160}
+                    onChange={(event) => setActualAnswer(event.target.value)}
+                    placeholder="Gregor Mendel"
+                    type="text"
+                    value={actualAnswer}
+                  />
+                  <button
+                    className="secondary-action"
+                    disabled={actualAnswerStatus === "sending"}
+                    type="submit"
+                  >
+                    {actualAnswerStatus === "sending" ? "Logging" : "Log it"}
+                  </button>
+                </div>
+              )}
+              {actualAnswerError ? (
+                <p className="error-note">{actualAnswerError}</p>
+              ) : null}
+            </form>
+          ) : null}
           <button className="primary-action" onClick={startGame} type="button">
             Play again
           </button>
@@ -506,6 +587,13 @@ export default function Home() {
                 <span className="runtime-pill">{publicStats.startedGames}</span> started.
                 <span className="runtime-pill">{publicStats.abandonedGames}</span>{" "}
                 wandered off mid-mystery.
+                {publicStats.reportedMisses > 0 ? (
+                  <>
+                    {" "}
+                    <span className="runtime-pill">{publicStats.reportedMisses}</span>{" "}
+                    misses reported back.
+                  </>
+                ) : null}
               </p>
             ) : null}
             {publicStats && publicStats.averageTurnDurationMs !== null ? (
@@ -616,9 +704,13 @@ function getPreviewGame(): GameState | null {
     return null;
   }
 
-  if (new URLSearchParams(window.location.search).get("preview") !== "result") {
+  const preview = new URLSearchParams(window.location.search).get("preview");
+
+  if (preview !== "result" && preview !== "miss") {
     return null;
   }
+
+  const missedGuess = preview === "miss";
 
   return {
     gameId: "preview",
@@ -630,8 +722,8 @@ function getPreviewGame(): GameState | null {
       answer: "yes"
     })),
     latestQuestion: null,
-    finalGuess: "Taylor Swift",
-    result: "correct",
+    finalGuess: missedGuess ? "Charles Darwin" : "Taylor Swift",
+    result: missedGuess ? "incorrect" : "correct",
     reasoningEffort: "high",
     modelResponseId: null
   };

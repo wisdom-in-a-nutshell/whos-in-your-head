@@ -37,6 +37,7 @@ export type PublicGameStats = {
   totalGames: number;
   correctGames: number;
   incorrectGames: number;
+  reportedMisses: number;
   abandonedGames: number;
   activeGames: number;
   completionRate: number | null;
@@ -254,6 +255,60 @@ export function recordGameResultTelemetry({
   });
 }
 
+export function recordActualAnswerTelemetry({
+  requestId,
+  state,
+  actualAnswer,
+  routeDurationMs
+}: {
+  requestId: string;
+  state: GameState;
+  actualAnswer: string;
+  routeDurationMs: number;
+}) {
+  const normalizedAnswer = normalizeActualAnswer(actualAnswer);
+
+  void writeTelemetry("actual_answer_reported", async (db) => {
+    const now = new Date();
+
+    await resultsCollection(db).updateOne(
+      { gameId: state.gameId },
+      {
+        $set: {
+          updatedAt: now,
+          correct: false,
+          result: "incorrect",
+          questionCount: state.questionCount,
+          finalGuess: state.finalGuess,
+          answerPath: buildAnswerPath(state),
+          transcript: state.transcript,
+          actualAnswer: normalizedAnswer,
+          actualAnswerReportedAt: now,
+          actualAnswerReportDurationMs: routeDurationMs
+        },
+        $setOnInsert: {
+          gameId: state.gameId,
+          createdAt: now,
+          completedAt: now
+        }
+      },
+      { upsert: true }
+    );
+
+    await eventsCollection(db).insertOne({
+      eventType: "actual_answer_reported",
+      requestId,
+      gameId: state.gameId,
+      createdAt: now,
+      questionCount: state.questionCount,
+      finalGuess: state.finalGuess,
+      actualAnswer: normalizedAnswer,
+      answerPath: buildAnswerPath(state),
+      routeDurationMs
+    });
+  });
+}
+
 export function recordGameFailureTelemetry({
   requestId,
   action,
@@ -339,6 +394,7 @@ export async function getPublicGameStats(): Promise<PublicGameStats | null> {
       totalGames: 0,
       correctGames: 0,
       incorrectGames: 0,
+      reportedMisses: 0,
       abandonedGames: abandonmentStats.abandonedGames,
       activeGames: abandonmentStats.activeGames,
       completionRate: null,
@@ -362,6 +418,7 @@ export async function getPublicGameStats(): Promise<PublicGameStats | null> {
     turnStats,
     fallbackTurns,
     abandonmentStats,
+    reportedMisses,
     modelStats
   ] = await Promise.all([
     eventsCollection(db)
@@ -398,6 +455,12 @@ export async function getPublicGameStats(): Promise<PublicGameStats | null> {
       "runtime.source": "model_move_content_filter_fallback"
     }),
     getAbandonmentStats(db),
+    resultsCollection(db).countDocuments({
+      actualAnswer: {
+        $exists: true,
+        $ne: null
+      }
+    }),
     getPublicModelStats(db)
   ]);
 
@@ -406,6 +469,7 @@ export async function getPublicGameStats(): Promise<PublicGameStats | null> {
     totalGames: stats.totalGames,
     correctGames: stats.correctGames,
     incorrectGames: stats.incorrectGames,
+    reportedMisses,
     abandonedGames: abandonmentStats.abandonedGames,
     activeGames: abandonmentStats.activeGames,
     completionRate:
@@ -781,6 +845,10 @@ function buildAnswerPath(state: GameState) {
       return "M";
     })
     .join("");
+}
+
+function normalizeActualAnswer(actualAnswer: string) {
+  return actualAnswer.replace(/\s+/g, " ").trim().slice(0, 160);
 }
 
 async function writeTelemetry(name: string, writer: (db: Db) => Promise<void>) {

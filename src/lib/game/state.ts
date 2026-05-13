@@ -12,6 +12,7 @@ export const DEFAULT_GAME_REASONING_EFFORT: GameReasoningEffort = "high";
 
 export const gamePhaseSchema = z.enum(["asking", "guessing", "result"]);
 export const gameResultSchema = z.enum(["unknown", "correct", "incorrect"]);
+export const actualAnswerSchema = z.string().trim().min(1).max(160);
 
 export const answeredTurnSchema = z.object({
   question: z.string().trim().min(1).max(180),
@@ -46,6 +47,11 @@ export const gameTurnRequestSchema = z.discriminatedUnion("action", [
     action: z.literal("judge_guess"),
     state: gameStateSchema,
     correct: z.boolean()
+  }),
+  z.object({
+    action: z.literal("report_actual_answer"),
+    state: gameStateSchema,
+    actualAnswer: actualAnswerSchema
   })
 ]);
 

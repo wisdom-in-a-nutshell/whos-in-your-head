@@ -45,6 +45,7 @@ export default async function StatsPage() {
             />
             <StatBlock label="Started" value={stats.startedGames.toString()} />
             <StatBlock label="Dropped" value={stats.abandonedGames.toString()} />
+            <StatBlock label="Reported misses" value={stats.reportedMisses.toString()} />
             <StatBlock label="Fallback turns" value={stats.fallbackTurns.toString()} />
             <StatBlock
               label="Cached tokens"

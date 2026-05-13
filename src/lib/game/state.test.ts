@@ -4,6 +4,7 @@ import {
   createInitialGameState,
   finalizeGuess,
   GameRuleError,
+  gameTurnRequestSchema,
   recordPlayerAnswer
 } from "./state";
 
@@ -108,5 +109,29 @@ describe("game state transitions", () => {
 
     expect(result.phase).toBe("result");
     expect(result.result).toBe("correct");
+  });
+
+  it("accepts a reported actual answer after a missed guess", () => {
+    const result = finalizeGuess(
+      applyAiMove(createInitialGameState(), {
+        action: "make_guess",
+        question: null,
+        guess: "Charles Darwin",
+        shortRationale: null
+      }),
+      false
+    );
+
+    const parsed = gameTurnRequestSchema.parse({
+      action: "report_actual_answer",
+      state: result,
+      actualAnswer: "  Gregor Mendel  "
+    });
+
+    expect(parsed.action).toBe("report_actual_answer");
+
+    if (parsed.action === "report_actual_answer") {
+      expect(parsed.actualAnswer).toBe("Gregor Mendel");
+    }
   });
 });

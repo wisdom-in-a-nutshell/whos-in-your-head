@@ -24,6 +24,7 @@ import {
   type GeneratedAiMove
 } from "@/lib/server/game-master";
 import {
+  recordActualAnswerTelemetry,
   recordGameFailureTelemetry,
   recordGameResultTelemetry,
   recordGameStartedTelemetry,
@@ -74,6 +75,33 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (parsed.data.action === "report_actual_answer") {
+      const state = parsed.data.state;
+
+      if (state.phase !== "result" || state.result !== "incorrect") {
+        throw new GameRuleError("Only missed guesses can report the real answer.");
+      }
+
+      logInfo("game_turn_actual_answer_reported", {
+        requestId,
+        gameId: state.gameId,
+        questionCount: state.questionCount,
+        finalGuess: state.finalGuess,
+        routeDurationMs: Date.now() - startedAt
+      });
+      recordActualAnswerTelemetry({
+        requestId,
+        state,
+        actualAnswer: parsed.data.actualAnswer,
+        routeDurationMs: Date.now() - startedAt
+      });
+
+      return NextResponse.json({
+        ok: true,
+        game: state
+      });
+    }
+
     if (parsed.data.action === "judge_guess") {
       const resultGame = finalizeGuess(parsed.data.state, parsed.data.correct);
       logInfo("game_turn_judge_guess", {

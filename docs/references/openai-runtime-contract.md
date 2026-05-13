@@ -253,11 +253,13 @@ Collections:
 
 - `whiyh_game_results`: one upserted document per completed game, keyed by
   `gameId`. Stores final correctness, question count, final guess, compact
-  answer path, full question/answer transcript, and round duration.
+  answer path, full question/answer transcript, optional player-reported
+  actual answer after a wrong guess, and round duration.
 - `whiyh_game_events`: append-only turn events. Stores request duration,
   model duration, model/source, fallback source, prompt-cache key, response id,
   input/cached/output/reasoning/total token counts, current question count, and
-  the proposed next move.
+  the proposed next move. It also records `actual_answer_reported` events when
+  a player tells the app who they were thinking of after a missed final guess.
 - `whiyh_game_failures`: append-only failure records. Stores request id, game
   id when available, phase, question count, latest question, compact answer
   path, transcript, sanitized action body, and structured error details.
@@ -269,7 +271,8 @@ continues and logs `game_telemetry_write_failed`.
 completed games, correct/wrong counts, correct rate, average questions,
 average response duration, average model duration, average reasoning/cache
 tokens, fallback counts, started/completed/abandoned counts, and per-model turn
-and guess aggregates. It never returns raw transcripts.
+and guess aggregates. It may return the aggregate count of reported misses, but
+never returns actual answers or raw transcripts.
 
 `GET /stats` renders those public aggregates as a shareable scoreboard page.
 The page is intentionally aggregate-only: it can show how often the game wins,

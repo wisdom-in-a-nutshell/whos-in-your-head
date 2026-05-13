@@ -368,6 +368,56 @@ button {
   margin: 0;
 }
 
+.actual-answer-form {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: min(520px, 100%);
+  margin: 2px 0 6px;
+}
+
+.actual-answer-form label,
+.actual-answer-saved {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.actual-answer-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  width: 100%;
+}
+
+.actual-answer-row input {
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 0 14px;
+  font-weight: 800;
+}
+
+.actual-answer-row input:focus-visible {
+  outline: 3px solid var(--highlight);
+  outline-offset: 3px;
+}
+
+.actual-answer-row input:disabled,
+.actual-answer-row button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.actual-answer-saved {
+  color: var(--ink);
+}
+
 .error-note {
   max-width: 520px;
   margin: 0;
@@ -655,13 +705,15 @@ button {
   }
 
   .answer-grid,
-  .guess-actions {
+  .guess-actions,
+  .actual-answer-row {
     grid-template-columns: 1fr;
   }
 
   .answer-grid button,
   .primary-action,
-  .secondary-action {
+  .secondary-action,
+  .actual-answer-row input {
     width: 100%;
     min-height: 58px;
   }
