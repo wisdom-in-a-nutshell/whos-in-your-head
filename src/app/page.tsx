@@ -13,6 +13,26 @@ const sampleQuestions = [
   "Are they known for music too?"
 ];
 
+const questionLabels = [
+  "Don’t overthink it",
+  "Tiny clue, please",
+  "For you, human",
+  "This one matters",
+  "Say what you know",
+  "One clean answer",
+  "Help me out",
+  "Mind-reader mode"
+];
+
+const thinkingLabels = [
+  "Narrowing it down",
+  "Reading the pattern",
+  "That helps",
+  "Interesting",
+  "I have a theory",
+  "Adjusting the radar"
+];
+
 type Phase = "start" | "asking" | "thinking" | "guessing" | "result";
 type Answer = "yes" | "no" | "unsure";
 
@@ -35,6 +55,8 @@ export default function Home() {
   const questionNumber = Math.min(questionIndex + 1, MAX_QUESTIONS);
   const currentQuestion = sampleQuestions[questionIndex] ?? sampleQuestions.at(-1);
   const answeredCount = turns.length;
+  const questionLabel = questionLabels[questionIndex % questionLabels.length];
+  const thinkingLabel = thinkingLabels[answeredCount % thinkingLabels.length];
 
   function startGame() {
     setPhase("asking");
@@ -123,7 +145,7 @@ export default function Home() {
 
           <div className="question-stage">
             <p className="stage-label">
-              {phase === "thinking" ? "Narrowing it down" : "Gut check"}
+              {phase === "thinking" ? thinkingLabel : questionLabel}
             </p>
             <h2 id="question-title">
               {phase === "thinking" ? "I’m reading the pattern." : currentQuestion}
