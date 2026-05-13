@@ -111,8 +111,6 @@ The game-master prompt lives in `src/lib/game/prompt.ts`. It is intentionally po
 - output shape is enforced by Structured Outputs, not prompt prose;
 - the prompt prioritizes high-information early questions, narrowing middle questions, and late discriminating guesses.
 
-See `docs/references/game-master-strategy.md` for the play strategy.
-
 ## Tooling Note
 
 The `Yes`, `No`, and `Maybe` controls are app UI choices, not OpenAI function tools for v0.

@@ -76,4 +76,3 @@ changing the model-move schema.
 ## References
 
 - `docs/references/openai-runtime-contract.md`
-- `docs/references/game-master-strategy.md`

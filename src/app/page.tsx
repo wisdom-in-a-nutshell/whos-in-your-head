@@ -1,17 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 const MAX_QUESTIONS = 21;
-
-const sampleQuestions = [
-  "Are they alive?",
-  "Are they mainly known for entertainment?",
-  "Are they American?",
-  "Are they mainly known as an actor?",
-  "Did they become famous before 2010?",
-  "Are they known for music too?"
-];
 
 const questionLabels = [
   "Don’t overthink it",
@@ -110,19 +101,39 @@ function ThinkingDots() {
 }
 
 type Phase = "start" | "asking" | "thinking" | "guessing" | "result";
-type Answer = "yes" | "no" | "unsure";
+type Answer = "yes" | "no" | "maybe";
 
 type Turn = {
   question: string;
   answer: Answer;
 };
 
+type GameState = {
+  gameId: string;
+  phase: "asking" | "guessing" | "result";
+  questionCount: number;
+  maxQuestions: 21;
+  transcript: Turn[];
+  latestQuestion: string | null;
+  finalGuess: string | null;
+  result: "unknown" | "correct" | "incorrect";
+};
+
+type GameTurnResponse =
+  | {
+      ok: true;
+      game: GameState;
+    }
+  | {
+      ok: false;
+      error: string;
+      code?: string;
+    };
+
 export default function Home() {
-  const thinkingTimeoutRef = useRef<number | null>(null);
   const [phase, setPhase] = useState<Phase>("start");
-  const [questionIndex, setQuestionIndex] = useState(0);
-  const [turns, setTurns] = useState<Turn[]>([]);
-  const [result, setResult] = useState<"won" | "lost" | null>(null);
+  const [game, setGame] = useState<GameState | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
 
   const progressMarks = useMemo(
@@ -130,65 +141,86 @@ export default function Home() {
     []
   );
 
-  const questionNumber = Math.min(questionIndex + 1, MAX_QUESTIONS);
-  const currentQuestion = sampleQuestions[questionIndex] ?? sampleQuestions.at(-1);
-  const answeredCount = turns.length;
-  const questionLabel = questionLabels[questionIndex % questionLabels.length];
+  const questionNumber = Math.max(1, game?.questionCount ?? 1);
+  const currentQuestion = game?.latestQuestion;
+  const answeredCount = game?.transcript.length ?? 0;
+  const questionLabel =
+    questionLabels[Math.max(0, questionNumber - 1) % questionLabels.length];
   const thinkingLabel = thinkingLabels[answeredCount % thinkingLabels.length];
 
-  function clearThinkingTimeout() {
-    if (thinkingTimeoutRef.current === null) {
-      return;
-    }
-
-    window.clearTimeout(thinkingTimeoutRef.current);
-    thinkingTimeoutRef.current = null;
-  }
-
-  useEffect(() => {
-    return () => {
-      if (thinkingTimeoutRef.current !== null) {
-        window.clearTimeout(thinkingTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  function startGame() {
-    clearThinkingTimeout();
-    setPhase("asking");
-    setQuestionIndex(0);
-    setTurns([]);
-    setResult(null);
+  async function startGame() {
+    setError(null);
+    setGame(null);
     setSelectedAnswer(null);
+    setPhase("thinking");
+
+    try {
+      const nextGame = await postGameTurn({ action: "start" });
+      commitGame(nextGame);
+    } catch (nextError) {
+      setError(readErrorMessage(nextError));
+      setPhase("start");
+    }
   }
 
-  function answerQuestion(answer: Answer) {
-    if (phase !== "asking" || !currentQuestion) {
+  async function answerQuestion(answer: Answer) {
+    if (phase !== "asking" || !game || !currentQuestion) {
       return;
     }
 
-    const nextTurns = [...turns, { question: currentQuestion, answer }];
-    setTurns(nextTurns);
+    setError(null);
     setSelectedAnswer(answer);
     setPhase("thinking");
 
-    thinkingTimeoutRef.current = window.setTimeout(() => {
-      thinkingTimeoutRef.current = null;
-
-      if (questionIndex >= sampleQuestions.length - 1) {
-        setSelectedAnswer(null);
-        setPhase("guessing");
-        return;
-      }
-
-      setQuestionIndex((index) => index + 1);
+    try {
+      const nextGame = await postGameTurn({
+        action: "answer",
+        state: game,
+        answer
+      });
+      setSelectedAnswer(null);
+      commitGame(nextGame);
+    } catch (nextError) {
+      setError(readErrorMessage(nextError));
       setSelectedAnswer(null);
       setPhase("asking");
-    }, 860);
+    }
   }
 
-  function judgeGuess(nextResult: "won" | "lost") {
-    setResult(nextResult);
+  async function judgeGuess(correct: boolean) {
+    if (!game || game.phase !== "guessing") {
+      return;
+    }
+
+    setError(null);
+    setPhase("thinking");
+
+    try {
+      const nextGame = await postGameTurn({
+        action: "judge_guess",
+        state: game,
+        correct
+      });
+      commitGame(nextGame);
+    } catch (nextError) {
+      setError(readErrorMessage(nextError));
+      setPhase("guessing");
+    }
+  }
+
+  function commitGame(nextGame: GameState) {
+    setGame(nextGame);
+
+    if (nextGame.phase === "asking") {
+      setPhase("asking");
+      return;
+    }
+
+    if (nextGame.phase === "guessing") {
+      setPhase("guessing");
+      return;
+    }
+
     setPhase("result");
   }
 
@@ -213,6 +245,7 @@ export default function Home() {
             <button className="primary-action" onClick={startGame} type="button">
               I&apos;ve got someone
             </button>
+            {error ? <p className="error-note">{error}</p> : null}
           </div>
 
           <div className="progress-lockup" aria-label="21 question limit">
@@ -238,7 +271,7 @@ export default function Home() {
             {progressMarks.map((mark) => (
               <span
                 key={mark}
-                className={mark <= questionNumber ? "mark is-used" : "mark"}
+                className={mark <= (game?.questionCount ?? 0) ? "mark is-used" : "mark"}
               />
             ))}
           </div>
@@ -250,13 +283,14 @@ export default function Home() {
             <h2 id="question-title">
               {phase === "thinking" ? (
                 <>
-                  Thinking
+                  {game?.phase === "guessing" ? "Revealing" : "Thinking"}
                   <ThinkingDots />
                 </>
               ) : (
-                currentQuestion
+                currentQuestion ?? "I’m finding the first question."
               )}
             </h2>
+            {error ? <p className="error-note">{error}</p> : null}
           </div>
 
           <div className="answer-grid" aria-label="Answer choices">
@@ -277,9 +311,9 @@ export default function Home() {
               No
             </button>
             <button
-              className={selectedAnswer === "unsure" ? "is-selected" : undefined}
+              className={selectedAnswer === "maybe" ? "is-selected" : undefined}
               disabled={phase === "thinking"}
-              onClick={() => answerQuestion("unsure")}
+              onClick={() => answerQuestion("maybe")}
               type="button"
             >
               Not sure
@@ -290,33 +324,36 @@ export default function Home() {
 
       {phase === "guessing" ? (
         <section className="guess-screen" aria-labelledby="guess-title">
-          <p className="stage-label">Final guess</p>
-          <h2 id="guess-title">Is it Zendaya?</h2>
+          <p className="stage-label">Final call</p>
+          <h2 id="guess-title">I&apos;m locking in {game?.finalGuess ?? "this guess"}.</h2>
           <p className="guess-stat">{answeredCount} questions used</p>
           <div className="guess-actions" aria-label="Judge the final guess">
             <button
               className="primary-action"
-              onClick={() => judgeGuess("won")}
+              onClick={() => judgeGuess(true)}
               type="button"
             >
-              Correct
+              That&apos;s them
             </button>
             <button
               className="secondary-action"
-              onClick={() => judgeGuess("lost")}
+              onClick={() => judgeGuess(false)}
               type="button"
             >
               Nope
             </button>
           </div>
+          {error ? <p className="error-note">{error}</p> : null}
         </section>
       ) : null}
 
       {phase === "result" ? (
         <section className="result-screen" aria-labelledby="result-title">
-          <p className="stage-label">{result === "won" ? "Got it" : "Missed it"}</p>
+          <p className="stage-label">
+            {game?.result === "correct" ? "Revealed" : "You got away"}
+          </p>
           <h2 id="result-title">
-            {result === "won"
+            {game?.result === "correct"
               ? "I knew who was in your head."
               : "You beat me this round."}
           </h2>
@@ -328,4 +365,29 @@ export default function Home() {
       ) : null}
     </main>
   );
+}
+
+async function postGameTurn(payload: unknown): Promise<GameState> {
+  const response = await fetch("/api/game/turn", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+  const data = (await response.json().catch(() => null)) as GameTurnResponse | null;
+
+  if (!response.ok || !data) {
+    throw new Error("The game got stuck. Try again.");
+  }
+
+  if (!data.ok) {
+    throw new Error(data.error);
+  }
+
+  return data.game;
+}
+
+function readErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "The game got stuck. Try again.";
 }

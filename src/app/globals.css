@@ -354,6 +354,15 @@ button {
   margin: 0;
 }
 
+.error-note {
+  max-width: 520px;
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.92rem;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
 @media (max-width: 760px) {
   body {
     background: var(--paper);
