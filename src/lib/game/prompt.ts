@@ -219,11 +219,46 @@ export function buildGameMasterInput(state: GameState): string {
   const directive = buildDirective(state, snapshot.remainingQuestionSlots);
 
   return [
+    "<static_game_master_instructions>",
+    GAME_MASTER_INSTRUCTIONS,
+    "</static_game_master_instructions>",
+    "",
     "Use this game state as the complete source of truth.",
     "",
     "<game_state>",
     JSON.stringify(snapshot, null, 2),
     "</game_state>",
+    "",
+    `<directive>${directive}</directive>`
+  ].join("\n");
+}
+
+export function buildGameMasterContinuationInput(state: GameState): string {
+  const snapshot = buildModelGameSnapshot(state);
+  const lastTurn = state.transcript.at(-1);
+  const directive = buildDirective(state, snapshot.remainingQuestionSlots);
+
+  return [
+    "Continue the same game from the previous response.",
+    "The app has recorded this newest player answer:",
+    "",
+    "<latest_answered_turn>",
+    JSON.stringify(lastTurn, null, 2),
+    "</latest_answered_turn>",
+    "",
+    "<current_turn_limits>",
+    JSON.stringify(
+      {
+        questionCountAsked: snapshot.questionCountAsked,
+        answeredQuestionCount: snapshot.answeredQuestionCount,
+        maxQuestions: snapshot.maxQuestions,
+        remainingQuestionSlots: snapshot.remainingQuestionSlots,
+        phase: snapshot.phase
+      },
+      null,
+      2
+    ),
+    "</current_turn_limits>",
     "",
     `<directive>${directive}</directive>`
   ].join("\n");

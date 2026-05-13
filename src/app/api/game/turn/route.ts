@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   applyAiMove,
+  attachModelResponseId,
   createInitialGameState,
   finalizeGuess,
   GameRuleError,
@@ -162,7 +163,10 @@ async function generateNextGameState(
   for (let attempt = 1; attempt <= MODEL_MOVE_ATTEMPTS; attempt += 1) {
     try {
       const generated = await generateAiMove(game);
-      const nextGame = applyAiMove(game, generated.move);
+      const nextGame = attachModelResponseId(
+        applyAiMove(game, generated.move),
+        generated.responseId
+      );
 
       return {
         generated,
@@ -201,8 +205,9 @@ async function generateNextGameState(
       move: recoveryMove,
       requestedServiceTier: "local_recovery",
       actualServiceTier: null,
-      promptCacheKey: null,
-      usage: null
+        promptCacheKey: null,
+        responseId: null,
+        usage: null
     },
     nextGame
   };

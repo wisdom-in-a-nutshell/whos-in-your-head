@@ -2,31 +2,38 @@ import "server-only";
 import type { ResponseUsage } from "openai/resources/responses/responses";
 import { zodTextFormat } from "openai/helpers/zod";
 import { aiMoveSchema, type AiMove } from "@/lib/game/ai-move";
-import { GAME_MASTER_INSTRUCTIONS, buildGameMasterInput } from "@/lib/game/prompt";
+import { buildGameMasterContinuationInput, buildGameMasterInput } from "@/lib/game/prompt";
 import type { GameState } from "@/lib/game/state";
 import { getOpenAIRequestConfig } from "./openai";
 
 const AI_MOVE_FORMAT_NAME = "who_in_your_head_ai_move";
 const PROMPT_CACHE_KEY = "whos-in-your-head-game-master-v1";
+const GAME_MASTER_REQUEST_INSTRUCTIONS =
+  "Follow the static game-master instructions in the input. Return only the structured move.";
 
 export type GeneratedAiMove = {
   move: AiMove;
   requestedServiceTier: string;
   actualServiceTier: string | null;
   promptCacheKey: string | null;
+  responseId: string | null;
   usage: ResponseUsage | null;
 };
 
 export async function generateAiMove(state: GameState): Promise<GeneratedAiMove> {
   const { client, model, reasoningEffort, serviceTier } = getOpenAIRequestConfig();
 
+  const usesPreviousResponse = state.modelResponseId !== null;
   const response = await client.responses.parse({
     model,
-    instructions: GAME_MASTER_INSTRUCTIONS,
+    instructions: GAME_MASTER_REQUEST_INSTRUCTIONS,
+    previous_response_id: state.modelResponseId ?? undefined,
     input: [
       {
         role: "user",
-        content: buildGameMasterInput(state)
+        content: usesPreviousResponse
+          ? buildGameMasterContinuationInput(state)
+          : buildGameMasterInput(state)
       }
     ],
     reasoning: {
@@ -43,7 +50,7 @@ export async function generateAiMove(state: GameState): Promise<GeneratedAiMove>
     max_output_tokens: 1500,
     prompt_cache_key: PROMPT_CACHE_KEY,
     prompt_cache_retention: "24h",
-    store: false
+    store: true
   });
 
   const move = response.output_parsed;
@@ -57,6 +64,7 @@ export async function generateAiMove(state: GameState): Promise<GeneratedAiMove>
     requestedServiceTier: serviceTier,
     actualServiceTier: response.service_tier ?? null,
     promptCacheKey: PROMPT_CACHE_KEY,
+    responseId: response.id,
     usage: response.usage ?? null
   };
 }

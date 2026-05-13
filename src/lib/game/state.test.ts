@@ -18,6 +18,7 @@ describe("game state transitions", () => {
     expect(state.latestQuestion).toBeNull();
     expect(state.finalGuess).toBeNull();
     expect(state.result).toBe("unknown");
+    expect(state.modelResponseId).toBeNull();
   });
 
   it("applies an AI question and records the player's answer", () => {

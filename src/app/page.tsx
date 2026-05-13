@@ -117,6 +117,7 @@ type GameState = {
   latestQuestion: string | null;
   finalGuess: string | null;
   result: "unknown" | "correct" | "incorrect";
+  modelResponseId: string | null;
 };
 
 type GameTurnResponse =
@@ -507,6 +508,7 @@ function getPreviewGame(): GameState | null {
     })),
     latestQuestion: null,
     finalGuess: "Taylor Swift",
-    result: "correct"
+    result: "correct",
+    modelResponseId: null
   };
 }

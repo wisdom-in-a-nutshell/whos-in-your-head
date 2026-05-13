@@ -25,7 +25,8 @@ export const gameStateSchema = z
     transcript: z.array(answeredTurnSchema).max(MAX_QUESTIONS),
     latestQuestion: z.string().trim().min(1).max(180).nullable(),
     finalGuess: z.string().trim().min(1).max(120).nullable(),
-    result: gameResultSchema
+    result: gameResultSchema,
+    modelResponseId: z.string().trim().min(1).nullable()
   })
   .strict();
 
@@ -67,7 +68,8 @@ export function createInitialGameState(): GameState {
     transcript: [],
     latestQuestion: null,
     finalGuess: null,
-    result: "unknown"
+    result: "unknown",
+    modelResponseId: null
   };
 }
 
@@ -168,6 +170,13 @@ export function buildModelGameSnapshot(state: GameState) {
     lastAnswer: state.transcript.at(-1)?.answer ?? null,
     transcript: state.transcript
   };
+}
+
+export function attachModelResponseId(state: GameState, modelResponseId: string | null): GameState {
+  return gameStateSchema.parse({
+    ...state,
+    modelResponseId
+  });
 }
 
 function normalizeQuestion(question: string): string {
