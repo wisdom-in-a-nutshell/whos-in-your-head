@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const MAX_QUESTIONS = 21;
 
@@ -141,6 +141,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus | null>(null);
+  const pendingTurnRef = useRef(false);
 
   const progressMarks = useMemo(
     () => Array.from({ length: MAX_QUESTIONS }, (_, index) => index + 1),
@@ -193,6 +194,11 @@ export default function Home() {
   }, []);
 
   async function startGame() {
+    if (pendingTurnRef.current) {
+      return;
+    }
+
+    pendingTurnRef.current = true;
     setError(null);
     setGame(null);
     setSelectedAnswer(null);
@@ -204,14 +210,17 @@ export default function Home() {
     } catch (nextError) {
       setError(readErrorMessage(nextError));
       setPhase("start");
+    } finally {
+      pendingTurnRef.current = false;
     }
   }
 
   async function answerQuestion(answer: Answer) {
-    if (phase !== "asking" || !game || !currentQuestion) {
+    if (pendingTurnRef.current || phase !== "asking" || !game || !currentQuestion) {
       return;
     }
 
+    pendingTurnRef.current = true;
     setError(null);
     setSelectedAnswer(answer);
     setPhase("thinking");
@@ -228,14 +237,17 @@ export default function Home() {
       setError(readErrorMessage(nextError));
       setSelectedAnswer(null);
       setPhase("asking");
+    } finally {
+      pendingTurnRef.current = false;
     }
   }
 
   async function judgeGuess(correct: boolean) {
-    if (!game || game.phase !== "guessing") {
+    if (pendingTurnRef.current || !game || game.phase !== "guessing") {
       return;
     }
 
+    pendingTurnRef.current = true;
     setError(null);
     setPhase("thinking");
 
@@ -249,6 +261,8 @@ export default function Home() {
     } catch (nextError) {
       setError(readErrorMessage(nextError));
       setPhase("guessing");
+    } finally {
+      pendingTurnRef.current = false;
     }
   }
 

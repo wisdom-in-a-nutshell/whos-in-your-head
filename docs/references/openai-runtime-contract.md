@@ -110,6 +110,15 @@ For answered turns after the deterministic opener, the server calls
 `openai.responses.parse` with `zodTextFormat(aiMoveSchema, ...)` and never
 returns the raw OpenAI response to the browser.
 
+The SDK helper generates a strict JSON Schema request through `text.format`.
+The current LiteLLM endpoint has been smoke-tested with both Responses
+`text.format` and Chat Completions `response_format`; both returned parsed
+schema-valid output with `service_tier=priority`.
+
+Structured Outputs can still produce refusal or incomplete edge cases. The game
+route retries a failed model move once, logs the server-side cause, and then
+uses a deterministic recovery move so a playable round does not break.
+
 ## Game-Master Prompt
 
 The game-master prompt lives in `src/lib/game/prompt.ts`. It is intentionally policy-heavy but schema-light:
@@ -118,6 +127,9 @@ The game-master prompt lives in `src/lib/game/prompt.ts`. It is intentionally po
 - dynamic state is sent as JSON inside `<game_state>` tags;
 - output shape is enforced by Structured Outputs, not prompt prose;
 - the prompt prioritizes high-information early questions, narrowing middle questions, and late discriminating guesses.
+- the prompt explicitly asks the model not to apologize or refuse in this
+  harmless public-figure game; uncertain states should become a strong
+  discriminator or a plausible guess.
 
 ## Tooling Note
 
