@@ -278,8 +278,8 @@ button {
 }
 
 .answer-grid {
-  grid-template-columns: repeat(2, minmax(180px, 1fr));
-  width: min(520px, 100%);
+  grid-template-columns: repeat(3, minmax(150px, 1fr));
+  width: min(720px, 100%);
 }
 
 .answer-grid button {

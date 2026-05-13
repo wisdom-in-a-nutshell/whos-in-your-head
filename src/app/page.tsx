@@ -14,7 +14,7 @@ const sampleQuestions = [
 ];
 
 type Phase = "start" | "asking" | "thinking" | "guessing" | "result";
-type Answer = "yes" | "no";
+type Answer = "yes" | "no" | "unsure";
 
 type Turn = {
   question: string;
@@ -84,8 +84,8 @@ export default function Home() {
             <h1 id="start-title">Think of someone famous.</h1>
             <p className="start-subtitle">
               Don&apos;t type it. Don&apos;t say it out loud. I get 21
-              questions. You just say yes or no. Then I guess who&apos;s in
-              your head.
+              questions. You just say yes, no, or not sure. Then I guess
+              who&apos;s in your head.
             </p>
             <button className="primary-action" onClick={startGame} type="button">
               I&apos;ve got someone
@@ -123,10 +123,10 @@ export default function Home() {
 
           <div className="question-stage">
             <p className="stage-label">
-              {phase === "thinking" ? "I’m thinking" : "Answer honestly"}
+              {phase === "thinking" ? "Narrowing it down" : "Gut check"}
             </p>
             <h2 id="question-title">
-              {phase === "thinking" ? "Give me a second." : currentQuestion}
+              {phase === "thinking" ? "I’m reading the pattern." : currentQuestion}
             </h2>
           </div>
 
@@ -144,6 +144,13 @@ export default function Home() {
               type="button"
             >
               No
+            </button>
+            <button
+              disabled={phase === "thinking"}
+              onClick={() => answerQuestion("unsure")}
+              type="button"
+            >
+              Not sure
             </button>
           </div>
         </section>
