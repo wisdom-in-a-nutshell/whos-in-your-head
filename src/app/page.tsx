@@ -99,17 +99,6 @@ const thinkingLabels = [
   "Consulting the invisible corkboard"
 ];
 
-const playMetaLabels = [
-  "Only you know the name",
-  "No hints from the room",
-  "Keep them in your head",
-  "Your poker face matters",
-  "Everyone else can watch",
-  "Don’t say the name",
-  "The table is suspicious",
-  "No whispering clues"
-];
-
 function ThinkingDots() {
   return (
     <span className="thinking-dots" aria-label="Thinking">
@@ -145,7 +134,6 @@ export default function Home() {
   const answeredCount = turns.length;
   const questionLabel = questionLabels[questionIndex % questionLabels.length];
   const thinkingLabel = thinkingLabels[answeredCount % thinkingLabels.length];
-  const playMetaLabel = playMetaLabels[questionIndex % playMetaLabels.length];
 
   function startGame() {
     setPhase("asking");
@@ -221,7 +209,6 @@ export default function Home() {
       {phase === "asking" || phase === "thinking" ? (
         <section className="play-screen" aria-labelledby="question-title">
           <div className="play-topline">
-            <span>{playMetaLabel}</span>
             <strong>
               Question {questionNumber} / {MAX_QUESTIONS}
             </strong>

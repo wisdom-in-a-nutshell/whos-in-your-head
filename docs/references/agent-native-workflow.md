@@ -19,20 +19,21 @@ Use the repo-owned checks before ending meaningful implementation work:
 scripts/check-fast.sh
 ```
 
-`scripts/check-fast.sh` verifies the repo guidance/docs contract, scans for obvious OpenAI secret leaks, and runs the package validation scripts.
+`scripts/check-fast.sh` verifies the repo guidance/docs contract, scans for obvious OpenAI secret leaks, and runs quick package health checks suitable for the machine-wide Stop hook.
 
 The package validation scripts are:
 
 - `lint`
 - `typecheck`
 - `test`
-- `build`
 
 Use the slower entrypoint when a broader local validation pass is useful:
 
 ```bash
 scripts/check-full.sh
 ```
+
+`scripts/check-full.sh` runs the fast checks first, then runs the production build smoke.
 
 ## Hook Contract
 
