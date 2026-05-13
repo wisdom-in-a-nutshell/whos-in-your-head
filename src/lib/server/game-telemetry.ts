@@ -1,5 +1,12 @@
 import "server-only";
-import { MongoClient, type Collection, type Db, type Document } from "mongodb";
+import {
+  MongoClient,
+  type Collection,
+  type CreateIndexesOptions,
+  type Db,
+  type Document,
+  type IndexSpecification
+} from "mongodb";
 import type { PlayerAnswer } from "@/lib/game/ai-move";
 import type { GameState } from "@/lib/game/state";
 import type { GeneratedAiMove } from "./game-master";
@@ -823,16 +830,36 @@ async function ensureIndexes(db: Db) {
       const events = eventsCollection(db);
       const failures = failuresCollection(db);
 
-      await results.createIndex({ gameId: 1 }, { unique: true });
-      await results.createIndex({ completedAt: -1 });
-      await events.createIndex({ gameId: 1, createdAt: 1 });
-      await events.createIndex({ createdAt: -1 });
-      await failures.createIndex({ gameId: 1, createdAt: 1 });
-      await failures.createIndex({ createdAt: -1 });
+      await createTelemetryIndex(results, { gameId: 1 });
+      await createTelemetryIndex(results, { completedAt: -1 });
+      await createTelemetryIndex(events, { gameId: 1, createdAt: 1 });
+      await createTelemetryIndex(events, { createdAt: -1 });
+      await createTelemetryIndex(failures, { gameId: 1, createdAt: 1 });
+      await createTelemetryIndex(failures, { createdAt: -1 });
     })();
   }
 
   return indexesPromise;
+}
+
+async function createTelemetryIndex(
+  collection: Collection<Document>,
+  indexSpec: IndexSpecification,
+  options?: CreateIndexesOptions
+) {
+  try {
+    await collection.createIndex(indexSpec, options);
+  } catch (error) {
+    if (isCollectionAlreadyExistsError(error)) {
+      logWarn("game_telemetry_index_skipped", {
+        collection: collection.collectionName,
+        indexSpec
+      });
+      return;
+    }
+
+    throw error;
+  }
 }
 
 function resultsCollection(db: Db): Collection<Document> {
@@ -868,6 +895,23 @@ function readAbandonAfterMinutes() {
   }
 
   return value;
+}
+
+function isCollectionAlreadyExistsError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const maybeMongoError = error as {
+    code?: unknown;
+    message?: unknown;
+  };
+
+  return (
+    maybeMongoError.code === 48 ||
+    (typeof maybeMongoError.message === "string" &&
+      maybeMongoError.message.includes("already exists"))
+  );
 }
 
 function sanitizeFailureBody(body: unknown) {

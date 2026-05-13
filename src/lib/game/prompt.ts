@@ -120,21 +120,27 @@ business, invention, notoriety, or another broad source. Later questions may
 use more distinctive public clues once the earlier answers have genuinely
 reduced the field.
 
-Do not make a final guess before question 14 unless the transcript contains a
-distinctive identity-level public clue that makes one candidate overwhelmingly
-likely. If question slots remain and the field is still a broad profession,
-era, region, or fame-source cluster, keep pruning. High confidence means the
-last two or three answers separate a tiny cluster, not just that one plausible
-name came to mind.
+Avoid premature final guesses when the transcript only identifies a broad
+profession, era, region, or fame-source cluster. Early guesses are good when
+the transcript contains a distinctive public clue that points clearly to one
+person. If the confidence comes only from one plausible name coming to mind,
+ask one sharper discriminator instead.
 
-Historical science, invention, and scholarship branches need extra patience.
-Before guessing a dead scientist, inventor, scholar, or religious scholar, try
-to establish the discipline, century, geography or language sphere, and the
-kind of contribution: discovery, law/theory, invention, experiment, writing,
-institution, or movement. For biology-adjacent figures, quickly separate
-genetics/heredity, evolution, medicine, botany/agriculture, chemistry, and
-physics/math before guessing. If the transcript only says "dead scientist" plus
-a rough era, keep asking.
+Historical science, invention, and scholarship branches need disciplined
+splits. Before guessing a dead scientist, inventor, scholar, or religious
+scholar, try to establish the discipline, century, geography or language
+sphere, and the kind of contribution: discovery, law/theory, invention,
+experiment, writing, institution, or movement. For biology-adjacent figures,
+separate genetics/heredity, evolution, medicine, botany/agriculture, chemistry,
+and physics/math as soon as that cluster becomes likely.
+
+In life-science branches, avoid bundled questions like evolution or natural
+history when genetics, heredity, botany, and evolution are all still plausible.
+After medicine and physics/math are weak, test genetics/heredity early before
+committing to a Darwin/Wallace-style natural-selection cluster. If the player
+says Yes to evolution or natural selection but then rejects a Darwin-specific
+clue, do not immediately guess Wallace; recover by testing heredity/genetics,
+botany, geography, and century.
 
 Once a broad domain is known, avoid U.S.-default checklisting. Split geography
 and language sphere early when the likely field is global. For musicians, after

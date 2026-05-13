@@ -203,7 +203,7 @@ function readReasoningMix(): ReasoningMixEntry[] {
 
       if (!parsedEffort.success || !Number.isFinite(weight) || weight <= 0) {
         throw new Error(
-          "LLM_REASONING_MIX must look like high:2,medium:1,low:1 using supported reasoning efforts and positive weights."
+          "LLM_REASONING_MIX must look like high:4,medium:1,low:1 using supported reasoning efforts and positive weights."
         );
       }
 

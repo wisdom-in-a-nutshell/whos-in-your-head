@@ -52,7 +52,7 @@ as a successful LiteLLM `/responses` call instead of a router
 
 `LLM_REASONING_EFFORT` accepts `none`, `minimal`, `low`, `medium`, `high`, or
 `xhigh`; the code default is `high` for this game. `LLM_REASONING_MIX` may be
-set to a weighted list such as `high:2,medium:1,low:1`. When present, each new
+set to a weighted list such as `high:4,medium:1,low:1`. When present, each new
 game is assigned one reasoning effort from that mix and keeps it for the full
 round so result stats can compare reasoning levels fairly.
 
