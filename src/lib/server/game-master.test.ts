@@ -171,6 +171,73 @@ describe("generateAiMove", () => {
     expect(request).not.toHaveProperty("previous_response_id");
     expect(JSON.stringify(request.input)).toContain("<game_state>");
   });
+
+  it("parses structured text from response output when output_text is unavailable", async () => {
+    const outputText = JSON.stringify({
+      action: "ask_question",
+      question: "Were they mainly known outside the United States?",
+      guess: null,
+      shortRationale: null
+    });
+    const response = createResponse({
+      id: "resp-output-content-test",
+      outputText
+    });
+    delete (response as { output_text?: string }).output_text;
+    createMock.mockResolvedValue(response);
+
+    const { generateAiMove } = await import("./game-master");
+    const generated = await generateAiMove(
+      createSharedOpeningAnswerState("no"),
+      "output-content-request"
+    );
+
+    expect(generated.move).toEqual({
+      action: "ask_question",
+      question: "Were they mainly known outside the United States?",
+      guess: null,
+      shortRationale: null
+    });
+  });
+
+  it("prefers chat message content over reasoning text in fallback responses", async () => {
+    const outputText = JSON.stringify({
+      action: "ask_question",
+      question: "Were they primarily associated with the Middle East or the Islamic world?",
+      guess: null,
+      shortRationale: "Split the narrowed public-notoriety cluster geographically."
+    });
+    const response = {
+      ...createResponse({
+        id: "resp-chat-fallback-test",
+        outputText: "Let me analyze the transcript first..."
+      }),
+      output_text: undefined,
+      choices: [
+        {
+          message: {
+            content: outputText
+          }
+        }
+      ]
+    };
+    createMock.mockResolvedValue(response);
+
+    const { generateAiMove } = await import("./game-master");
+    const generated = await generateAiMove(
+      createSharedOpeningAnswerState("no"),
+      "chat-fallback-request",
+      2,
+      "claude-4.6-opus"
+    );
+
+    expect(generated.move).toEqual({
+      action: "ask_question",
+      question: "Were they primarily associated with the Middle East or the Islamic world?",
+      guess: null,
+      shortRationale: "Split the narrowed public-notoriety cluster geographically."
+    });
+  });
 });
 
 function createResponse({ id, outputText }: { id: string; outputText: string }) {

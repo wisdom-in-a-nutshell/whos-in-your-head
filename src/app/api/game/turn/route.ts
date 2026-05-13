@@ -249,7 +249,7 @@ async function tryContentFilterFallbacks(
       const generated = await generateAiMove(game, requestId, retryAttempt, fallbackModel);
       const nextGame = attachModelResponseId(
         applyAiMove(game, generated.move),
-        generated.responseId
+        null
       );
 
       logInfo("game_turn_content_filter_fallback_succeeded", {
@@ -257,7 +257,8 @@ async function tryContentFilterFallbacks(
         gameId: game.gameId,
         questionCount: game.questionCount,
         fallbackModel,
-        responseId: generated.responseId
+        responseId: generated.responseId,
+        preservedResponseId: false
       });
 
       return {

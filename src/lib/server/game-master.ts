@@ -210,7 +210,7 @@ function parseGameMasterMove(
     bypassResponseCache: boolean;
   }
 ): AiMove {
-  const outputText = response.output_text.trim();
+  const outputText = extractResponseOutputText(response).trim();
   const responseSummary = summarizeResponse(response);
 
   if (
@@ -315,11 +315,73 @@ function summarizeResponse(response: Response) {
     actualServiceTier: response.service_tier ?? null,
     incompleteDetails: response.incomplete_details ?? null,
     responseError: response.error ?? null,
-    outputTypes: response.output.map((item) => item.type),
+    outputTypes: response.output?.map((item) => item.type) ?? [],
     usage: summarizeResponseUsage(response.usage ?? null)
   };
 }
 
 function previewOutput(outputText: string) {
   return outputText.replace(/\s+/g, " ").slice(0, OUTPUT_PREVIEW_CHARACTERS);
+}
+
+function extractResponseOutputText(response: Response): string {
+  if (typeof response.output_text === "string") {
+    return response.output_text;
+  }
+
+  const chatCompletionContent = extractChatCompletionMessageContent(response);
+
+  if (chatCompletionContent) {
+    return chatCompletionContent;
+  }
+
+  const outputItems = Array.isArray(response.output) ? response.output : [];
+  const textParts: string[] = [];
+
+  for (const item of outputItems) {
+    if (item.type !== "message" || !("content" in item) || !Array.isArray(item.content)) {
+      continue;
+    }
+
+    for (const content of item.content) {
+      if (
+        typeof content === "object" &&
+        content !== null &&
+        "text" in content &&
+        typeof content.text === "string"
+      ) {
+        textParts.push(content.text);
+      }
+    }
+  }
+
+  return textParts.join("\n");
+}
+
+function extractChatCompletionMessageContent(response: Response): string | null {
+  const choices = (response as { choices?: unknown }).choices;
+
+  if (!Array.isArray(choices)) {
+    return null;
+  }
+
+  for (const choice of choices) {
+    if (typeof choice !== "object" || choice === null || !("message" in choice)) {
+      continue;
+    }
+
+    const message = choice.message;
+
+    if (
+      typeof message === "object" &&
+      message !== null &&
+      "content" in message &&
+      typeof message.content === "string" &&
+      message.content.trim()
+    ) {
+      return message.content;
+    }
+  }
+
+  return null;
 }

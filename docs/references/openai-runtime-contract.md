@@ -147,7 +147,10 @@ If the failed response is specifically an incomplete content-filter response,
 the route tries `LLM_FALLBACK_MODELS` before giving up. Fallback model calls use
 the same structured output schema, same prompt, and same server-side game-rule
 validation, but they rebuild from explicit game state instead of continuing the
-primary model's `previous_response_id`.
+primary model's `previous_response_id`. A successful fallback move is applied
+to explicit game state, but its response id is not preserved for future primary
+model turns; the next turn rebuilds from transcript rather than crossing model
+response chains.
 
 OpenAI's GPT-5.5 guidance says to use the Responses API, reasoning controls,
 Structured Outputs, conversation state, prompt caching, and static prompt
