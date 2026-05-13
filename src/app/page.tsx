@@ -82,6 +82,16 @@ const thinkingLabels = [
   "Rechecking the map"
 ];
 
+function ThinkingDots() {
+  return (
+    <span className="thinking-dots" aria-label="Thinking">
+      <span />
+      <span />
+      <span />
+    </span>
+  );
+}
+
 type Phase = "start" | "asking" | "thinking" | "guessing" | "result";
 type Answer = "yes" | "no" | "unsure";
 
@@ -145,7 +155,7 @@ export default function Home() {
         <button className="wordmark" onClick={startGame} type="button">
           Who&apos;s In Your Head?
         </button>
-        <span className="round-count">{MAX_QUESTIONS} questions</span>
+        <span className="round-count">{MAX_QUESTIONS} questions · 1 guess</span>
       </header>
 
       {phase === "start" ? (
@@ -155,8 +165,8 @@ export default function Home() {
             <h1 id="start-title">Think of someone famous.</h1>
             <p className="start-subtitle">
               Don&apos;t type it. Don&apos;t say it out loud. I get 21
-              questions. You just say yes, no, or not sure. Then I guess
-              who&apos;s in your head.
+              questions and one final guess. You just say yes, no, or not sure.
+              Then I guess who&apos;s in your head.
             </p>
             <button className="primary-action" onClick={startGame} type="button">
               I&apos;ve got someone
@@ -177,7 +187,7 @@ export default function Home() {
       {phase === "asking" || phase === "thinking" ? (
         <section className="play-screen" aria-labelledby="question-title">
           <div className="play-topline">
-            <span>Who&apos;s In Your Head?</span>
+            <span>Keep them secret</span>
             <strong>
               Question {questionNumber} / {MAX_QUESTIONS}
             </strong>
@@ -197,7 +207,14 @@ export default function Home() {
               {phase === "thinking" ? thinkingLabel : questionLabel}
             </p>
             <h2 id="question-title">
-              {phase === "thinking" ? "I’m reading the pattern." : currentQuestion}
+              {phase === "thinking" ? (
+                <>
+                  Reading the pattern
+                  <ThinkingDots />
+                </>
+              ) : (
+                currentQuestion
+              )}
             </h2>
           </div>
 
