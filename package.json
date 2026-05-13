@@ -9,6 +9,7 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "play:api": "node scripts/play-game-api.mjs",
     "logs:prod": "node scripts/prod-logs.mjs events"
   },
   "overrides": {

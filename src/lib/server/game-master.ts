@@ -1,5 +1,9 @@
 import "server-only";
-import type { ResponseUsage } from "openai/resources/responses/responses";
+import type {
+  Response,
+  ResponseCreateParamsNonStreaming,
+  ResponseUsage
+} from "openai/resources/responses/responses";
 import { zodTextFormat } from "openai/helpers/zod";
 import { aiMoveSchema, type AiMove, type PlayerAnswer } from "@/lib/game/ai-move";
 import { createSharedOpeningAnswerState } from "@/lib/game/opening";
@@ -13,6 +17,7 @@ const PROMPT_CACHE_KEY = "whos-in-your-head-game-master-v1";
 const GAME_MASTER_REQUEST_INSTRUCTIONS =
   "Follow the static game-master instructions in the input. Return only the structured move.";
 const OPENING_WARMUP_ANSWERS: PlayerAnswer[] = ["yes", "no"];
+const OUTPUT_PREVIEW_CHARACTERS = 220;
 
 const openingWarmups = new Map<PlayerAnswer, Promise<GeneratedAiMove>>();
 const warmedOpenings = new Map<PlayerAnswer, GeneratedAiMove>();
@@ -25,6 +30,15 @@ export type GeneratedAiMove = {
   responseId: string | null;
   usage: ResponseUsage | null;
 };
+
+type LiteLLMCacheControls = {
+  cache?: {
+    "no-cache"?: boolean;
+    "no-store"?: boolean;
+  };
+};
+
+type GameMasterResponseRequest = ResponseCreateParamsNonStreaming & LiteLLMCacheControls;
 
 export function warmOpeningMoveResponses() {
   for (const answer of OPENING_WARMUP_ANSWERS) {
@@ -63,8 +77,7 @@ export async function generateAiMove(
     latestAnswer: state.transcript.at(-1)?.answer ?? null
   });
 
-  const response = await client.responses
-    .parse({
+  const responseRequest: GameMasterResponseRequest = {
       model,
       instructions: GAME_MASTER_REQUEST_INSTRUCTIONS,
       ...(usesPreviousResponse
@@ -100,7 +113,10 @@ export async function generateAiMove(
             }
           }
         : {})
-    })
+    };
+
+  const response = await client.responses
+    .create(responseRequest)
     .catch((error: unknown) => {
       logError("game_master_request_failed", {
         requestId,
@@ -119,20 +135,13 @@ export async function generateAiMove(
       throw error;
     });
 
-  const move = response.output_parsed;
-
-  if (!move) {
-    logError("game_master_parse_empty", {
-      requestId,
-      gameId: state.gameId,
-      responseId: response.id,
-      durationMs: Date.now() - startedAt,
-      retryAttempt,
-      bypassResponseCache,
-      usage: summarizeResponseUsage(response.usage ?? null)
-    });
-    throw new Error("OpenAI returned no parsed game-master move.");
-  }
+  const move = parseGameMasterMove(response, {
+    requestId,
+    gameId: state.gameId,
+    durationMs: Date.now() - startedAt,
+    retryAttempt,
+    bypassResponseCache
+  });
 
   logInfo("game_master_request_succeeded", {
     requestId,
@@ -156,6 +165,56 @@ export async function generateAiMove(
     responseId: response.id,
     usage: response.usage ?? null
   };
+}
+
+function parseGameMasterMove(
+  response: Response,
+  context: {
+    requestId?: string;
+    gameId: string;
+    durationMs: number;
+    retryAttempt: number;
+    bypassResponseCache: boolean;
+  }
+): AiMove {
+  const outputText = response.output_text.trim();
+  const responseSummary = summarizeResponse(response);
+
+  if (!outputText) {
+    logError("game_master_parse_empty", {
+      ...context,
+      ...responseSummary
+    });
+    throw new Error("OpenAI returned no parsed game-master move.");
+  }
+
+  let parsedJson: unknown;
+
+  try {
+    parsedJson = JSON.parse(outputText);
+  } catch (error) {
+    logError("game_master_parse_invalid_json", {
+      ...context,
+      ...responseSummary,
+      outputPreview: previewOutput(outputText),
+      error: describeError(error)
+    });
+    throw error;
+  }
+
+  const parsedMove = aiMoveSchema.safeParse(parsedJson);
+
+  if (!parsedMove.success) {
+    logError("game_master_parse_invalid_schema", {
+      ...context,
+      ...responseSummary,
+      outputPreview: previewOutput(outputText),
+      issues: parsedMove.error.flatten()
+    });
+    throw new Error("OpenAI returned a game-master move that did not match the schema.");
+  }
+
+  return parsedMove.data;
 }
 
 function warmOpeningMoveResponse(answer: PlayerAnswer) {
@@ -201,4 +260,21 @@ function summarizeResponseUsage(usage: ResponseUsage | null) {
     reasoningTokens: usage.output_tokens_details.reasoning_tokens,
     totalTokens: usage.total_tokens
   };
+}
+
+function summarizeResponse(response: Response) {
+  return {
+    responseId: response.id,
+    responseStatus: response.status ?? null,
+    responseModel: response.model,
+    actualServiceTier: response.service_tier ?? null,
+    incompleteDetails: response.incomplete_details ?? null,
+    responseError: response.error ?? null,
+    outputTypes: response.output.map((item) => item.type),
+    usage: summarizeResponseUsage(response.usage ?? null)
+  };
+}
+
+function previewOutput(outputText: string) {
+  return outputText.replace(/\s+/g, " ").slice(0, OUTPUT_PREVIEW_CHARACTERS);
 }

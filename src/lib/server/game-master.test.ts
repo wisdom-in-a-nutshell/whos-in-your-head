@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createSharedOpeningAnswerState } from "../game/opening";
 
-const parseMock = vi.fn();
+const createMock = vi.fn();
 
 vi.mock("server-only", () => ({}));
 
@@ -18,7 +18,7 @@ vi.mock("./openai", () => ({
   getOpenAIRequestConfig: () => ({
     client: {
       responses: {
-        parse: parseMock
+        create: createMock
       }
     },
     model: "gpt-5.5",
@@ -29,28 +29,26 @@ vi.mock("./openai", () => ({
 
 describe("generateAiMove", () => {
   beforeEach(() => {
-    parseMock.mockReset();
+    createMock.mockReset();
   });
 
   it("does not cap output tokens for high-reasoning structured moves", async () => {
-    parseMock.mockResolvedValue({
+    createMock.mockResolvedValue(createResponse({
       id: "resp-test",
-      output_parsed: {
+      outputText: JSON.stringify({
         action: "ask_question",
         question: "Are they mainly known for entertainment?",
         guess: null,
         shortRationale: null
-      },
-      service_tier: "priority",
-      usage: null
-    });
+      })
+    }));
 
     const { generateAiMove } = await import("./game-master");
 
     await generateAiMove(createSharedOpeningAnswerState("yes"), "test-request");
 
-    expect(parseMock).toHaveBeenCalledOnce();
-    const request = parseMock.mock.calls[0][0] as Record<string, unknown>;
+    expect(createMock).toHaveBeenCalledOnce();
+    const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
     expect(request).not.toHaveProperty("max_output_tokens");
     expect(request.reasoning).toEqual({ effort: "high" });
@@ -64,23 +62,21 @@ describe("generateAiMove", () => {
   });
 
   it("bypasses LiteLLM response caching only on retry attempts", async () => {
-    parseMock.mockResolvedValue({
+    createMock.mockResolvedValue(createResponse({
       id: "resp-retry-test",
-      output_parsed: {
+      outputText: JSON.stringify({
         action: "ask_question",
         question: "Were they famous before 2010?",
         guess: null,
         shortRationale: null
-      },
-      service_tier: "priority",
-      usage: null
-    });
+      })
+    }));
 
     const { generateAiMove } = await import("./game-master");
 
     await generateAiMove(createSharedOpeningAnswerState("no"), "retry-request", 2);
 
-    const request = parseMock.mock.calls[0][0] as Record<string, unknown>;
+    const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
     expect(request).toMatchObject({
       cache: {
@@ -92,17 +88,15 @@ describe("generateAiMove", () => {
   });
 
   it("rebuilds from full state instead of continuing a stored response chain on retry", async () => {
-    parseMock.mockResolvedValue({
+    createMock.mockResolvedValue(createResponse({
       id: "resp-retry-chain-test",
-      output_parsed: {
+      outputText: JSON.stringify({
         action: "ask_question",
         question: "Were they famous before 2010?",
         guess: null,
         shortRationale: null
-      },
-      service_tier: "priority",
-      usage: null
-    });
+      })
+    }));
 
     const { generateAiMove } = await import("./game-master");
     const state = {
@@ -112,9 +106,33 @@ describe("generateAiMove", () => {
 
     await generateAiMove(state, "retry-chain-request", 2);
 
-    const request = parseMock.mock.calls[0][0] as Record<string, unknown>;
+    const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
     expect(request).not.toHaveProperty("previous_response_id");
     expect(JSON.stringify(request.input)).toContain("<game_state>");
   });
 });
+
+function createResponse({ id, outputText }: { id: string; outputText: string }) {
+  return {
+    id,
+    output_text: outputText,
+    output: [
+      {
+        type: "message",
+        content: [
+          {
+            type: "output_text",
+            text: outputText
+          }
+        ]
+      }
+    ],
+    status: "completed",
+    model: "gpt-5.5",
+    service_tier: "priority",
+    incomplete_details: null,
+    error: null,
+    usage: null
+  };
+}
