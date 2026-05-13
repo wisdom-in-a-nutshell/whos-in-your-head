@@ -133,6 +133,7 @@ export default function Home() {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [result, setResult] = useState<"won" | "lost" | null>(null);
+  const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
 
   const progressMarks = useMemo(
     () => Array.from({ length: MAX_QUESTIONS }, (_, index) => index + 1),
@@ -151,6 +152,7 @@ export default function Home() {
     setQuestionIndex(0);
     setTurns([]);
     setResult(null);
+    setSelectedAnswer(null);
   }
 
   function answerQuestion(answer: Answer) {
@@ -160,15 +162,18 @@ export default function Home() {
 
     const nextTurns = [...turns, { question: currentQuestion, answer }];
     setTurns(nextTurns);
+    setSelectedAnswer(answer);
     setPhase("thinking");
 
     window.setTimeout(() => {
       if (questionIndex >= sampleQuestions.length - 1) {
+        setSelectedAnswer(null);
         setPhase("guessing");
         return;
       }
 
       setQuestionIndex((index) => index + 1);
+      setSelectedAnswer(null);
       setPhase("asking");
     }, 860);
   }
@@ -249,6 +254,7 @@ export default function Home() {
 
           <div className="answer-grid" aria-label="Answer choices">
             <button
+              className={selectedAnswer === "yes" ? "is-selected" : undefined}
               disabled={phase === "thinking"}
               onClick={() => answerQuestion("yes")}
               type="button"
@@ -256,6 +262,7 @@ export default function Home() {
               Yes
             </button>
             <button
+              className={selectedAnswer === "no" ? "is-selected" : undefined}
               disabled={phase === "thinking"}
               onClick={() => answerQuestion("no")}
               type="button"
@@ -263,6 +270,7 @@ export default function Home() {
               No
             </button>
             <button
+              className={selectedAnswer === "unsure" ? "is-selected" : undefined}
               disabled={phase === "thinking"}
               onClick={() => answerQuestion("unsure")}
               type="button"

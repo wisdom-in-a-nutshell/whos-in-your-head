@@ -331,10 +331,20 @@ button {
   font-size: 1.05rem;
 }
 
+.answer-grid button.is-selected {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--paper);
+  opacity: 1;
+}
+
 .answer-grid button:disabled {
   cursor: wait;
-  opacity: 0.56;
   transform: none;
+}
+
+.answer-grid button:disabled:not(.is-selected) {
+  opacity: 0.38;
 }
 
 .guess-screen,
