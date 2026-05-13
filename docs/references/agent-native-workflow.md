@@ -19,9 +19,9 @@ Use the repo-owned checks before ending meaningful implementation work:
 scripts/check-fast.sh
 ```
 
-`scripts/check-fast.sh` currently verifies the repo guidance/docs contract, scans for obvious OpenAI secret leaks, and runs npm scripts when `package.json` exists.
+`scripts/check-fast.sh` verifies the repo guidance/docs contract, scans for obvious OpenAI secret leaks, and runs the package validation scripts.
 
-When the app is scaffolded, define these package scripts so the fast check can pick them up automatically:
+The package validation scripts are:
 
 - `lint`
 - `typecheck`

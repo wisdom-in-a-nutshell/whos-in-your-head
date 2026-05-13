@@ -36,6 +36,16 @@ Optional:
 
 `OPENAI_BASE_URL` exists so local or alternate OpenAI-compatible providers can be tested later without changing app code.
 
+## Scaffold Endpoints
+
+The package scaffold includes these server routes:
+
+- `GET /api/health` returns a basic app health response.
+- `GET /api/openai/status` reports whether OpenAI runtime env is configured without exposing secrets.
+- `GET /api/openai/status?check=1` attempts a server-side OpenAI-compatible connection check when `OPENAI_API_KEY` is configured.
+- `GET /api/game/turn` confirms the game-turn route exists.
+- `POST /api/game/turn` validates the future turn request shape and returns `501` until the game design and core loop are implemented.
+
 ## Game State Authority
 
 The app owns the game rules. The model proposes the next move.

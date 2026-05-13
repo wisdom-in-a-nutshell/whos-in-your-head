@@ -2,6 +2,9 @@ node_modules/
 .next/
 dist/
 build/
+coverage/
+.vercel/
+*.tsbuildinfo
 .env
 .env.*
 !.env.example

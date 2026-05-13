@@ -48,17 +48,17 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 
 ## Done When
 
-- [ ] A local web app runs with one command after setup.
+- [x] A local web app runs with one command after setup.
 - [ ] User can start a game, think of a famous person, answer button-based yes/no-style questions, and receive a final guess before or at question 21.
 - [ ] The server calls the OpenAI Responses API without exposing `OPENAI_API_KEY` to the browser.
 - [ ] Game rules are enforced by code, not only by prompt.
 - [ ] Model output is parsed/validated as structured JSON before updating UI state.
-- [ ] README includes setup/run instructions and env vars.
-- [ ] Basic validation passes: install/build/lint or equivalent repo-native checks.
+- [x] README includes setup/run instructions and env vars.
+- [x] Basic validation passes: install/build/lint or equivalent repo-native checks.
 
 ## Milestones
 
-- [ ] Milestone 1 — Scaffold the web app. Acceptance: Next.js/TS app or equivalent exists, starts locally, has basic landing page. Validate: `npm run dev` and `npm run build`.
+- [x] Milestone 1 — Scaffold the web app. Acceptance: Next.js/TS app or equivalent exists, starts locally, has basic landing page. Validate: `npm run dev` and `npm run build`.
 - [ ] Milestone 2 — Implement local game state and UI without OpenAI. Acceptance: start/reset, question counter, answer buttons, transcript, and result screen work with mocked AI turns. Validate: manual browser smoke plus build.
 - [ ] Milestone 3 — Add Responses API server integration. Acceptance: server route calls OpenAI with API key server-side, returns structured next action, and handles errors gracefully. Validate: one local game reaches final guess with real model.
 - [ ] Milestone 4 — Tighten game prompt/rules. Acceptance: AI asks one yes/no-compatible question per turn, respects max 21, makes a final guess, and handles `maybe/not sure`. Validate: 3 manual test games with different famous people.
@@ -86,6 +86,8 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - 2026-05-13 — Confirmed from OpenAI docs and sub-agent review: use the official OpenAI JS/TS SDK against the Responses API from a server-only Next.js boundary. Do not use Codex App Server, Agents SDK, or Realtime voice for v0.
 - 2026-05-13 — Treat `Yes`, `No`, and `Maybe` as app-owned UI controls and game-state inputs, not OpenAI function tools for the MVP.
 - 2026-05-13 — Add repo-owned fast checks in `scripts/check-fast.sh`; the machine-wide Stop hook can delegate to this script once app code exists.
+- 2026-05-13 — Scaffold uses Next.js 16, React 19, TypeScript, Vitest, ESLint, OpenAI JS SDK, Zod, and `server-only`.
+- 2026-05-13 — Add a narrow `package.json` override for `postcss` to avoid the current npm audit finding inherited through Next's transitive dependency.
 
 ## Open Questions / Blockers
 
@@ -101,13 +103,16 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 | --- | --- | --- | --- |
 | done | Add agent-native repo guardrails and durable runtime notes before app implementation. | parent | `docs/references/agent-native-workflow.md`, `docs/references/openai-runtime-contract.md` |
 | todo | Finalize product/visual design direction for the clever party-game loop. | parent | `docs/architecture/overview.md` |
-| todo | Scaffold a minimal Next.js + TypeScript app after design direction is agreed. | parent | `README.md`, `docs/architecture/overview.md` |
+| done | Scaffold a minimal Next.js + TypeScript app with package scripts and placeholder routes. | parent | `README.md`, `docs/references/openai-runtime-contract.md` |
+| todo | Implement mocked game loop after design direction is agreed. | parent |  |
 
 ## Backlog / Remaining Work
 
 - [x] Add agent-native repo check entrypoints.
 - [x] Document OpenAI runtime contract and why Codex App Server / Agents SDK / Realtime are out of scope for v0.
-- [ ] Add package setup and choose exact app framework if deviating from Next.js.
+- [x] Add package setup and choose exact app framework if deviating from Next.js.
+- [x] Add placeholder app route and server route scaffolding.
+- [x] Add OpenAI runtime status endpoint with optional `OPENAI_BASE_URL` support.
 - [ ] Build landing/start screen: title, subtitle, short instructions, start button.
 - [ ] Build game UI: current question, count `n/21`, yes/no/maybe buttons, transcript.
 - [ ] Build mocked turn generator to prove UI/state loop independent of model.
@@ -135,3 +140,4 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - 2026-05-13: [DONE] Created local repo folder and project tracker for a text-first Responses API version of Who's In Your Head?.
 - 2026-05-13: [DONE] Added bootstrap brief and handoff instructions; no app implementation started yet.
 - 2026-05-13: [DONE] Added agent-native repo guardrails: `scripts/check-fast.sh`, `scripts/check-full.sh`, `docs/references/agent-native-workflow.md`, and `docs/references/openai-runtime-contract.md`. App implementation still intentionally not started pending product/design direction.
+- 2026-05-13: [DONE] Scaffolded the Next.js package and backend shell: package scripts, TypeScript, ESLint, Vitest, placeholder app page, `/api/health`, `/api/openai/status`, `/api/game/turn`, OpenAI server client factory, and AI move schema/tests. Core game UI/logic still intentionally pending design direction.
