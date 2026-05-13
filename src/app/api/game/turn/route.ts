@@ -5,6 +5,7 @@ import {
   createInitialGameState,
   finalizeGuess,
   GameRuleError,
+  gameStateSchema,
   gameTurnRequestSchema,
   recordPlayerAnswer,
   type GameState
@@ -18,6 +19,12 @@ import {
   warmOpeningMoveResponses,
   type GeneratedAiMove
 } from "@/lib/server/game-master";
+import {
+  recordGameFailureTelemetry,
+  recordGameResultTelemetry,
+  recordGameStartedTelemetry,
+  recordGameTurnTelemetry
+} from "@/lib/server/game-telemetry";
 import { describeError, logError, logInfo, logWarn } from "@/lib/server/logging";
 
 export const runtime = "nodejs";
@@ -32,6 +39,7 @@ export function GET() {
 }
 
 export async function POST(request: Request) {
+  const startedAt = Date.now();
   const requestId = crypto.randomUUID();
   const body = await request.json().catch(() => null);
   const parsed = gameTurnRequestSchema.safeParse(body);
@@ -40,6 +48,15 @@ export async function POST(request: Request) {
     logWarn("game_turn_invalid_request", {
       requestId,
       issues: parsed.error.flatten()
+    });
+    recordGameFailureTelemetry({
+      requestId,
+      action: readBodyAction(body),
+      state: readBodyState(body),
+      code: "invalid_request",
+      error: new Error("Invalid game turn request."),
+      routeDurationMs: Date.now() - startedAt,
+      body
     });
 
     return NextResponse.json(
@@ -54,16 +71,25 @@ export async function POST(request: Request) {
 
   try {
     if (parsed.data.action === "judge_guess") {
+      const resultGame = finalizeGuess(parsed.data.state, parsed.data.correct);
       logInfo("game_turn_judge_guess", {
         requestId,
         gameId: parsed.data.state.gameId,
         correct: parsed.data.correct,
-        questionCount: parsed.data.state.questionCount
+        questionCount: parsed.data.state.questionCount,
+        routeDurationMs: Date.now() - startedAt
+      });
+      recordGameResultTelemetry({
+        requestId,
+        state: parsed.data.state,
+        correct: parsed.data.correct,
+        resultGame,
+        routeDurationMs: Date.now() - startedAt
       });
 
       return NextResponse.json({
         ok: true,
-        game: finalizeGuess(parsed.data.state, parsed.data.correct)
+        game: resultGame
       });
     }
 
@@ -73,7 +99,13 @@ export async function POST(request: Request) {
       logInfo("game_turn_started", {
         requestId,
         gameId: nextGame.gameId,
-        question: nextGame.latestQuestion
+        question: nextGame.latestQuestion,
+        routeDurationMs: Date.now() - startedAt
+      });
+      recordGameStartedTelemetry({
+        requestId,
+        game: nextGame,
+        routeDurationMs: Date.now() - startedAt
       });
 
       return NextResponse.json({
@@ -93,6 +125,15 @@ export async function POST(request: Request) {
         requestId,
         error: status.configurationError
       });
+      recordGameFailureTelemetry({
+        requestId,
+        action: parsed.data.action,
+        state: parsed.data.state,
+        code: "openai_configuration_error",
+        error: new Error(status.configurationError),
+        routeDurationMs: Date.now() - startedAt,
+        body
+      });
 
       return NextResponse.json(
         {
@@ -108,6 +149,15 @@ export async function POST(request: Request) {
     if (!status.configured) {
       logError("game_turn_openai_not_configured", {
         requestId
+      });
+      recordGameFailureTelemetry({
+        requestId,
+        action: parsed.data.action,
+        state: parsed.data.state,
+        code: "openai_not_configured",
+        error: new Error("OPENAI_API_KEY is not configured."),
+        routeDurationMs: Date.now() - startedAt,
+        body
       });
 
       return NextResponse.json(
@@ -130,7 +180,17 @@ export async function POST(request: Request) {
       answer: parsed.data.answer,
       generated,
       nextGame,
-      source
+      source,
+      routeDurationMs: Date.now() - startedAt
+    });
+    recordGameTurnTelemetry({
+      requestId,
+      game,
+      answer: parsed.data.answer,
+      generated,
+      nextGame,
+      source,
+      routeDurationMs: Date.now() - startedAt
     });
 
     return NextResponse.json({
@@ -152,7 +212,17 @@ export async function POST(request: Request) {
     logError("game_turn_failed", {
       requestId,
       code: isRuleError ? "game_rule_error" : "game_master_error",
-      error: describeError(error)
+      error: describeError(error),
+      routeDurationMs: Date.now() - startedAt
+    });
+    recordGameFailureTelemetry({
+      requestId,
+      action: parsed.success ? parsed.data.action : readBodyAction(body),
+      state: parsed.success && "state" in parsed.data ? parsed.data.state : readBodyState(body),
+      code: isRuleError ? "game_rule_error" : "game_master_error",
+      error,
+      routeDurationMs: Date.now() - startedAt,
+      body
     });
 
     return NextResponse.json(
@@ -313,7 +383,8 @@ function logAnsweredTurn({
   answer,
   generated,
   nextGame,
-  source
+  source,
+  routeDurationMs
 }: {
   requestId: string;
   game: GameState;
@@ -321,6 +392,7 @@ function logAnsweredTurn({
   generated: GeneratedAiMove;
   nextGame: GameState;
   source: string;
+  routeDurationMs: number;
 }) {
   const move = generated.move;
 
@@ -343,6 +415,7 @@ function logAnsweredTurn({
       latestQuestion: nextGame.latestQuestion,
       finalGuess: nextGame.finalGuess
     },
+    routeDurationMs,
     runtime: {
       requestedModel: generated.requestedModel,
       actualModel: generated.actualModel,
@@ -350,6 +423,7 @@ function logAnsweredTurn({
       actualServiceTier: generated.actualServiceTier,
       promptCacheKey: generated.promptCacheKey,
       responseId: generated.responseId,
+      modelDurationMs: generated.durationMs,
       usage: summarizeUsage(generated.usage)
     }
   });
@@ -367,4 +441,22 @@ function summarizeUsage(usage: GeneratedAiMove["usage"]) {
     reasoningTokens: usage.output_tokens_details.reasoning_tokens,
     totalTokens: usage.total_tokens
   };
+}
+
+function readBodyAction(body: unknown): string | null {
+  if (!body || typeof body !== "object" || !("action" in body)) {
+    return null;
+  }
+
+  return typeof body.action === "string" ? body.action : null;
+}
+
+function readBodyState(body: unknown): GameState | null {
+  if (!body || typeof body !== "object" || !("state" in body)) {
+    return null;
+  }
+
+  const parsed = gameStateSchema.safeParse(body.state);
+
+  return parsed.success ? parsed.data : null;
 }

@@ -136,12 +136,33 @@ type RuntimeStatus = {
   reasoningEffort: string;
 };
 
+type PublicStats = {
+  startedGames: number;
+  totalGames: number;
+  correctGames: number;
+  incorrectGames: number;
+  abandonedGames: number;
+  activeGames: number;
+  completionRate: number | null;
+  correctRate: number | null;
+  averageQuestions: number | null;
+  averageRoundDurationMs: number | null;
+  totalTurns: number;
+  averageTurnDurationMs: number | null;
+  averageModelDurationMs: number | null;
+  averageReasoningTokens: number | null;
+  averageCachedTokens: number | null;
+  fallbackGames: number;
+  fallbackTurns: number;
+};
+
 export default function Home() {
   const [phase, setPhase] = useState<Phase>("start");
   const [game, setGame] = useState<GameState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus | null>(null);
+  const [publicStats, setPublicStats] = useState<PublicStats | null>(null);
   const pendingTurnRef = useRef(false);
 
   const progressMarks = useMemo(
@@ -194,6 +215,36 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadPublicStats() {
+      if (phase !== "result") {
+        return;
+      }
+
+      const response = await fetch("/api/stats");
+      const data = (await response.json()) as {
+        ok?: boolean;
+        stats?: PublicStats | null;
+      };
+
+      if (active && data.ok && data.stats) {
+        setPublicStats(data.stats);
+      }
+    }
+
+    loadPublicStats().catch(() => {
+      if (active) {
+        setPublicStats(null);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [phase, game?.gameId]);
+
   async function startGame() {
     if (pendingTurnRef.current) {
       return;
@@ -203,6 +254,7 @@ export default function Home() {
     setError(null);
     setGame(null);
     setSelectedAnswer(null);
+    setPublicStats(null);
     setPhase("thinking");
 
     try {
@@ -429,6 +481,51 @@ export default function Home() {
             Play again
           </button>
           <div className="result-meta">
+            {publicStats && publicStats.totalGames > 0 ? (
+              <p>
+                Across{" "}
+                <span className="runtime-pill">{publicStats.totalGames}</span> rounds,
+                I&apos;m at{" "}
+                <span className="runtime-pill">
+                  {formatPercent(publicStats.correctRate)}
+                </span>{" "}
+                in{" "}
+                <span className="runtime-pill">
+                  {formatNumber(publicStats.averageQuestions)}
+                </span>{" "}
+                questions on average.
+              </p>
+            ) : null}
+            {publicStats && publicStats.startedGames > publicStats.totalGames ? (
+              <p>
+                <span className="runtime-pill">{publicStats.startedGames}</span> started.
+                <span className="runtime-pill">{publicStats.abandonedGames}</span>{" "}
+                wandered off mid-mystery.
+              </p>
+            ) : null}
+            {publicStats && publicStats.averageTurnDurationMs !== null ? (
+              <p>
+                Average response:{" "}
+                <span className="runtime-pill">
+                  {formatSeconds(publicStats.averageTurnDurationMs)}
+                </span>
+                {publicStats.averageRoundDurationMs !== null ? (
+                  <>
+                    . Average round:{" "}
+                    <span className="runtime-pill">
+                      {formatSeconds(publicStats.averageRoundDurationMs)}
+                    </span>
+                  </>
+                ) : null}
+                {publicStats.fallbackTurns > 0 ? (
+                  <>
+                    . Fallback saved{" "}
+                    <span className="runtime-pill">{publicStats.fallbackTurns}</span>{" "}
+                    tricky turns.
+                  </>
+                ) : null}
+              </p>
+            ) : null}
             <p>
               You were playing with{" "}
               <span className="runtime-pill">{modelName}</span> at{" "}
@@ -486,6 +583,26 @@ function readErrorMessage(error: unknown): string {
 
 function formatModelName(model: string): string {
   return model.replace(/^gpt/i, "GPT");
+}
+
+function formatPercent(value: number | null): string {
+  if (value === null) {
+    return "new";
+  }
+
+  return `${Math.round(value * 100)}%`;
+}
+
+function formatNumber(value: number | null): string {
+  if (value === null) {
+    return "new";
+  }
+
+  return value.toFixed(1);
+}
+
+function formatSeconds(valueMs: number): string {
+  return `${(valueMs / 1000).toFixed(1)}s`;
 }
 
 function getPreviewGame(): GameState | null {

@@ -35,12 +35,16 @@ Runtime LLM config lives on the Azure Web App as Key Vault references:
 
 - `LLM_API_ENDPOINT` -> `aipodcasting--llm-api-endpoint`
 - `LLM_API_KEY` -> `aipodcasting--llm-api-key`
+- `MONGODB_URI` -> `aipodcasting--mongodb-uri`
 
 Non-secret runtime defaults:
 
 - `LLM_MODEL=gpt-5.5`
 - `LLM_REASONING_EFFORT=medium`
 - `LLM_SERVICE_TIER=priority`
+- `MONGODB_DB_NAME=content_production`
+- `GAME_TELEMETRY_ENABLED=true`
+- `GAME_STATS_ABANDON_AFTER_MINUTES=20`
 
 The Web App has a system-assigned managed identity with `Key Vault Secrets User`
 on `kv-shared-repos`.

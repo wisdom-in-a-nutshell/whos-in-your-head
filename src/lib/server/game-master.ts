@@ -31,6 +31,7 @@ export type GeneratedAiMove = {
   promptCacheKey: string | null;
   responseId: string | null;
   usage: ResponseUsage | null;
+  durationMs: number;
 };
 
 type LiteLLMCacheControls = {
@@ -196,7 +197,8 @@ export async function generateAiMove(
     actualServiceTier: response.service_tier ?? null,
     promptCacheKey: PROMPT_CACHE_KEY,
     responseId: response.id,
-    usage: response.usage ?? null
+    usage: response.usage ?? null,
+    durationMs: Date.now() - startedAt
   };
 }
 

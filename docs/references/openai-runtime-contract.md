@@ -233,3 +233,42 @@ npm run logs:prod -- --event game_master_request_failed
 The default output is a stable JSON envelope with `schema_version`, `status`,
 `data`, `error`, and `meta` fields so agents can consume it without scraping
 operator prose.
+
+## Game Telemetry
+
+Completed game stats and debugging telemetry are stored in the shared
+Mongo/Cosmos runtime database when `MONGODB_URI` is configured and
+`GAME_TELEMETRY_ENABLED` is not `false`.
+
+Runtime secret ownership:
+
+- `MONGODB_URI` belongs in Azure Key Vault as `aipodcasting--mongodb-uri`.
+- The Web App consumes it through an App Service Key Vault reference.
+- Do not store the Mongo URI in GitHub Actions secrets or tracked files.
+
+Collections:
+
+- `whiyh_game_results`: one upserted document per completed game, keyed by
+  `gameId`. Stores final correctness, question count, final guess, compact
+  answer path, full question/answer transcript, and round duration.
+- `whiyh_game_events`: append-only turn events. Stores request duration,
+  model duration, model/source, fallback source, prompt-cache key, response id,
+  input/cached/output/reasoning/total token counts, current question count, and
+  the proposed next move.
+- `whiyh_game_failures`: append-only failure records. Stores request id, game
+  id when available, phase, question count, latest question, compact answer
+  path, transcript, sanitized action body, and structured error details.
+
+Telemetry writes are non-blocking. If Mongo is missing or unavailable, the game
+continues and logs `game_telemetry_write_failed`.
+
+`GET /api/stats` returns only safe aggregate public stats for the result screen:
+completed games, correct/wrong counts, correct rate, average questions,
+average response duration, average model duration, average reasoning/cache
+tokens, fallback counts, started/completed/abandoned counts, and per-model turn
+and guess aggregates. It never returns raw transcripts.
+
+`GET /stats` renders those public aggregates as a shareable scoreboard page.
+The page is intentionally aggregate-only: it can show how often the game wins,
+how many rounds dropped off, how long turns take, and which models took turns or
+made guesses, but it does not expose any individual transcript.
