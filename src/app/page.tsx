@@ -17,7 +17,8 @@ export default function Home() {
           <p className="kicker">Silent party game</p>
           <h1 id="start-title">Think of someone famous.</h1>
           <p className="start-subtitle">
-            Don&apos;t type it. Don&apos;t say it. The AI gets 21 questions.
+            Don&apos;t type it. Don&apos;t say it out loud. I get 21 questions,
+            then I&apos;m guessing who&apos;s in your head.
           </p>
           <button className="primary-action" type="button">
             I&apos;ve got someone
