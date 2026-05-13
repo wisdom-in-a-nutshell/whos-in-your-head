@@ -23,25 +23,6 @@ const OPENING_MOVE: AiMove = {
   shortRationale: "Open with a broad split."
 };
 
-const RECOVERY_QUESTIONS = [
-  "Are they primarily famous for entertainment?",
-  "Are they primarily famous for music?",
-  "Are they primarily famous outside the United States?",
-  "Are they primarily associated with Latin or Spanish-language culture?",
-  "Are they primarily famous for acting or screen work?",
-  "Are they primarily famous through social media or online video?",
-  "Are they better described as a media personality than a traditional performer?",
-  "Did they first become famous through adult entertainment?",
-  "Are they publicly associated with a major controversy?",
-  "Did they become famous before 2010?",
-  "Are they associated with one signature work?",
-  "Are they also known for business or entrepreneurship?",
-  "Have they held public office?",
-  "Are they best known as an athlete?",
-  "Are they a historical figure from before 1900?",
-  "Is their public name a stage name or pseudonym?"
-];
-
 export function GET() {
   return NextResponse.json({
     ok: true,
@@ -187,30 +168,7 @@ async function generateNextGameState(
     }
   }
 
-  const recoveryMove = buildRecoveryMove(game);
-  const nextGame = applyAiMove(game, recoveryMove);
-
-  console.warn(
-    "[game-turn] using deterministic recovery move",
-    JSON.stringify({
-      gameId: game.gameId,
-      questionCount: game.questionCount,
-      transcriptLength: game.transcript.length,
-      move: recoveryMove
-    })
-  );
-
-  return {
-    generated: {
-      move: recoveryMove,
-      requestedServiceTier: "local_recovery",
-      actualServiceTier: null,
-        promptCacheKey: null,
-        responseId: null,
-        usage: null
-    },
-    nextGame
-  };
+  throw new Error("The game master failed to produce a valid move after retries.");
 }
 
 function logAnsweredTurn({
@@ -281,125 +239,4 @@ function describeError(error: unknown) {
     name: "UnknownError",
     message: String(error)
   };
-}
-
-function buildRecoveryMove(game: GameState): AiMove {
-  if (game.questionCount >= game.maxQuestions) {
-    throw new Error("The model failed to produce a final guess after retries.");
-  }
-
-  const askedQuestions = new Set(
-    game.transcript
-      .map((turn) => normalizeQuestionForComparison(turn.question))
-      .concat(game.latestQuestion ? [normalizeQuestionForComparison(game.latestQuestion)] : [])
-  );
-
-  const contextualQuestion = chooseContextualRecoveryQuestion(game, askedQuestions);
-  const question =
-    contextualQuestion ??
-    RECOVERY_QUESTIONS.find(
-      (candidate) =>
-        !askedQuestions.has(normalizeQuestionForComparison(candidate)) &&
-        !questionConflictsWithTranscript(candidate, game)
-    ) ?? "Are they still professionally active today?";
-
-  return {
-    action: "ask_question",
-    question,
-    guess: null,
-    shortRationale: "Local recovery question after model move failures."
-  };
-}
-
-function chooseContextualRecoveryQuestion(
-  game: GameState,
-  askedQuestions: Set<string>
-): string | null {
-  const candidates: string[] = [];
-
-  if (hasAnswer(game, "yes", /\b(business|entrepreneurship)\b/)) {
-    if (hasAnswer(game, "yes", /\b(finance|payments|banking|cryptocurrency)\b/)) {
-      candidates.push(
-        "Is this person primarily known as an investor or hedge fund manager rather than as a banker?",
-        "Is this person best known for investment management rather than running a bank?"
-      );
-    }
-
-    candidates.push(
-      "Is this person best known for founding or leading a technology company?",
-      "Is this person best known for a consumer-facing company?"
-    );
-  }
-
-  if (hasAnswer(game, "yes", /\b(entertainment|media)\b/)) {
-    candidates.push(
-      "Did they first become famous through television?",
-      "Are they better described as a media personality than a traditional performer?"
-    );
-  }
-
-  if (hasAnswer(game, "yes", /\b(music|musician|singer|song|album)\b/)) {
-    candidates.push(
-      "Are they primarily associated with music from outside the United States?",
-      "Are they mainly known as a solo performer?"
-    );
-  }
-
-  return (
-    candidates.find(
-      (candidate) =>
-        !askedQuestions.has(normalizeQuestionForComparison(candidate)) &&
-        !questionConflictsWithTranscript(candidate, game)
-    ) ?? null
-  );
-}
-
-function normalizeQuestionForComparison(question: string): string {
-  return question.replace(/\s+/g, " ").trim().toLowerCase();
-}
-
-function questionConflictsWithTranscript(question: string, game: GameState): boolean {
-  const normalizedQuestion = question.toLowerCase();
-  const hasBusinessYes = hasAnswer(game, "yes", /\b(business|entrepreneurship)\b/);
-
-  if (
-    hasAnswer(game, "no", /\b(entertainment|media)\b/) &&
-    /\b(entertainment|music|acting|screen|social media|media personality|adult entertainment|signature work)\b/.test(
-      normalizedQuestion
-    )
-  ) {
-    return true;
-  }
-
-  if (hasAnswer(game, "no", /\b(music|musician|singer)\b/) && /\bmusic\b/.test(normalizedQuestion)) {
-    return true;
-  }
-
-  if (
-    hasAnswer(game, "no", /\b(sports|athletic competition|athlete)\b/) &&
-    /\b(sport|athlete)\b/.test(normalizedQuestion)
-  ) {
-    return true;
-  }
-
-  if (
-    hasAnswer(game, "no", /\b(politics|government)\b/) &&
-    /\b(public office|politics|government)\b/.test(normalizedQuestion)
-  ) {
-    return true;
-  }
-
-  return (
-    hasBusinessYes &&
-    game.transcript.length >= 8 &&
-    /\b(entertainment|music|acting|athlete|public office|historical figure)\b/.test(
-      normalizedQuestion
-    )
-  );
-}
-
-function hasAnswer(game: GameState, answer: "yes" | "no" | "maybe", pattern: RegExp) {
-  return game.transcript.some(
-    (turn) => turn.answer === answer && pattern.test(turn.question.toLowerCase())
-  );
 }
