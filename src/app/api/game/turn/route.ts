@@ -13,8 +13,7 @@ import {
 import { isFirstOpeningAnswer, OPENING_MOVE } from "@/lib/game/opening";
 import {
   getOpenAIModelFallbacks,
-  getOpenAIRuntimeStatus,
-  selectGameReasoningEffort
+  getOpenAIRuntimeStatus
 } from "@/lib/server/openai";
 import {
   generateAiMove,
@@ -126,13 +125,13 @@ export async function POST(request: Request) {
     }
 
     if (parsed.data.action === "start") {
-      const reasoningEffort = selectGameReasoningEffort();
-      const nextGame = applyAiMove(createInitialGameState(reasoningEffort), OPENING_MOVE);
-      warmOpeningMoveResponsesForReasoning(reasoningEffort);
+      const nextGame = applyAiMove(createInitialGameState(), OPENING_MOVE);
+      warmOpeningMoveResponsesForReasoning(nextGame.reasoningEffort);
       logInfo("game_turn_started", {
         requestId,
         gameId: nextGame.gameId,
-        reasoningEffort,
+        reasoningEffort: nextGame.reasoningEffort,
+        reasoningSchedule: "low:1-8,medium:9-13,late:14+",
         question: nextGame.latestQuestion,
         routeDurationMs: Date.now() - startedAt
       });

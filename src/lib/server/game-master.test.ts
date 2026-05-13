@@ -32,7 +32,7 @@ describe("generateAiMove", () => {
     createMock.mockReset();
   });
 
-  it("does not cap output tokens for high-reasoning structured moves", async () => {
+  it("does not cap output tokens for structured moves", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-test",
       outputText: JSON.stringify({
@@ -51,7 +51,7 @@ describe("generateAiMove", () => {
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
     expect(request).not.toHaveProperty("max_output_tokens");
-    expect(request.reasoning).toEqual({ effort: "high" });
+    expect(request.reasoning).toEqual({ effort: "low" });
     expect(request.text).toEqual(
       expect.objectContaining({
         verbosity: "low",
@@ -61,7 +61,7 @@ describe("generateAiMove", () => {
     expect(request.store).toBe(true);
   });
 
-  it("uses the reasoning effort assigned to the game", async () => {
+  it("uses low reasoning for early turns", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-low-test",
       outputText: JSON.stringify({
@@ -80,6 +80,48 @@ describe("generateAiMove", () => {
 
     expect(generated.reasoningEffort).toBe("low");
     expect(request.reasoning).toEqual({ effort: "low" });
+  });
+
+  it("uses medium reasoning for middle turns", async () => {
+    createMock.mockResolvedValue(createResponse({
+      id: "resp-medium-test",
+      outputText: JSON.stringify({
+        action: "ask_question",
+        question: "Were they primarily known for science?",
+        guess: null,
+        shortRationale: null
+      })
+    }));
+
+    const { generateAiMove } = await import("./game-master");
+    const state = createAnsweredState(9);
+
+    const generated = await generateAiMove(state, "medium-request");
+    const request = createMock.mock.calls[0][0] as Record<string, unknown>;
+
+    expect(generated.reasoningEffort).toBe("medium");
+    expect(request.reasoning).toEqual({ effort: "medium" });
+  });
+
+  it("uses the configured late-game reasoning effort after question thirteen", async () => {
+    createMock.mockResolvedValue(createResponse({
+      id: "resp-high-test",
+      outputText: JSON.stringify({
+        action: "ask_question",
+        question: "Were they connected to genetics?",
+        guess: null,
+        shortRationale: null
+      })
+    }));
+
+    const { generateAiMove } = await import("./game-master");
+    const state = createAnsweredState(14);
+
+    const generated = await generateAiMove(state, "high-request");
+    const request = createMock.mock.calls[0][0] as Record<string, unknown>;
+
+    expect(generated.reasoningEffort).toBe("high");
+    expect(request.reasoning).toEqual({ effort: "high" });
   });
 
   it("bypasses LiteLLM response caching only on retry attempts", async () => {
@@ -283,4 +325,15 @@ function createResponse({ id, outputText }: { id: string; outputText: string }) 
     error: null,
     usage: null
   };
+}
+
+function createAnsweredState(questionCount: number) {
+  return {
+    ...createSharedOpeningAnswerState("yes"),
+    questionCount,
+    transcript: Array.from({ length: questionCount }, (_, index) => ({
+      question: `Was clue ${index + 1} true?`,
+      answer: index % 2 === 0 ? "yes" : "no"
+    }))
+  } as ReturnType<typeof createSharedOpeningAnswerState>;
 }

@@ -137,10 +137,6 @@ type ActualAnswerStatus = "idle" | "sending" | "sent" | "error";
 type RuntimeStatus = {
   model: string;
   reasoningEffort: string;
-  reasoningMix?: Array<{
-    effort: string;
-    weight: number;
-  }>;
 };
 
 type PublicStats = {
@@ -190,7 +186,8 @@ export default function Home() {
   const thinkingPrompt = thinkingPrompts[answeredCount % thinkingPrompts.length];
   const currentPrompt = phase === "thinking" ? thinkingPrompt : questionPrompt;
   const modelName = runtimeStatus ? formatModelName(runtimeStatus.model) : "the house model";
-  const reasoningLevel = game?.reasoningEffort ?? runtimeStatus?.reasoningEffort ?? "medium";
+  const lateReasoningLevel =
+    game?.reasoningEffort ?? runtimeStatus?.reasoningEffort ?? "high";
 
   useEffect(() => {
     let active = true;
@@ -621,8 +618,10 @@ export default function Home() {
             ) : null}
             <p>
               You were playing with{" "}
-              <span className="runtime-pill">{modelName}</span> at{" "}
-              <span className="runtime-pill">{reasoningLevel}</span> reasoning.
+              <span className="runtime-pill">{modelName}</span> using{" "}
+              <span className="runtime-pill">low</span> to{" "}
+              <span className="runtime-pill">medium</span> to{" "}
+              <span className="runtime-pill">{lateReasoningLevel}</span> reasoning.
             </p>
             <p>
               More models are coming soon to try this same trick.

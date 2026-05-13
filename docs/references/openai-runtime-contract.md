@@ -51,10 +51,12 @@ as a successful LiteLLM `/responses` call instead of a router
 `ContentPolicyViolationError`, so the app owns this narrow fallback case.
 
 `LLM_REASONING_EFFORT` accepts `none`, `minimal`, `low`, `medium`, `high`, or
-`xhigh`; the code default is `high` for this game. `LLM_REASONING_MIX` may be
-set to a weighted list such as `high:4,medium:1,low:1`. When present, each new
-game is assigned one reasoning effort from that mix and keeps it for the full
-round so result stats can compare reasoning levels fairly.
+`xhigh`; the code default is `high` for this game. The runtime uses a
+deterministic per-turn reasoning schedule for snappier play: turns generated
+after questions 1-8 use `low`, turns after questions 9-13 use `medium`, and
+turns after question 14+ use `LLM_REASONING_EFFORT`. This changes only the
+request-level `reasoning.effort`; the stable prompt prefix, `prompt_cache_key`,
+and Responses state chain stay the same.
 
 `LLM_SERVICE_TIER` accepts `auto`, `default`, or `priority`; the default is
 `priority`. The value is sent as the Responses API request-level `service_tier`,
@@ -160,7 +162,7 @@ Structured Outputs, conversation state, prompt caching, and static prompt
 prefixes for this style of reasoning workload. The game-master call follows
 that shape: stable instructions first, dynamic state last, `previous_response_id`
 for continued turns, `zodTextFormat` for the move schema,
-`reasoning.effort=high` by default, `service_tier=priority`, and a stable
+the low/medium/high reasoning schedule, `service_tier=priority`, and a stable
 `prompt_cache_key`. It also requests `prompt_cache_retention=24h` for
 GPT-5.5-compatible extended prompt caching.
 

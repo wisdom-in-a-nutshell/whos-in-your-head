@@ -12,3 +12,21 @@ export const reasoningEffortValues = [
 export const gameReasoningEffortSchema = z.enum(reasoningEffortValues);
 
 export type GameReasoningEffort = z.infer<typeof gameReasoningEffortSchema>;
+
+export function selectTurnReasoningEffort({
+  lateGameReasoningEffort,
+  questionCount
+}: {
+  lateGameReasoningEffort: GameReasoningEffort;
+  questionCount: number;
+}): GameReasoningEffort {
+  if (questionCount < 9) {
+    return "low";
+  }
+
+  if (questionCount < 14) {
+    return "medium";
+  }
+
+  return lateGameReasoningEffort;
+}

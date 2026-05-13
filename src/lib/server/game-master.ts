@@ -8,7 +8,10 @@ import { zodTextFormat } from "openai/helpers/zod";
 import { aiMoveSchema, type AiMove, type PlayerAnswer } from "@/lib/game/ai-move";
 import { createSharedOpeningAnswerState } from "@/lib/game/opening";
 import { buildGameMasterContinuationInput, buildGameMasterInput } from "@/lib/game/prompt";
-import type { GameReasoningEffort } from "@/lib/game/reasoning";
+import {
+  selectTurnReasoningEffort,
+  type GameReasoningEffort
+} from "@/lib/game/reasoning";
 import type { GameState } from "@/lib/game/state";
 import { describeError, logError, logInfo, logWarn } from "./logging";
 import { getOpenAIRequestConfig } from "./openai";
@@ -86,12 +89,15 @@ export async function generateAiMove(
   retryAttempt = 1,
   modelOverride?: string
 ): Promise<GeneratedAiMove> {
+  const reasoningEffort = selectTurnReasoningEffort({
+    lateGameReasoningEffort: state.reasoningEffort,
+    questionCount: state.questionCount
+  });
   const {
     client,
     model: configuredModel,
     serviceTier
-  } = getOpenAIRequestConfig(state.reasoningEffort);
-  const reasoningEffort = state.reasoningEffort;
+  } = getOpenAIRequestConfig(reasoningEffort);
   const model = modelOverride ?? configuredModel;
 
   const bypassResponseCache = retryAttempt > 1;
@@ -106,6 +112,7 @@ export async function generateAiMove(
     model,
     configuredModel,
     modelOverride: modelOverride ?? null,
+    gameReasoningEffort: state.reasoningEffort,
     reasoningEffort,
     requestedServiceTier: serviceTier,
     promptCacheKey: PROMPT_CACHE_KEY,
@@ -165,6 +172,7 @@ export async function generateAiMove(
         model,
         configuredModel,
         modelOverride: modelOverride ?? null,
+        gameReasoningEffort: state.reasoningEffort,
         reasoningEffort,
         requestedServiceTier: serviceTier,
         retryAttempt,
@@ -295,7 +303,8 @@ function warmOpeningMoveResponse(
       warmedOpenings.set(key, generated);
       logInfo("opening_warmup_succeeded", {
         answer,
-        reasoningEffort,
+        lateGameReasoningEffort: reasoningEffort,
+        reasoningEffort: generated.reasoningEffort,
         responseId: generated.responseId,
         usage: summarizeResponseUsage(generated.usage)
       });

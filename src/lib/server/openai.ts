@@ -9,17 +9,11 @@ import {
 const DEFAULT_MODEL = "gpt-5.5";
 const DEFAULT_REASONING_EFFORT: OpenAIReasoningEffort = "high";
 const DEFAULT_SERVICE_TIER: OpenAIServiceTier = "priority";
-const DEFAULT_REASONING_MIX = "";
 
 const SERVICE_TIERS = ["auto", "default", "priority"] as const;
 
 export type OpenAIReasoningEffort = GameReasoningEffort;
 export type OpenAIServiceTier = (typeof SERVICE_TIERS)[number];
-
-export type ReasoningMixEntry = {
-  effort: OpenAIReasoningEffort;
-  weight: number;
-};
 
 type OpenAIConfig = {
   apiKey?: string;
@@ -36,7 +30,6 @@ export type OpenAIRuntimeStatus = {
   model: string;
   fallbackModels: string[];
   reasoningEffort: OpenAIReasoningEffort;
-  reasoningMix: ReasoningMixEntry[];
   serviceTier: OpenAIServiceTier;
   configurationError: string | null;
 };
@@ -74,7 +67,6 @@ export function getOpenAIRuntimeStatus(): OpenAIRuntimeStatus {
       model: config.model,
       fallbackModels: config.fallbackModels,
       reasoningEffort: config.reasoningEffort,
-      reasoningMix: readReasoningMix(),
       serviceTier: config.serviceTier,
       configurationError: null
     };
@@ -92,7 +84,6 @@ export function getOpenAIRuntimeStatus(): OpenAIRuntimeStatus {
       model,
       fallbackModels: [],
       reasoningEffort: DEFAULT_REASONING_EFFORT,
-      reasoningMix: [],
       serviceTier: DEFAULT_SERVICE_TIER,
       configurationError:
         error instanceof Error ? error.message : "Unknown OpenAI configuration error."
@@ -131,27 +122,6 @@ export function getOpenAIModelFallbacks() {
   return readOpenAIConfig().fallbackModels;
 }
 
-export function selectGameReasoningEffort(random = Math.random): OpenAIReasoningEffort {
-  const mix = readReasoningMix();
-
-  if (mix.length === 0) {
-    return readReasoningEffort();
-  }
-
-  const totalWeight = mix.reduce((total, entry) => total + entry.weight, 0);
-  let cursor = random() * totalWeight;
-
-  for (const entry of mix) {
-    cursor -= entry.weight;
-
-    if (cursor <= 0) {
-      return entry.effort;
-    }
-  }
-
-  return mix.at(-1)?.effort ?? readReasoningEffort();
-}
-
 export async function pingOpenAI() {
   const client = getOpenAIClient();
   const models = await client.models.list();
@@ -180,38 +150,6 @@ function readReasoningEffort(): OpenAIReasoningEffort {
   throw new Error(
     `LLM_REASONING_EFFORT or OPENAI_REASONING_EFFORT must be one of: ${reasoningEffortValues.join(", ")}.`
   );
-}
-
-function readReasoningMix(): ReasoningMixEntry[] {
-  const raw =
-    process.env.LLM_REASONING_MIX?.trim() ||
-    process.env.OPENAI_REASONING_MIX?.trim() ||
-    DEFAULT_REASONING_MIX;
-
-  if (!raw) {
-    return [];
-  }
-
-  return raw
-    .split(/[,\n]/)
-    .map((entry) => entry.trim())
-    .filter(Boolean)
-    .map((entry) => {
-      const [rawEffort, rawWeight] = entry.split(":").map((part) => part.trim());
-      const parsedEffort = gameReasoningEffortSchema.safeParse(rawEffort);
-      const weight = rawWeight === undefined ? 1 : Number(rawWeight);
-
-      if (!parsedEffort.success || !Number.isFinite(weight) || weight <= 0) {
-        throw new Error(
-          "LLM_REASONING_MIX must look like high:4,medium:1,low:1 using supported reasoning efforts and positive weights."
-        );
-      }
-
-      return {
-        effort: parsedEffort.data,
-        weight
-      };
-    });
 }
 
 function readServiceTier(): OpenAIServiceTier {
