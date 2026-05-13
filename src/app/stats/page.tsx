@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getPublicGameStats } from "@/lib/server/game-telemetry";
 
+export const dynamic = "force-dynamic";
+
 export default async function StatsPage() {
   const stats = await getPublicGameStats().catch(() => null);
   const hasCompletedRounds = Boolean(stats && stats.totalGames > 0);
