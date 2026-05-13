@@ -11,7 +11,7 @@ const AI_MOVE_FORMAT_NAME = "who_in_your_head_ai_move";
 const PROMPT_CACHE_KEY = "whos-in-your-head-game-master-v1";
 const GAME_MASTER_REQUEST_INSTRUCTIONS =
   "Follow the static game-master instructions in the input. Return only the structured move.";
-const OPENING_WARMUP_ANSWERS: PlayerAnswer[] = ["yes", "no", "maybe"];
+const OPENING_WARMUP_ANSWERS: PlayerAnswer[] = ["yes", "no"];
 
 const openingWarmups = new Map<PlayerAnswer, Promise<GeneratedAiMove>>();
 const warmedOpenings = new Map<PlayerAnswer, GeneratedAiMove>();

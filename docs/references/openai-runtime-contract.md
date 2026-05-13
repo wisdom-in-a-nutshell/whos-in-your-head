@@ -142,13 +142,14 @@ provider state, switch to manual context management by sending the prior output
 items back instead of the response id.
 
 The first public question is local so the round starts instantly. On `start`,
-the server asynchronously prewarms shared model responses for the possible
-answers to that opener. If the player spends even a short moment on the first
-question, answering it can reuse the warmed model move and response id instead
-of waiting for a fresh model call. The warmed response ids contain only the
-generic opener transcript (`Is this person alive?` plus `yes`, `no`, or
-`maybe`), not a player-specific target. Player games still keep unique `gameId`
-values and branch into unique model response chains after the next answer.
+the server asynchronously prewarms shared model responses for the common `yes`
+and `no` answers to that opener. If the player spends even a short moment on
+the first question, answering `yes` or `no` can reuse the warmed model move and
+response id instead of waiting for a fresh model call. The rare `maybe` branch
+uses the normal model path. The warmed response ids contain only the generic
+opener transcript (`Is this person alive?` plus `yes` or `no`), not a
+player-specific target. Player games still keep unique `gameId` values and
+branch into unique model response chains after the next answer.
 
 Local smoke on 2026-05-13 showed that prompt caching is supported through the
 current LiteLLM/Azure path when a stable user-message prefix is followed by a
