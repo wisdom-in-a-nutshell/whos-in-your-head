@@ -36,7 +36,7 @@ export async function generateAiMove(state: GameState): Promise<GeneratedAiMove>
       })
     },
     service_tier: serviceTier,
-    max_output_tokens: 700,
+    max_output_tokens: 1500,
     prompt_cache_key: "whos-in-your-head-game-master-v1",
     store: false
   });

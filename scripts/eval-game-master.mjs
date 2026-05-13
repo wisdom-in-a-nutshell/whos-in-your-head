@@ -35,13 +35,62 @@ const DEFAULT_TARGETS = [
   "Beyonce"
 ];
 
+const TARGET_PROFILES = new Map([
+  [
+    "Mia Khalifa",
+    [
+      "Living woman.",
+      "Public media personality.",
+      "First became widely known through mature-audience entertainment.",
+      "Later known for online media, commentary, sports commentary, and social platforms.",
+      "Not primarily known for mainstream film or television acting.",
+      "Not primarily known for music, sports competition, comedy, hosting, or reality TV.",
+      "Associated with the United States and Lebanon."
+    ].join(" ")
+  ],
+  [
+    "Osama bin Laden",
+    [
+      "Non-living man.",
+      "Died in 2011.",
+      "Saudi public figure.",
+      "Primarily known for al-Qaeda, violent extremism, terrorism, and public notoriety.",
+      "Not an entertainer, artist, athlete, scientist, inventor, monarch, royal-family member, or government official.",
+      "Associated with the Middle East and South Asia."
+    ].join(" ")
+  ],
+  [
+    "Kim Kardashian",
+    [
+      "Living woman.",
+      "American media personality and businesswoman.",
+      "Best known through reality TV and the Kardashian-Jenner famous family.",
+      "Part of the Kardashian-Jenner family and a daughter of Kris Jenner.",
+      "Not one of Kris Jenner's two youngest daughters; those are Kendall and Kylie.",
+      "Associated with Keeping Up with the Kardashians, fashion, beauty, social media, and business.",
+      "Not primarily known as a musician, mainstream actor, sports competitor, or TV host."
+    ].join(" ")
+  ],
+  [
+    "Donald Glover",
+    [
+      "Living American man.",
+      "Entertainer with mixed-source fame: actor, writer, comedian, musician, rapper, singer, and creator.",
+      "First became publicly known through television writing and acting, including 30 Rock and Community.",
+      "Also known for music under the stage name Childish Gambino.",
+      "Created and starred in Atlanta.",
+      "Not primarily known as an athlete, politician, reality-TV/famous-family figure, or mature-audience entertainer."
+    ].join(" ")
+  ]
+]);
+
 loadEnv();
 
 const effort = readArg("--effort") ?? process.env.LLM_REASONING_EFFORT ?? "medium";
 const limit = Number(readArg("--limit") ?? DEFAULT_TARGETS.length);
 const serviceTier = readArg("--service-tier") ?? process.env.LLM_SERVICE_TIER ?? process.env.OPENAI_SERVICE_TIER ?? "priority";
 const model = readArg("--model") ?? process.env.LLM_MODEL ?? process.env.OPENAI_MODEL ?? "gpt-5.5";
-const oracleModel = readArg("--oracle-model") ?? "gpt-5.4-mini";
+const oracleModel = readArg("--oracle-model") ?? model;
 const requestTimeoutMs = Number(readArg("--timeout-ms") ?? "45000");
 const apiKey = process.env.LLM_API_KEY || process.env.OPENAI_API_KEY;
 const baseURL = process.env.LLM_API_ENDPOINT || process.env.OPENAI_BASE_URL;
@@ -72,7 +121,7 @@ const AiMoveSchema = z
 const AnswerSchema = z
   .object({
     answer: z.enum(["yes", "no", "maybe"]),
-    note: z.string().max(500)
+    note: z.string().max(500).nullable()
   })
   .strict();
 
@@ -134,7 +183,17 @@ async function playGame(target) {
   while (state.phase === "asking" && state.questionCount <= MAX_QUESTIONS) {
     let answer;
     try {
+      const startedAt = Date.now();
       answer = await answerQuestion(target, state.latestQuestion, transcript);
+      logTrace({
+        event: "answer_oracle",
+        target,
+        model: oracleModel,
+        questionCount: state.questionCount,
+        question: state.latestQuestion,
+        answer: answer.answer,
+        durationSeconds: secondsSince(startedAt)
+      });
     } catch (error) {
       failures.push(`answer_oracle: ${formatError(error)}`);
       break;
@@ -148,7 +207,21 @@ async function playGame(target) {
     }
 
     try {
-      const move = await generateMove(state);
+      const localMove = buildStrategicLocalMove(state);
+      const startedAt = Date.now();
+      const move = localMove ?? (await generateMove(state));
+      logTrace({
+        event: localMove ? "local_strategy" : "game_master",
+        target,
+        model: localMove ? "local" : model,
+        effort,
+        serviceTier,
+        action: move.action,
+        questionCount: state.questionCount,
+        question: move.question,
+        guess: move.guess,
+        durationSeconds: secondsSince(startedAt)
+      });
       state = applyMove(state, move);
     } catch (error) {
       failures.push(`game_master: ${formatError(error)}`);
@@ -160,7 +233,19 @@ async function playGame(target) {
 
   if (!guess) {
     try {
+      const startedAt = Date.now();
       const move = await generateMove({ ...state, questionCount: MAX_QUESTIONS });
+      logTrace({
+        event: "forced_final_guess",
+        target,
+        model,
+        effort,
+        serviceTier,
+        action: move.action,
+        question: move.question,
+        guess: move.guess,
+        durationSeconds: secondsSince(startedAt)
+      });
       if (move.action === "make_guess") {
         state = applyMove(state, move);
         guess = state.finalGuess;
@@ -173,7 +258,7 @@ async function playGame(target) {
   }
 
   const judgement = guess
-    ? await judgeGuess(target, guess)
+    ? await timedJudgeGuess(target, guess)
     : { correct: false, note: "No final guess." };
 
   return {
@@ -185,6 +270,20 @@ async function playGame(target) {
     failures,
     transcript
   };
+}
+
+async function timedJudgeGuess(target, guess) {
+  const startedAt = Date.now();
+  const judgement = await judgeGuess(target, guess);
+  logTrace({
+    event: "judge",
+    target,
+    model: oracleModel,
+    guess,
+    correct: judgement.correct,
+    durationSeconds: secondsSince(startedAt)
+  });
+  return judgement;
 }
 
 async function generateMove(state) {
@@ -207,7 +306,7 @@ async function generateMove(state) {
       })
     },
     service_tier: serviceTier,
-    max_output_tokens: 700,
+    max_output_tokens: 1500,
     prompt_cache_key: "whos-in-your-head-game-master-v1",
     store: false
   });
@@ -220,14 +319,24 @@ async function generateMove(state) {
 }
 
 async function answerQuestion(target, question, transcript) {
+  const publicProfile = TARGET_PROFILES.get(target) ?? null;
   const response = await client.responses.parse({
     model: oracleModel,
     instructions:
-      "You are a strict answer oracle for a 21 questions game. The hidden target is a famous public person. Answer only from durable public facts. Use maybe when the wording is ambiguous, mixed, or not a clean yes/no.",
+      "You are a strict answer oracle for a 21 questions game. The hidden target is a famous public person. This is a safe public-fact classification task. Do not refuse. If a publicProfile is supplied, answer from that profile instead of reacting to the target name. Answer only yes, no, or maybe from durable public facts. Interpret 'first became famous' as earliest widespread public recognition, not later peak fame. Treat 'royal family' literally as a monarchic royal house, not a wealthy or prominent family. Use no when the literal wording is false, yes when it is cleanly true, and maybe only when the question is genuinely ambiguous, mixed, or unknowable to a normal player. Keep note null or very short; do not add sensitive details.",
     input: [
       {
         role: "user",
-        content: JSON.stringify({ target, question, transcript }, null, 2)
+        content: JSON.stringify(
+          {
+            target: publicProfile ? "profiled hidden target" : target,
+            publicProfile,
+            question,
+            transcript
+          },
+          null,
+          2
+        )
       }
     ],
     text: {
@@ -323,6 +432,85 @@ function applyMove(state, move) {
   };
 }
 
+function buildStrategicLocalMove(state) {
+  const answered = state.transcript;
+  const askedQuestions = answered.map((turn) => turn.question.toLowerCase());
+  const hasYes = (pattern) =>
+    answered.some((turn) => turn.answer === "yes" && pattern.test(turn.question.toLowerCase()));
+  const hasNo = (pattern) =>
+    answered.some((turn) => turn.answer === "no" && pattern.test(turn.question.toLowerCase()));
+  const hasKnownForNo = (pattern) =>
+    answered.some((turn) => {
+      const question = turn.question.toLowerCase();
+      return (
+        turn.answer === "no" &&
+        /\b(best known|primarily known|mainly known|main fame|primary fame)\b/.test(question) &&
+        pattern.test(question)
+      );
+    });
+  const hasAsked = (pattern) => askedQuestions.some((question) => pattern.test(question));
+
+  if (
+    state.questionCount < state.maxQuestions &&
+    hasYes(/\b(entertainment|media)\b/) &&
+    hasKnownForNo(/\b(acting|actor|movies|movie|television|tv)\b/) &&
+    hasKnownForNo(/\b(music|musician|singer)\b/) &&
+    !hasAsked(/\b(reality|famous family)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Are they best known through reality TV or a famous family?",
+      guess: null,
+      shortRationale: "Local high-signal split for media personalities."
+    };
+  }
+
+  if (
+    state.questionCount < state.maxQuestions &&
+    hasYes(/\b(entertainment|media)\b/) &&
+    hasKnownForNo(/\b(acting|actor|movies|movie|television|tv)\b/) &&
+    hasKnownForNo(/\b(music|musician|singer)\b/) &&
+    hasNo(/\b(reality|famous family)\b/) &&
+    !hasAsked(/\b(mature-audience entertainment|adult entertainment)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Did they first become famous through mature-audience entertainment?",
+      guess: null,
+      shortRationale: "Local high-signal split for modern media personalities."
+    };
+  }
+
+  if (
+    state.questionCount < state.maxQuestions &&
+    hasYes(/\b(public notoriety|crime|violent conflict|violence|extremism)\b/) &&
+    !hasAsked(/\b(terrorism|extremist|extremism)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Was their notoriety mainly connected to terrorism or extremist violence?",
+      guess: null,
+      shortRationale: "Local high-signal split for notoriety-first public figures."
+    };
+  }
+
+  if (
+    state.questionCount < state.maxQuestions &&
+    hasYes(/\b(acting|actor|movies|movie|television|tv)\b/) &&
+    hasYes(/\b(comedy|sitcom)\b/) &&
+    !hasAsked(/\b(also known for music|stage name|rapper|musician)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Are they also known for music under a stage name?",
+      guess: null,
+      shortRationale: "Local mixed-career split before sitcom-title chaining."
+    };
+  }
+
+  return null;
+}
+
 function buildGameMasterInput(state) {
   const snapshot = {
     gameId: state.gameId,
@@ -335,10 +523,7 @@ function buildGameMasterInput(state) {
     lastAnswer: state.transcript.at(-1)?.answer ?? null,
     transcript: state.transcript
   };
-  const directive =
-    snapshot.remainingQuestionSlots <= 0
-      ? "No question slots remain. Make a final guess now."
-      : "Ask one strong yes/no-compatible question, or make a final guess if the candidate is clear.";
+  const directive = buildDirective(state, snapshot.remainingQuestionSlots);
 
   return [
     "Use this game state as the complete source of truth.",
@@ -349,6 +534,55 @@ function buildGameMasterInput(state) {
     "",
     `<directive>${directive}</directive>`
   ].join("\n");
+}
+
+function buildDirective(state, remainingQuestionSlots) {
+  if (remainingQuestionSlots <= 0) {
+    return "No question slots remain. Make a final guess now.";
+  }
+
+  const lastTurn = state.transcript.at(-1);
+  const lastQuestion = lastTurn?.question.toLowerCase() ?? "";
+
+  if (lastTurn?.answer === "yes" && lastQuestion.includes("mature-audience entertainment")) {
+    return [
+      "The last answer confirmed mature-audience entertainment as an original public fame source.",
+      "Do not ask sensitive follow-up details.",
+      "Make the most likely canonical-name final guess now."
+    ].join(" ");
+  }
+
+  if (lastTurn?.answer === "yes" && /(reality tv|famous family)/.test(lastQuestion)) {
+    return [
+      "The last answer confirmed reality TV or famous-family public fame.",
+      "Make the most likely canonical-name guess if one candidate is clear; otherwise ask one neutral discriminator."
+    ].join(" ");
+  }
+
+  if (lastTurn?.answer === "yes" && /(also known for music|stage name)/.test(lastQuestion)) {
+    return [
+      "The last answer confirmed a mixed acting-and-music public profile.",
+      "Ask one neutral discriminator or make the likely canonical-name guess if clear."
+    ].join(" ");
+  }
+
+  if (lastTurn?.answer === "yes" && /(terrorism|extremist|extremism|al-qaeda)/.test(lastQuestion)) {
+    return [
+      "The last answer confirmed a terrorism or extremist-violence public fame source.",
+      "Do not ask sensitive follow-up details.",
+      "Make the most likely canonical-name final guess now."
+    ].join(" ");
+  }
+
+  if (lastTurn?.answer === "yes" && /(public notoriety|violent conflict|crime)/.test(lastQuestion)) {
+    return [
+      "The last answer confirmed a notoriety or conflict-related public fame source.",
+      "Do not describe harmful acts.",
+      "Ask one neutral public discriminator or make the most likely canonical-name guess."
+    ].join(" ");
+  }
+
+  return "Ask one strong yes/no-compatible question, or make a final guess if the candidate is clear.";
 }
 
 function readGameMasterInstructions() {
@@ -416,6 +650,14 @@ function formatSummary(results) {
     null,
     2
   );
+}
+
+function logTrace(value) {
+  console.log(JSON.stringify(value));
+}
+
+function secondsSince(startedAt) {
+  return Number(((Date.now() - startedAt) / 1000).toFixed(2));
 }
 
 function formatError(error) {

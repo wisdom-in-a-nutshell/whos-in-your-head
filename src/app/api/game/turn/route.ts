@@ -147,6 +147,19 @@ export async function POST(request: Request) {
 async function generateNextGameState(
   game: GameState
 ): Promise<{ generated: GeneratedAiMove; nextGame: GameState }> {
+  const strategicMove = buildStrategicLocalMove(game);
+
+  if (strategicMove) {
+    return {
+      generated: {
+        move: strategicMove,
+        requestedServiceTier: "local_strategy",
+        actualServiceTier: null
+      },
+      nextGame: applyAiMove(game, strategicMove)
+    };
+  }
+
   for (let attempt = 1; attempt <= MODEL_MOVE_ATTEMPTS; attempt += 1) {
     try {
       const generated = await generateAiMove(game);
@@ -185,6 +198,85 @@ async function generateNextGameState(
     },
     nextGame
   };
+}
+
+function buildStrategicLocalMove(game: GameState): AiMove | null {
+  const answered = game.transcript;
+  const askedQuestions = answered.map((turn) => turn.question.toLowerCase());
+  const hasYes = (pattern: RegExp) =>
+    answered.some((turn) => turn.answer === "yes" && pattern.test(turn.question.toLowerCase()));
+  const hasNo = (pattern: RegExp) =>
+    answered.some((turn) => turn.answer === "no" && pattern.test(turn.question.toLowerCase()));
+  const hasKnownForNo = (pattern: RegExp) =>
+    answered.some((turn) => {
+      const question = turn.question.toLowerCase();
+      return (
+        turn.answer === "no" &&
+        /\b(best known|primarily known|mainly known|main fame|primary fame)\b/.test(question) &&
+        pattern.test(question)
+      );
+    });
+  const hasAsked = (pattern: RegExp) => askedQuestions.some((question) => pattern.test(question));
+
+  if (
+    game.questionCount < game.maxQuestions &&
+    hasYes(/\b(entertainment|media)\b/) &&
+    hasKnownForNo(/\b(acting|actor|movies|movie|television|tv)\b/) &&
+    hasKnownForNo(/\b(music|musician|singer)\b/) &&
+    !hasAsked(/\b(reality|famous family)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Are they best known through reality TV or a famous family?",
+      guess: null,
+      shortRationale: "Local high-signal split for media personalities."
+    };
+  }
+
+  if (
+    game.questionCount < game.maxQuestions &&
+    hasYes(/\b(entertainment|media)\b/) &&
+    hasKnownForNo(/\b(acting|actor|movies|movie|television|tv)\b/) &&
+    hasKnownForNo(/\b(music|musician|singer)\b/) &&
+    hasNo(/\b(reality|famous family)\b/) &&
+    !hasAsked(/\b(mature-audience entertainment|adult entertainment)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Did they first become famous through mature-audience entertainment?",
+      guess: null,
+      shortRationale: "Local high-signal split for modern media personalities."
+    };
+  }
+
+  if (
+    game.questionCount < game.maxQuestions &&
+    hasYes(/\b(public notoriety|crime|violent conflict|violence|extremism)\b/) &&
+    !hasAsked(/\b(terrorism|extremist|extremism)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Was their notoriety mainly connected to terrorism or extremist violence?",
+      guess: null,
+      shortRationale: "Local high-signal split for notoriety-first public figures."
+    };
+  }
+
+  if (
+    game.questionCount < game.maxQuestions &&
+    hasYes(/\b(acting|actor|movies|movie|television|tv)\b/) &&
+    hasYes(/\b(comedy|sitcom)\b/) &&
+    !hasAsked(/\b(also known for music|stage name|rapper|musician)\b/)
+  ) {
+    return {
+      action: "ask_question",
+      question: "Are they also known for music under a stage name?",
+      guess: null,
+      shortRationale: "Local mixed-career split before sitcom-title chaining."
+    };
+  }
+
+  return null;
 }
 
 function describeError(error: unknown) {
@@ -244,8 +336,12 @@ function chooseRecoveryGuess(game: GameState): string {
     return "Kim Kardashian";
   }
 
-  if (/\b(adult entertainment)\b/.test(yesAnswers)) {
+  if (/\b(adult entertainment|mature-audience entertainment)\b/.test(yesAnswers)) {
     return "Mia Khalifa";
+  }
+
+  if (/\b(public notoriety|violent conflict|extremism|terrorism|al-qaeda)\b/.test(yesAnswers)) {
+    return "Osama bin Laden";
   }
 
   if (/\b(music|singer|song|album|pop)\b/.test(yesAnswers)) {

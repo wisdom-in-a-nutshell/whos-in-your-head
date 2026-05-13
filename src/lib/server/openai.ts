@@ -2,7 +2,7 @@ import "server-only";
 import OpenAI from "openai";
 
 const DEFAULT_MODEL = "gpt-5.5";
-const DEFAULT_REASONING_EFFORT: OpenAIReasoningEffort = "high";
+const DEFAULT_REASONING_EFFORT: OpenAIReasoningEffort = "medium";
 const DEFAULT_SERVICE_TIER: OpenAIServiceTier = "priority";
 
 const REASONING_EFFORTS = [
