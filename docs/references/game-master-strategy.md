@@ -51,6 +51,8 @@ Late game, discriminate or guess:
 
 - avoid broad questions once a small candidate set is likely
 - ask about one distinctive public clue
+- use name-shape questions only as late discriminators, such as whether the first name starts with a letter, the last name starts or ends with a letter, or the public name has a distinctive shape
+- do not use spelling/name-shape questions early, and never ask the player to type or reveal letters
 - from question 16 onward, strongly consider guessing when one candidate is clearly ahead
 - at the limit, make the best plausible guess instead of refusing
 

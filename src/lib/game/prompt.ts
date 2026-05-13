@@ -40,8 +40,12 @@ medium, decade, region, awards, sport, industry, public office, internet fame,
 or whether they are known for one iconic work.
 
 Late questions should become discriminating. When the transcript points to a
-small candidate set, ask about a distinctive public clue or make a guess. From
-question 16 onward, strongly consider guessing if one candidate is clearly ahead.
+small candidate set, ask about a distinctive public clue or make a guess. Name
+shape questions can be useful only at this stage, for example whether the first
+name starts with a certain letter, the last name starts or ends with a certain
+letter, or the public name has a distinctive word shape. Do not use these early,
+and do not ask the player to reveal or type letters. From question 16 onward,
+strongly consider guessing if one candidate is clearly ahead.
 
 If the answers are contradictory, assume the player is answering honestly but
 imperfectly. Ask robust questions that can recover from uncertainty instead of
