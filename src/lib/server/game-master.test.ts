@@ -90,4 +90,31 @@ describe("generateAiMove", () => {
     });
     expect(JSON.stringify(request.input)).toContain("<retry_attempt>2</retry_attempt>");
   });
+
+  it("rebuilds from full state instead of continuing a stored response chain on retry", async () => {
+    parseMock.mockResolvedValue({
+      id: "resp-retry-chain-test",
+      output_parsed: {
+        action: "ask_question",
+        question: "Were they famous before 2010?",
+        guess: null,
+        shortRationale: null
+      },
+      service_tier: "priority",
+      usage: null
+    });
+
+    const { generateAiMove } = await import("./game-master");
+    const state = {
+      ...createSharedOpeningAnswerState("yes"),
+      modelResponseId: "resp-poisoned"
+    };
+
+    await generateAiMove(state, "retry-chain-request", 2);
+
+    const request = parseMock.mock.calls[0][0] as Record<string, unknown>;
+
+    expect(request).not.toHaveProperty("previous_response_id");
+    expect(JSON.stringify(request.input)).toContain("<game_state>");
+  });
 });

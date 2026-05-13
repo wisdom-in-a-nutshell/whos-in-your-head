@@ -43,8 +43,8 @@ export async function generateAiMove(
 ): Promise<GeneratedAiMove> {
   const { client, model, reasoningEffort, serviceTier } = getOpenAIRequestConfig();
 
-  const usesPreviousResponse = state.modelResponseId !== null;
   const bypassResponseCache = retryAttempt > 1;
+  const usesPreviousResponse = state.modelResponseId !== null && !bypassResponseCache;
   const startedAt = Date.now();
 
   logInfo("game_master_request_started", {
@@ -67,7 +67,9 @@ export async function generateAiMove(
     .parse({
       model,
       instructions: GAME_MASTER_REQUEST_INSTRUCTIONS,
-      previous_response_id: state.modelResponseId ?? undefined,
+      ...(usesPreviousResponse
+        ? { previous_response_id: state.modelResponseId ?? undefined }
+        : {}),
       input: [
         {
           role: "user",
