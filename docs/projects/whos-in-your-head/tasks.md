@@ -57,6 +57,7 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - [x] Model output is parsed/validated as structured JSON before updating UI state.
 - [x] README includes setup/run instructions and env vars.
 - [x] Basic validation passes: install/build/lint or equivalent repo-native checks.
+- [x] Azure Web App deploy target and GitHub Actions CI/CD are configured without storing runtime secrets in GitHub.
 
 ## Milestones
 
@@ -96,6 +97,8 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - 2026-05-13 — Backend turn route is stateless for the MVP: the browser sends explicit game state, the server validates it, applies one action, and asks OpenAI for one structured move.
 - 2026-05-13 — Structured output uses a root object schema with nullable fields plus semantic Zod validation, because the OpenAI SDK Zod text-format helper expects a root object.
 - 2026-05-13 — `scripts/check-fast.sh` is optimized for the Stop hook: repo contract, secret scan, lint, typecheck, and tests. Production build lives in `scripts/check-full.sh`.
+- 2026-05-13 — Deploy as a standalone Next.js container to Azure Web App `whos-in-your-head-adi` on the shared `ASP-aipodcastinggroup-aef6` plan, with images in `aipodcasting.azurecr.io/whos-in-your-head`.
+- 2026-05-13 — Runtime LLM config uses Azure App Service Key Vault references for `LLM_API_ENDPOINT` and `LLM_API_KEY`; GitHub Actions only gets Azure OIDC identifiers as repo variables.
 
 ## Open Questions / Blockers
 
@@ -113,6 +116,7 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 | done | Scaffold a minimal Next.js + TypeScript app with package scripts and placeholder routes. | parent | `README.md`, `docs/references/openai-runtime-contract.md` |
 | done | Implement mocked game loop after design direction is agreed. | parent | `src/app/page.tsx`, `src/app/globals.css` |
 | done | Implement backend game-state, structured output, and server-side Responses API turn route. | parent | `src/app/api/game/turn/route.ts`, `src/lib/game/state.ts`, `src/lib/server/game-master.ts` |
+| done | Add Azure Web App deployment target, Dockerfile, GitHub Actions workflow, and Key Vault-backed runtime config. | parent | `.github/workflows/deploy.yml`, `Dockerfile`, `docs/references/deployment.md` |
 | todo | Wire the mocked frontend flow to the server-side Responses API route when the parallel frontend work is ready. | parent | `docs/references/openai-runtime-contract.md` |
 | todo | Smoke a real model game after credentials/base URL are provided. | parent | `README.md`, `docs/references/game-master-strategy.md` |
 
@@ -131,6 +135,7 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - [x] Write prompt/instructions for the game master.
 - [x] Enforce game rules in code: max 21 questions, one question per turn, final guess path, no open-ended user answers required.
 - [x] Add backend error states for invalid request, missing OpenAI config, rule violations, and invalid model moves.
+- [x] Add deployment workflow and Azure Web App runtime wiring.
 - [ ] Add frontend loading/error states when wiring the UI to the backend.
 - [ ] Polish UI enough for a 30-second demo.
 - [ ] Update README with exact setup/run/deploy steps after implementation choices are real.
@@ -155,3 +160,4 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - 2026-05-13: [DONE] Implemented the approved clean editorial arcade frontend as a clickable mocked game loop in `src/app/page.tsx` and `src/app/globals.css`. Browser-smoked start, question, final guess, result, and mobile question screens. Validation: `npm run typecheck` and `npm run build` passed.
 - 2026-05-13: [DONE] Documented the parallel design/backend direction and implemented the backend game-master scaffold: explicit game state, structured OpenAI move parsing with `responses.parse` + `zodTextFormat`, server route actions, prompt strategy, rule enforcement, and unit tests. Real model smoke remains blocked until the user provides API key/base URL.
 - 2026-05-13: [DONE] Validation after backend scaffold: `scripts/check-fast.sh` passed with repo contract, secret scan, lint, typecheck, and 9 Vitest tests; `scripts/check-full.sh` passed with production `next build`.
+- 2026-05-13: [DONE] Added Azure Web App deployment scaffolding: Docker standalone build, GitHub Actions OIDC/ACR/Web App workflow, repo-level Azure variables, Web App `whos-in-your-head-adi`, managed identity with `AcrPull` and `Key Vault Secrets User`, and Key Vault-backed `LLM_API_*` app settings. Validation: `npm run typecheck`, `npm test`, `npm run lint`, `npm run build`, and `scripts/check-fast.sh` passed. Current Azure default hostname returns `503` until the first workflow push creates `aipodcasting.azurecr.io/whos-in-your-head:latest`; local `az acr build` failed twice at ACR context download and Docker is not installed locally.
