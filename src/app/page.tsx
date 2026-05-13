@@ -394,16 +394,21 @@ export default function Home() {
           <button className="primary-action" onClick={startGame} type="button">
             Play again
           </button>
+          <div className="result-meta">
+            <p>
+              You were talking to {modelName} at {reasoningLevel} reasoning.
+              More models are coming soon to guess who&apos;s in your head.
+            </p>
+            <p>
+              Built by{" "}
+              <a href="https://www.adithyan.io/" rel="noreferrer" target="_blank">
+                Adithyan
+              </a>{" "}
+              with help from Codex.
+            </p>
+          </div>
         </section>
       ) : null}
-
-      <footer className="game-footer">
-        <span>
-          Talking to {modelName} at {reasoningLevel} reasoning.
-        </span>
-        <span>More models are coming soon to guess who&apos;s in your head.</span>
-        <span>Built by Adityan.io with Codex.</span>
-      </footer>
     </main>
   );
 }

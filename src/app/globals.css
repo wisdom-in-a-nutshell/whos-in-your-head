@@ -42,7 +42,7 @@ button {
 
 .game-shell {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto 1fr;
   min-height: 100vh;
   padding: 22px;
 }
@@ -366,21 +366,27 @@ button {
   line-height: 1.45;
 }
 
-.game-footer {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px 18px;
-  padding-top: 10px;
+.result-meta {
+  display: grid;
+  gap: 6px;
+  max-width: 560px;
+  margin-top: 12px;
   color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 750;
-  line-height: 1.4;
-  text-align: center;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.45;
 }
 
-.game-footer span:first-child {
+.result-meta p {
+  margin: 0;
+}
+
+.result-meta a {
   color: var(--ink);
+  font-weight: 850;
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 3px;
 }
 
 @media (max-width: 760px) {
@@ -477,8 +483,7 @@ button {
     height: 10px;
   }
 
-  .game-footer {
-    gap: 4px;
-    font-size: 0.7rem;
+  .result-meta {
+    font-size: 0.78rem;
   }
 }
