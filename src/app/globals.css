@@ -257,16 +257,19 @@ button {
   justify-items: center;
   gap: 22px;
   width: min(900px, 100%);
-  min-height: 324px;
+  min-height: clamp(220px, 42vh, 324px);
   border-block: 1px solid var(--line-strong);
-  overflow: hidden;
+  padding: 28px 0;
   background: var(--paper);
 }
 
 .question-stage h2,
 .guess-screen h2,
 .result-screen h2 {
-  font-size: 3.95rem;
+  max-width: min(1020px, 100%);
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  font-size: clamp(2.15rem, 4.2vw, 3.7rem);
   font-weight: 900;
   line-height: 1.03;
 }
@@ -425,14 +428,15 @@ button {
   }
 
   .question-stage {
-    min-height: 292px;
+    min-height: clamp(210px, 44vh, 292px);
     gap: 18px;
+    padding: 24px 0;
   }
 
   .question-stage h2,
   .guess-screen h2,
   .result-screen h2 {
-    font-size: 2.45rem;
+    font-size: clamp(2rem, 10vw, 2.45rem);
     line-height: 1;
   }
 

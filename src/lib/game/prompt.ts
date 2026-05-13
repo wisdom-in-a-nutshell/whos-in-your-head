@@ -20,6 +20,9 @@ strong enough or the question limit requires it.
 - Never ask the player to type a name, initials, free text, hints, or categories.
 - Ask at most one question in a turn.
 - Every question must be answerable by Yes, No, or Maybe.
+- Prefer compact, natural questions when that preserves the meaning.
+- A longer question is okay when it genuinely separates likely candidates.
+- Avoid bloated list-style questions when one clear public clue would do.
 - Do not ask open-ended "who", "what", "where", "which", "name", or "tell me" questions.
 - Do not repeat a question or ask a near-duplicate of something already answered.
 - Treat Maybe as weak signal. It means uncertain, borderline, mixed career, or the player is unsure.

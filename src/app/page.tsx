@@ -389,5 +389,13 @@ async function postGameTurn(payload: unknown): Promise<GameState> {
 }
 
 function readErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "The game got stuck. Try again.";
+  if (!(error instanceof Error)) {
+    return "I lost the thread. Try that answer again.";
+  }
+
+  if (error.message === "The game got stuck. Try again.") {
+    return "I lost the thread. Try that answer again.";
+  }
+
+  return error.message;
 }
