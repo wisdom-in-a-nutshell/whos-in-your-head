@@ -85,8 +85,14 @@ Keep state inspectable:
 - `latestQuestion`
 - `finalGuess`
 - `result`
+- `modelResponseId`
 
-The MVP route is stateless between HTTP requests. The browser sends the current explicit game state back with each `answer` or `judge_guess` action. The server validates the shape and turn rules before applying the next transition.
+The MVP route keeps HTTP handling stateless, but model turns are linked with
+the Responses API state chain. After the deterministic opener, the browser sends
+the current explicit game state back with each `answer` or `judge_guess` action,
+including the last `modelResponseId`. The server validates the shape and turn
+rules before applying the next transition, then sends `previous_response_id`
+when asking the model for the next move.
 
 ## Structured Model Move
 
@@ -115,30 +121,41 @@ The current LiteLLM endpoint has been smoke-tested with both Responses
 `text.format` and Chat Completions `response_format`; both returned parsed
 schema-valid output with `service_tier=priority`.
 
-Structured Outputs can still produce refusal or incomplete edge cases. The game
-route retries a failed model move once, logs the server-side cause, and then
-uses a deterministic recovery move so a playable round does not break.
+Structured Outputs can still produce refusal, incomplete, or provider failure
+edge cases. The game route retries a failed model move once and logs the
+server-side cause. If both attempts fail, it returns a failed-turn response so
+the browser can keep the same preserved game state and let the player retry the
+same answer. The app does not invent local recovery questions.
 
 OpenAI's GPT-5.5 guidance says to use the Responses API, reasoning controls,
-Structured Outputs, prompt caching, and static prompt prefixes for this style of
-reasoning workload. The game-master call follows that shape: stable
-instructions first, dynamic state last, `zodTextFormat` for the move schema,
+Structured Outputs, conversation state, prompt caching, and static prompt
+prefixes for this style of reasoning workload. The game-master call follows
+that shape: stable instructions first, dynamic state last, `previous_response_id`
+for continued turns, `zodTextFormat` for the move schema,
 `reasoning.effort=medium` by default, `service_tier=priority`, and a stable
 `prompt_cache_key`. It also requests `prompt_cache_retention=24h` for
 GPT-5.5-compatible extended prompt caching.
 
-Local smoke on 2026-05-13 showed the current LiteLLM/Azure path returning
-`cached_tokens=0` even for repeated identical 3.6k-token prompts, while repeated
-calls dropped from roughly 2.1s to 0.12s. Treat latency and provider dashboard
-metrics as the current source of truth for cache behavior unless the proxy starts
-surfacing nonzero cached-token counts.
+Because `previous_response_id` depends on provider-stored Responses state, the
+game-master call uses `store: true`. If a future privacy mode requires zero
+provider state, switch to manual context management by sending the prior output
+items back instead of the response id.
+
+Local smoke on 2026-05-13 showed that prompt caching is supported through the
+current LiteLLM/Azure path when a stable user-message prefix is followed by a
+varying suffix; later calls reported nonzero `cached_tokens`. Caching is still
+provider-routed and should be observed through response usage plus the LiteLLM
+dashboard rather than assumed for every individual request.
 
 ## Game-Master Prompt
 
 The game-master prompt lives in `src/lib/game/prompt.ts`. It is intentionally policy-heavy but schema-light:
 
-- stable game behavior goes in `instructions`;
-- dynamic state is sent as JSON inside `<game_state>` tags;
+- stable game behavior is sent at the start of the first model input so the
+  prefix can participate in prompt caching through the current proxy;
+- continued turns use `previous_response_id` plus a small latest-turn input;
+- dynamic state is sent as JSON inside `<game_state>` tags on the first model
+  turn;
 - output shape is enforced by Structured Outputs, not prompt prose;
 - the Zod schema includes field descriptions so the generated JSON Schema is
   clear to the model and proxy;
@@ -150,9 +167,8 @@ The game-master prompt lives in `src/lib/game/prompt.ts`. It is intentionally po
 - the strategy explicitly covers modern mixed-source fame, including internet
   creators, reality TV, adult entertainment as a tactful public fame-source
   category, controversy-first public figures, and media personalities.
-- server-side recovery asks generic fallback questions only after model move
-  retries fail, so a transient provider issue does not leave the active round
-  stuck.
+- failed model turns are surfaced as retryable question failures. The current
+  game state is preserved; no local game-master fallback invents a question.
 
 ## Tooling Note
 

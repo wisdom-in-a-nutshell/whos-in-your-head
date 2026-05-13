@@ -462,10 +462,14 @@ async function postGameTurn(payload: unknown): Promise<GameState> {
   const data = (await response.json().catch(() => null)) as GameTurnResponse | null;
 
   if (!response.ok || !data) {
-    throw new Error("The game got stuck. Try again.");
+    throw new Error("Question failed. Try that answer again.");
   }
 
   if (!data.ok) {
+    if (data.code === "game_master_error") {
+      throw new Error("Question failed. Try that answer again.");
+    }
+
     throw new Error(data.error);
   }
 
@@ -474,11 +478,7 @@ async function postGameTurn(payload: unknown): Promise<GameState> {
 
 function readErrorMessage(error: unknown): string {
   if (!(error instanceof Error)) {
-    return "I lost the thread. Try that answer again.";
-  }
-
-  if (error.message === "The game got stuck. Try again.") {
-    return "I lost the thread. Try that answer again.";
+    return "Question failed. Try that answer again.";
   }
 
   return error.message;
