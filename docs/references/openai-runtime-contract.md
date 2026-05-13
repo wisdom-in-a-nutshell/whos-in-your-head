@@ -124,7 +124,14 @@ Structured Outputs, prompt caching, and static prompt prefixes for this style of
 reasoning workload. The game-master call follows that shape: stable
 instructions first, dynamic state last, `zodTextFormat` for the move schema,
 `reasoning.effort=medium` by default, `service_tier=priority`, and a stable
-`prompt_cache_key`.
+`prompt_cache_key`. It also requests `prompt_cache_retention=24h` for
+GPT-5.5-compatible extended prompt caching.
+
+Local smoke on 2026-05-13 showed the current LiteLLM/Azure path returning
+`cached_tokens=0` even for repeated identical 3.6k-token prompts, while repeated
+calls dropped from roughly 2.1s to 0.12s. Treat latency and provider dashboard
+metrics as the current source of truth for cache behavior unless the proxy starts
+surfacing nonzero cached-token counts.
 
 ## Game-Master Prompt
 

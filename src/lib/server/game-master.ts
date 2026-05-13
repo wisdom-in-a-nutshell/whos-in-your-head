@@ -42,6 +42,7 @@ export async function generateAiMove(state: GameState): Promise<GeneratedAiMove>
     service_tier: serviceTier,
     max_output_tokens: 1500,
     prompt_cache_key: PROMPT_CACHE_KEY,
+    prompt_cache_retention: "24h",
     store: false
   });
 
