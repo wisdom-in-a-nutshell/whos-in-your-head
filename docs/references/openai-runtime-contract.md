@@ -33,14 +33,22 @@ Required:
 Optional:
 
 - `LLM_MODEL`
+- `LLM_FALLBACK_MODELS`
 - `LLM_REASONING_EFFORT`
 - `LLM_SERVICE_TIER`
 
 The server also accepts the OpenAI SDK names `OPENAI_API_KEY`,
-`OPENAI_BASE_URL`, `OPENAI_MODEL`, `OPENAI_REASONING_EFFORT`, and
-`OPENAI_SERVICE_TIER` as local fallbacks. Deployed Azure runtime should use
+`OPENAI_BASE_URL`, `OPENAI_MODEL`, `OPENAI_FALLBACK_MODELS`,
+`OPENAI_REASONING_EFFORT`, and `OPENAI_SERVICE_TIER` as local fallbacks.
+Deployed Azure runtime should use
 `LLM_API_*` app settings backed by Key Vault references so the repo does not
 depend on ambient global OpenAI provider routing.
+
+`LLM_FALLBACK_MODELS` is a comma- or newline-separated model chain. It is used
+only when the primary Responses call returns `status: "incomplete"` with
+`incomplete_details.reason: "content_filter"`. That shape is currently logged
+as a successful LiteLLM `/responses` call instead of a router
+`ContentPolicyViolationError`, so the app owns this narrow fallback case.
 
 `LLM_REASONING_EFFORT` accepts `none`, `minimal`, `low`, `medium`, `high`, or
 `xhigh`; the default is `medium`.
@@ -134,6 +142,12 @@ to bypass response-cache replay and avoid storing the failed retry response.
 The retry also ignores `previous_response_id` and rebuilds from the full
 transcript, so one bad stored Responses branch cannot trap a game turn. This
 keeps the healthy path fast while making recovery intentionally fresh.
+
+If the failed response is specifically an incomplete content-filter response,
+the route tries `LLM_FALLBACK_MODELS` before giving up. Fallback model calls use
+the same structured output schema, same prompt, and same server-side game-rule
+validation, but they rebuild from explicit game state instead of continuing the
+primary model's `previous_response_id`.
 
 OpenAI's GPT-5.5 guidance says to use the Responses API, reasoning controls,
 Structured Outputs, conversation state, prompt caching, and static prompt

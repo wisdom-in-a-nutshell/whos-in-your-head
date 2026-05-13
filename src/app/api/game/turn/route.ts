@@ -10,9 +10,10 @@ import {
   type GameState
 } from "@/lib/game/state";
 import { isFirstOpeningAnswer, OPENING_MOVE } from "@/lib/game/opening";
-import { getOpenAIRuntimeStatus } from "@/lib/server/openai";
+import { getOpenAIModelFallbacks, getOpenAIRuntimeStatus } from "@/lib/server/openai";
 import {
   generateAiMove,
+  isContentFilterIncompleteResponseError,
   readWarmedOpeningMove,
   warmOpeningMoveResponses,
   type GeneratedAiMove
@@ -138,6 +139,8 @@ export async function POST(request: Request) {
       move,
       runtime: {
         source,
+        requestedModel: generated.requestedModel,
+        actualModel: generated.actualModel,
         requestedServiceTier: generated.requestedServiceTier,
         actualServiceTier: generated.actualServiceTier,
         promptCacheKey: generated.promptCacheKey,
@@ -199,10 +202,83 @@ async function generateNextGameState(
         transcriptLength: game.transcript.length,
         error: describeError(error)
       });
+
+      if (isContentFilterIncompleteResponseError(error)) {
+        const fallback = await tryContentFilterFallbacks(game, requestId, attempt + 1);
+
+        if (fallback) {
+          return fallback;
+        }
+
+        break;
+      }
     }
   }
 
   throw new Error("The game master failed to produce a valid move after retries.");
+}
+
+async function tryContentFilterFallbacks(
+  game: GameState,
+  requestId: string,
+  retryAttempt: number
+): Promise<{ generated: GeneratedAiMove; nextGame: GameState; source: string } | null> {
+  const fallbackModels = getOpenAIModelFallbacks();
+
+  if (fallbackModels.length === 0) {
+    logWarn("game_turn_content_filter_no_fallback_configured", {
+      requestId,
+      gameId: game.gameId,
+      questionCount: game.questionCount,
+      transcriptLength: game.transcript.length
+    });
+    return null;
+  }
+
+  for (const fallbackModel of fallbackModels) {
+    try {
+      logInfo("game_turn_content_filter_fallback_started", {
+        requestId,
+        gameId: game.gameId,
+        questionCount: game.questionCount,
+        transcriptLength: game.transcript.length,
+        fallbackModel,
+        retryAttempt
+      });
+
+      const generated = await generateAiMove(game, requestId, retryAttempt, fallbackModel);
+      const nextGame = attachModelResponseId(
+        applyAiMove(game, generated.move),
+        generated.responseId
+      );
+
+      logInfo("game_turn_content_filter_fallback_succeeded", {
+        requestId,
+        gameId: game.gameId,
+        questionCount: game.questionCount,
+        fallbackModel,
+        responseId: generated.responseId
+      });
+
+      return {
+        generated,
+        nextGame,
+        source: "model_move_content_filter_fallback"
+      };
+    } catch (fallbackError) {
+      logWarn("game_turn_content_filter_fallback_failed", {
+        requestId,
+        gameId: game.gameId,
+        questionCount: game.questionCount,
+        transcriptLength: game.transcript.length,
+        fallbackModel,
+        retryAttempt,
+        error: describeError(fallbackError)
+      });
+    }
+  }
+
+  return null;
 }
 
 function readWarmedOpeningGameState(
@@ -267,6 +343,8 @@ function logAnsweredTurn({
       finalGuess: nextGame.finalGuess
     },
     runtime: {
+      requestedModel: generated.requestedModel,
+      actualModel: generated.actualModel,
       requestedServiceTier: generated.requestedServiceTier,
       actualServiceTier: generated.actualServiceTier,
       promptCacheKey: generated.promptCacheKey,

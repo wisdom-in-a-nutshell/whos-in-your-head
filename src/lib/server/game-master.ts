@@ -24,6 +24,8 @@ const warmedOpenings = new Map<PlayerAnswer, GeneratedAiMove>();
 
 export type GeneratedAiMove = {
   move: AiMove;
+  requestedModel: string;
+  actualModel: string | null;
   requestedServiceTier: string;
   actualServiceTier: string | null;
   promptCacheKey: string | null;
@@ -40,6 +42,22 @@ type LiteLLMCacheControls = {
 
 type GameMasterResponseRequest = ResponseCreateParamsNonStreaming & LiteLLMCacheControls;
 
+export class ContentFilterIncompleteResponseError extends Error {
+  constructor(
+    readonly responseId: string | null,
+    readonly model: string | null
+  ) {
+    super("OpenAI returned an incomplete content-filtered game-master response.");
+    this.name = "ContentFilterIncompleteResponseError";
+  }
+}
+
+export function isContentFilterIncompleteResponseError(
+  error: unknown
+): error is ContentFilterIncompleteResponseError {
+  return error instanceof ContentFilterIncompleteResponseError;
+}
+
 export function warmOpeningMoveResponses() {
   for (const answer of OPENING_WARMUP_ANSWERS) {
     warmOpeningMoveResponse(answer);
@@ -53,9 +71,16 @@ export function readWarmedOpeningMove(answer: PlayerAnswer): GeneratedAiMove | n
 export async function generateAiMove(
   state: GameState,
   requestId?: string,
-  retryAttempt = 1
+  retryAttempt = 1,
+  modelOverride?: string
 ): Promise<GeneratedAiMove> {
-  const { client, model, reasoningEffort, serviceTier } = getOpenAIRequestConfig();
+  const {
+    client,
+    model: configuredModel,
+    reasoningEffort,
+    serviceTier
+  } = getOpenAIRequestConfig();
+  const model = modelOverride ?? configuredModel;
 
   const bypassResponseCache = retryAttempt > 1;
   const usesPreviousResponse = state.modelResponseId !== null && !bypassResponseCache;
@@ -67,6 +92,8 @@ export async function generateAiMove(
     questionCount: state.questionCount,
     transcriptLength: state.transcript.length,
     model,
+    configuredModel,
+    modelOverride: modelOverride ?? null,
     reasoningEffort,
     requestedServiceTier: serviceTier,
     promptCacheKey: PROMPT_CACHE_KEY,
@@ -124,6 +151,8 @@ export async function generateAiMove(
         questionCount: state.questionCount,
         transcriptLength: state.transcript.length,
         model,
+        configuredModel,
+        modelOverride: modelOverride ?? null,
         reasoningEffort,
         requestedServiceTier: serviceTier,
         retryAttempt,
@@ -148,6 +177,8 @@ export async function generateAiMove(
     gameId: state.gameId,
     responseId: response.id,
     durationMs: Date.now() - startedAt,
+    requestedModel: model,
+    actualModel: response.model ?? null,
     actualServiceTier: response.service_tier ?? null,
     retryAttempt,
     bypassResponseCache,
@@ -159,6 +190,8 @@ export async function generateAiMove(
 
   return {
     move,
+    requestedModel: model,
+    actualModel: response.model ?? null,
     requestedServiceTier: serviceTier,
     actualServiceTier: response.service_tier ?? null,
     promptCacheKey: PROMPT_CACHE_KEY,
@@ -179,6 +212,18 @@ function parseGameMasterMove(
 ): AiMove {
   const outputText = response.output_text.trim();
   const responseSummary = summarizeResponse(response);
+
+  if (
+    response.status === "incomplete" &&
+    response.incomplete_details?.reason === "content_filter"
+  ) {
+    logError("game_master_content_filter_incomplete", {
+      ...context,
+      ...responseSummary,
+      outputPreview: previewOutput(outputText)
+    });
+    throw new ContentFilterIncompleteResponseError(response.id ?? null, response.model ?? null);
+  }
 
   if (!outputText) {
     logError("game_master_parse_empty", {

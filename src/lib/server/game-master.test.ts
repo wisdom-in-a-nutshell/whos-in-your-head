@@ -111,6 +111,66 @@ describe("generateAiMove", () => {
     expect(request).not.toHaveProperty("previous_response_id");
     expect(JSON.stringify(request.input)).toContain("<game_state>");
   });
+
+  it("throws a typed error for incomplete content-filter responses", async () => {
+    createMock.mockResolvedValue({
+      ...createResponse({
+        id: "resp-content-filter-test",
+        outputText: "I'm sorry, but I cannot assist with that request."
+      }),
+      status: "incomplete",
+      incomplete_details: {
+        reason: "content_filter"
+      }
+    });
+
+    const {
+      generateAiMove,
+      isContentFilterIncompleteResponseError
+    } = await import("./game-master");
+
+    await expect(
+      generateAiMove(createSharedOpeningAnswerState("no"), "content-filter-request")
+    ).rejects.toSatisfy(isContentFilterIncompleteResponseError);
+  });
+
+  it("can request a configured fallback model while rebuilding from full state", async () => {
+    createMock.mockResolvedValue(createResponse({
+      id: "resp-fallback-test",
+      outputText: JSON.stringify({
+        action: "ask_question",
+        question: "Were they mainly known outside the United States?",
+        guess: null,
+        shortRationale: null
+      })
+    }));
+
+    const { generateAiMove } = await import("./game-master");
+    const state = {
+      ...createSharedOpeningAnswerState("no"),
+      modelResponseId: "resp-primary-filtered"
+    };
+
+    const generated = await generateAiMove(
+      state,
+      "fallback-request",
+      2,
+      "claude-4.6-opus"
+    );
+
+    const request = createMock.mock.calls[0][0] as Record<string, unknown>;
+
+    expect(generated.requestedModel).toBe("claude-4.6-opus");
+    expect(request).toMatchObject({
+      model: "claude-4.6-opus",
+      cache: {
+        "no-cache": true,
+        "no-store": true
+      }
+    });
+    expect(request).not.toHaveProperty("previous_response_id");
+    expect(JSON.stringify(request.input)).toContain("<game_state>");
+  });
 });
 
 function createResponse({ id, outputText }: { id: string; outputText: string }) {

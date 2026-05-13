@@ -23,6 +23,7 @@ type OpenAIConfig = {
   apiKey?: string;
   baseURL?: string;
   model: string;
+  fallbackModels: string[];
   reasoningEffort: OpenAIReasoningEffort;
   serviceTier: OpenAIServiceTier;
 };
@@ -31,6 +32,7 @@ export type OpenAIRuntimeStatus = {
   configured: boolean;
   baseUrlConfigured: boolean;
   model: string;
+  fallbackModels: string[];
   reasoningEffort: OpenAIReasoningEffort;
   serviceTier: OpenAIServiceTier;
   configurationError: string | null;
@@ -43,6 +45,7 @@ function readOpenAIConfig(): OpenAIConfig {
     process.env.LLM_API_ENDPOINT?.trim() || process.env.OPENAI_BASE_URL?.trim();
   const model =
     process.env.LLM_MODEL?.trim() || process.env.OPENAI_MODEL?.trim() || DEFAULT_MODEL;
+  const fallbackModels = readFallbackModels(model);
   const reasoningEffort = readReasoningEffort();
   const serviceTier = readServiceTier();
 
@@ -50,6 +53,7 @@ function readOpenAIConfig(): OpenAIConfig {
     apiKey: apiKey || undefined,
     baseURL: baseURL || undefined,
     model,
+    fallbackModels,
     reasoningEffort,
     serviceTier
   };
@@ -63,6 +67,7 @@ export function getOpenAIRuntimeStatus(): OpenAIRuntimeStatus {
       configured: Boolean(config.apiKey),
       baseUrlConfigured: Boolean(config.baseURL),
       model: config.model,
+      fallbackModels: config.fallbackModels,
       reasoningEffort: config.reasoningEffort,
       serviceTier: config.serviceTier,
       configurationError: null
@@ -79,6 +84,7 @@ export function getOpenAIRuntimeStatus(): OpenAIRuntimeStatus {
       configured: Boolean(apiKey),
       baseUrlConfigured: Boolean(baseURL),
       model,
+      fallbackModels: [],
       reasoningEffort: DEFAULT_REASONING_EFFORT,
       serviceTier: DEFAULT_SERVICE_TIER,
       configurationError:
@@ -106,9 +112,14 @@ export function getOpenAIRequestConfig() {
   return {
     client: getOpenAIClient(),
     model: config.model,
+    fallbackModels: config.fallbackModels,
     reasoningEffort: config.reasoningEffort,
     serviceTier: config.serviceTier
   };
+}
+
+export function getOpenAIModelFallbacks() {
+  return readOpenAIConfig().fallbackModels;
 }
 
 export async function pingOpenAI() {
@@ -154,4 +165,28 @@ function readServiceTier(): OpenAIServiceTier {
   throw new Error(
     `LLM_SERVICE_TIER or OPENAI_SERVICE_TIER must be one of: ${SERVICE_TIERS.join(", ")}.`
   );
+}
+
+function readFallbackModels(primaryModel: string): string[] {
+  const raw =
+    process.env.LLM_FALLBACK_MODELS?.trim() ||
+    process.env.OPENAI_FALLBACK_MODELS?.trim();
+
+  if (!raw) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+
+  return raw
+    .split(/[,\n]/)
+    .map((model) => model.trim())
+    .filter((model) => {
+      if (!model || model === primaryModel || seen.has(model)) {
+        return false;
+      }
+
+      seen.add(model);
+      return true;
+    });
 }
