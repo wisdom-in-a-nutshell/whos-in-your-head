@@ -126,10 +126,16 @@ The game-master prompt lives in `src/lib/game/prompt.ts`. It is intentionally po
 - stable game behavior goes in `instructions`;
 - dynamic state is sent as JSON inside `<game_state>` tags;
 - output shape is enforced by Structured Outputs, not prompt prose;
-- the prompt prioritizes high-information early questions, narrowing middle questions, and late discriminating guesses.
+- the Zod schema includes field descriptions so the generated JSON Schema is
+  clear to the model and proxy;
+- the prompt prioritizes high-information early questions, narrowing middle
+  questions, and late discriminating guesses.
 - the prompt explicitly asks the model not to apologize or refuse in this
   harmless public-figure game; uncertain states should become a strong
   discriminator or a plausible guess.
+- the strategy explicitly covers modern mixed-source fame, including internet
+  creators, reality TV, adult entertainment as a tactful public fame-source
+  category, controversy-first public figures, and media personalities.
 
 ## Tooling Note
 

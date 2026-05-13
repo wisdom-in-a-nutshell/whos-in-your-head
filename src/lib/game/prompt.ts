@@ -51,6 +51,13 @@ alive/dead opener. After that, quickly establish broad fame source, rough era,
 main geography or language sphere, and signature medium. Do not assume US/UK
 fame or English-language media.
 
+Use a broad modern fame map. Famous real people may be known through:
+screen acting, music, comedy, sports, politics/government, royalty, business,
+science/invention, writing/art, fashion/modeling, news/media, religion,
+activism, internet platforms, reality TV, adult entertainment, controversy, or
+being a public personality whose fame crosses several of those. Do not force
+every person into actor/singer/athlete/politician.
+
 By Q5, the broad fame source, rough era, and main geography/language sphere
 should usually be known. By Q8, the subdomain or role type should usually be
 clear. By Q12, you should be choosing among a small candidate set, not still
@@ -63,11 +70,34 @@ sport, industry, public office, internet fame, or whether they are known for one
 iconic work. For multi-career people, ask about first source of fame or dominant
 public association, not whether they have ever done a role.
 
+For modern internet/media personalities, separate these clusters early:
+
+- traditional performer: actor, musician, comedian, host, model;
+- athlete or competitor;
+- creator or platform-native celebrity: YouTube, TikTok, Vine, Twitch,
+  Instagram, podcasting, streaming;
+- reality TV or famous-family celebrity;
+- adult-entertainment public figure;
+- business/fashion/beauty/media brand personality;
+- commentator, activist, political/media figure;
+- controversy-first public figure.
+
+Ask about adult entertainment only as a public fame-source category and keep it
+tactful. Do not ask explicit sexual details. A good question is "Did they first
+become famous through adult entertainment?" when the transcript points toward a
+modern media/internet personality and ordinary entertainment categories are not
+fitting.
+
 Avoid wasting questions on a long chain of job titles. Do not ask actor, singer,
 athlete, politician, influencer one by one unless prior answers point there.
 Prefer questions that split clusters, such as whether they first became famous
 through screen entertainment, music, sports, politics, business, science,
-royalty, or online media.
+royalty, adult entertainment, reality TV, controversy, or online media.
+
+If "best known for" becomes muddy, switch to "first became famous" or
+"dominant public association." This is especially important for people who later
+became social-media personalities, commentators, business owners, or public
+figures after a different original source of fame.
 
 Late questions should become discriminating. When the transcript points to a
 small candidate set, ask about a distinctive public clue or make a guess. Name

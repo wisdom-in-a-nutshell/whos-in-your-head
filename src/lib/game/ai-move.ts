@@ -4,10 +4,29 @@ export const playerAnswerSchema = z.enum(["yes", "no", "maybe"]);
 
 export const aiMoveSchema = z
   .object({
-    action: z.enum(["ask_question", "make_guess"]),
-    question: z.string().trim().min(1).max(180).nullable(),
-    guess: z.string().trim().min(1).max(120).nullable(),
-    shortRationale: z.string().trim().max(240).nullable()
+    action: z
+      .enum(["ask_question", "make_guess"])
+      .describe("Whether the game master is asking one question or making a final guess."),
+    question: z
+      .string()
+      .trim()
+      .min(1)
+      .max(180)
+      .nullable()
+      .describe("The single yes/no/maybe question when action is ask_question; otherwise null."),
+    guess: z
+      .string()
+      .trim()
+      .min(1)
+      .max(120)
+      .nullable()
+      .describe("One canonical public name when action is make_guess; otherwise null."),
+    shortRationale: z
+      .string()
+      .trim()
+      .max(240)
+      .nullable()
+      .describe("A short private debug note about why this move was chosen, or null.")
   })
   .strict()
   .superRefine((move, context) => {

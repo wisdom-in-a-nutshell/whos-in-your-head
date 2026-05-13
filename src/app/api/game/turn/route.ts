@@ -27,6 +27,9 @@ const RECOVERY_QUESTIONS = [
   "Are they primarily famous for music?",
   "Are they primarily famous for acting or screen work?",
   "Are they primarily famous through social media or online video?",
+  "Are they better described as a media personality than a traditional performer?",
+  "Did they first become famous through adult entertainment?",
+  "Are they publicly associated with a major controversy?",
   "Are they primarily famous outside the United States?",
   "Did they become famous before 2010?",
   "Are they associated with one signature work?",
@@ -239,6 +242,10 @@ function chooseRecoveryGuess(game: GameState): string {
 
   if (/\b(instagram|social media|online|vine|youtube|internet)\b/.test(yesAnswers)) {
     return "Kim Kardashian";
+  }
+
+  if (/\b(adult entertainment)\b/.test(yesAnswers)) {
+    return "Mia Khalifa";
   }
 
   if (/\b(music|singer|song|album|pop)\b/.test(yesAnswers)) {
