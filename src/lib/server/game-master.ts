@@ -7,8 +7,14 @@ import { getOpenAIRequestConfig } from "./openai";
 
 const AI_MOVE_FORMAT_NAME = "who_in_your_head_ai_move";
 
-export async function generateAiMove(state: GameState): Promise<AiMove> {
-  const { client, model, reasoningEffort } = getOpenAIRequestConfig();
+export type GeneratedAiMove = {
+  move: AiMove;
+  requestedServiceTier: string;
+  actualServiceTier: string | null;
+};
+
+export async function generateAiMove(state: GameState): Promise<GeneratedAiMove> {
+  const { client, model, reasoningEffort, serviceTier } = getOpenAIRequestConfig();
 
   const response = await client.responses.parse({
     model,
@@ -29,6 +35,7 @@ export async function generateAiMove(state: GameState): Promise<AiMove> {
           "The next game-master move: either one yes/no-compatible question or one final famous-person guess."
       })
     },
+    service_tier: serviceTier,
     max_output_tokens: 700,
     prompt_cache_key: "whos-in-your-head-game-master-v1",
     store: false
@@ -40,5 +47,9 @@ export async function generateAiMove(state: GameState): Promise<AiMove> {
     throw new Error("OpenAI returned no parsed game-master move.");
   }
 
-  return move;
+  return {
+    move,
+    requestedServiceTier: serviceTier,
+    actualServiceTier: response.service_tier ?? null
+  };
 }

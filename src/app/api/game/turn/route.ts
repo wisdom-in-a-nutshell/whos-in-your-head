@@ -9,8 +9,16 @@ import {
 } from "@/lib/game/state";
 import { getOpenAIRuntimeStatus } from "@/lib/server/openai";
 import { generateAiMove } from "@/lib/server/game-master";
+import type { AiMove } from "@/lib/game/ai-move";
 
 export const runtime = "nodejs";
+
+const OPENING_MOVE: AiMove = {
+  action: "ask_question",
+  question: "Is this person alive?",
+  guess: null,
+  shortRationale: "Open with a broad split."
+};
 
 export function GET() {
   return NextResponse.json({
@@ -43,6 +51,19 @@ export async function POST(request: Request) {
       });
     }
 
+    if (parsed.data.action === "start") {
+      const nextGame = applyAiMove(createInitialGameState(), OPENING_MOVE);
+
+      return NextResponse.json({
+        ok: true,
+        game: nextGame,
+        move: OPENING_MOVE,
+        runtime: {
+          source: "local_opening_question"
+        }
+      });
+    }
+
     const status = getOpenAIRuntimeStatus();
 
     if (status.configurationError) {
@@ -69,18 +90,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const game =
-      parsed.data.action === "start"
-        ? createInitialGameState()
-        : recordPlayerAnswer(parsed.data.state, parsed.data.answer);
-
-    const move = await generateAiMove(game);
+    const game = recordPlayerAnswer(parsed.data.state, parsed.data.answer);
+    const generated = await generateAiMove(game);
+    const move = generated.move;
     const nextGame = applyAiMove(game, move);
 
     return NextResponse.json({
       ok: true,
       game: nextGame,
-      move
+      move,
+      runtime: {
+        requestedServiceTier: generated.requestedServiceTier,
+        actualServiceTier: generated.actualServiceTier
+      }
     });
   } catch (error) {
     const isRuleError = error instanceof GameRuleError;

@@ -7,7 +7,7 @@ A small web game prototype: think of a famous person, answer only yes/no/maybe, 
 Start simple:
 
 - Text-first web app, not voice-first.
-- User answers via buttons: **Yes**, **No**, **Maybe / Not sure**, plus optional text note.
+- User answers via buttons: **Yes**, **No**, or **Not sure**.
 - Server uses the OpenAI Responses API through the official JavaScript SDK.
 - Keep game state explicit in the app/server; do not rely only on the model remembering rules.
 - Realtime voice is an optional later layer, not the MVP.
@@ -38,11 +38,13 @@ Optional env:
 
 ```bash
 LLM_MODEL=gpt-5.5
-LLM_REASONING_EFFORT=medium
+LLM_REASONING_EFFORT=high
+LLM_SERVICE_TIER=priority
 ```
 
 The server also accepts `OPENAI_API_KEY`, `OPENAI_BASE_URL`,
-`OPENAI_MODEL`, and `OPENAI_REASONING_EFFORT` as local fallback names.
+`OPENAI_MODEL`, `OPENAI_REASONING_EFFORT`, and `OPENAI_SERVICE_TIER` as local
+fallback names.
 For deployed Azure runtime, prefer `LLM_API_*` app settings backed by Key Vault
 references.
 
@@ -62,7 +64,10 @@ Useful scaffold endpoints:
 
 ## Current implementation state
 
-The repository has a clickable mocked frontend and a backend game-turn route scaffolded for real OpenAI calls. The backend owns game rules, validates structured model moves, and keeps the OpenAI API key server-side.
+The repository has a playable frontend wired to a backend game-turn route for
+real OpenAI-compatible calls. The first question is deterministic for speed;
+later turns use structured model moves. The backend owns game rules, validates
+model output, and keeps the OpenAI API key server-side.
 
 ## Project tracker
 

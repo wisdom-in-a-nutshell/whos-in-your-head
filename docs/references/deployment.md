@@ -39,7 +39,8 @@ Runtime LLM config lives on the Azure Web App as Key Vault references:
 Non-secret runtime defaults:
 
 - `LLM_MODEL=gpt-5.5`
-- `LLM_REASONING_EFFORT=medium`
+- `LLM_REASONING_EFFORT=high`
+- `LLM_SERVICE_TIER=priority`
 
 The Web App has a system-assigned managed identity with `Key Vault Secrets User`
 on `kv-shared-repos`.

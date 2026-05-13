@@ -2,7 +2,6 @@ import { ImageResponse } from "next/og";
 
 const paper = "#fbfaf6";
 const ink = "#171311";
-const muted = "#706462";
 const accent = "#c83832";
 
 export const alt =
@@ -83,15 +82,7 @@ export default function Image() {
           </div>
         </div>
 
-        <div
-          style={{
-            color: muted,
-            fontSize: 34,
-            fontWeight: 800
-          }}
-        >
-          Don&apos;t say it out loud.
-        </div>
+        <div />
       </div>
     ),
     size

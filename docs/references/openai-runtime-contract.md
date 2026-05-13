@@ -34,15 +34,21 @@ Optional:
 
 - `LLM_MODEL`
 - `LLM_REASONING_EFFORT`
+- `LLM_SERVICE_TIER`
 
 The server also accepts the OpenAI SDK names `OPENAI_API_KEY`,
-`OPENAI_BASE_URL`, `OPENAI_MODEL`, and `OPENAI_REASONING_EFFORT` as local
-fallbacks. Deployed Azure runtime should use `LLM_API_*` app settings backed by
-Key Vault references so the repo does not depend on ambient global OpenAI
-provider routing.
+`OPENAI_BASE_URL`, `OPENAI_MODEL`, `OPENAI_REASONING_EFFORT`, and
+`OPENAI_SERVICE_TIER` as local fallbacks. Deployed Azure runtime should use
+`LLM_API_*` app settings backed by Key Vault references so the repo does not
+depend on ambient global OpenAI provider routing.
 
 `LLM_REASONING_EFFORT` accepts `none`, `minimal`, `low`, `medium`, `high`, or
-`xhigh`; the default is `medium`.
+`xhigh`; the default is `high`.
+
+`LLM_SERVICE_TIER` accepts `auto`, `default`, or `priority`; the default is
+`priority`. The value is sent as the Responses API request-level `service_tier`,
+so the app can choose priority processing per game-master call without changing
+the Azure deployment-level setting.
 
 ## Scaffold Endpoints
 
@@ -53,7 +59,7 @@ The package scaffold includes these server routes:
 - `GET /api/openai/status?check=1` attempts a server-side OpenAI-compatible connection check when `LLM_API_KEY` or `OPENAI_API_KEY` is configured.
 - `GET /api/game/turn` confirms the game-turn route exists.
 - `POST /api/game/turn` accepts these actions:
-  - `start`: create a new game and ask OpenAI for the first move.
+  - `start`: create a new game with the deterministic opening question, `Is this person alive?`, without calling OpenAI.
   - `answer`: record the answer to the active question and ask OpenAI for the next move.
   - `judge_guess`: mark the final guess as correct or incorrect without calling OpenAI.
 
@@ -100,7 +106,9 @@ The Zod schema then adds semantic validation:
 - `ask_question` requires `question` and forbids `guess`.
 - `make_guess` requires `guess` and forbids `question`.
 
-The server calls `openai.responses.parse` with `zodTextFormat(aiMoveSchema, ...)` and never returns the raw OpenAI response to the browser.
+For answered turns after the deterministic opener, the server calls
+`openai.responses.parse` with `zodTextFormat(aiMoveSchema, ...)` and never
+returns the raw OpenAI response to the browser.
 
 ## Game-Master Prompt
 
