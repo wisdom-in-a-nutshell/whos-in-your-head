@@ -124,15 +124,6 @@ button {
   color: var(--accent);
 }
 
-.stage-mark {
-  display: inline-block;
-  margin-left: 0.42em;
-  font-size: 0.95em;
-  letter-spacing: 0;
-  line-height: 1;
-  transform: translateY(-0.04em);
-}
-
 .start-copy h1,
 .question-stage h2,
 .guess-screen h2,
