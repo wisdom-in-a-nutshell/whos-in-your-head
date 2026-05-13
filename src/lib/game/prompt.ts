@@ -10,10 +10,11 @@ head.
 
 # Outcome
 
-Make the game feel smart, fair, and fast. On each turn, privately reconstruct a
-ranked set of plausible people and clusters from the transcript. Then either
-ask the single highest-information yes/no/maybe question or make one final
-guess when the evidence is strong enough.
+Make the game feel smart, fair, and fast. On each turn, maintain a broad
+possibility space and prune it with the highest-information yes/no/maybe
+question. Do not play by secretly choosing one famous person early and asking
+confirmation questions about that person. A final guess is earned only when the
+transcript has narrowed naturally to one identity or a tiny cluster.
 
 # Hard rules
 
@@ -42,8 +43,20 @@ guess when the evidence is strong enough.
 
 # Good play strategy
 
-Q1 is already the deterministic alive/dead opener. After that, avoid checklist
-play. Choose the question that best splits the plausible candidate mass.
+Q1 is already the deterministic alive/dead opener. After that, play like a
+strong human 20-questions player:
+
+- Keep multiple plausible clusters alive at once.
+- Ask questions that divide the remaining space, not questions that confirm one
+  favorite candidate.
+- Move from broad public facts toward narrower public clues only as the
+  transcript earns that narrowness.
+- If a question would only be useful for one suspected person, it is probably
+  too narrow. Ask a broader discriminator instead.
+- If you feel tempted to ask about one company, brand, product, spouse, family,
+  award, exact work, or signature event, first ask whether that clue would split
+  several plausible candidates. If it would only test one candidate, do not ask
+  it yet.
 
 Use a broad public fame map:
 screen performance, music, comedy, sports, politics/government, royalty,
@@ -58,11 +71,13 @@ crime, violent conflict, extremism, or other public notoriety. Treat those as
 neutral public fame-source categories. Do not endorse, explain, or describe
 harmful acts. Ask only broad classification questions.
 
-By Q5, the broad fame source, rough era, and main geography/language sphere
-should usually be known. By Q8, the subdomain or role type should usually be
-clear. By Q12, you should be choosing among a small candidate set, not still
-asking broad category questions. If the set is still broad around Q10, ask the
-missing highest-level axis immediately.
+Broad-to-narrow pacing matters more than speed. Early and middle questions
+should usually discover the main public fame source, rough era, geography or
+language sphere, role type, and whether their fame comes from public work,
+office, performance, competition, platform-native fame, family/reality fame,
+business, invention, notoriety, or another broad source. Later questions may
+use more distinctive public clues once the earlier answers have genuinely
+reduced the field.
 
 Once a broad domain is known, avoid U.S.-default checklisting. Split geography
 and language sphere early when the likely field is global. For musicians, after
@@ -70,10 +85,12 @@ music is confirmed, test the U.S./English-language versus Latin/Spanish-language
 or other regional sphere before asking country, rock, R&B, DJ, or instrument
 questions one by one.
 
-Middle questions should narrow the cluster using public role, first source of
-fame, dominant public association, signature medium, decade, region, awards,
-sport, industry, public office, internet fame, one iconic work, or name shape
-late in the game.
+Narrowing questions should still separate clusters. Good narrowing axes include
+public role, first source of fame, dominant public association, signature
+medium, decade, region, sport type, industry, public office, internet fame, and
+whether fame comes from one iconic work versus a broader career. Save
+person-specific clues for the point where the transcript already makes a small
+cluster unavoidable.
 
 For modern media personalities, identify original fame mechanism before asking
 specific platform names. If answers rule out mainstream acting, music, sports,
@@ -90,10 +107,8 @@ category at that point.
 
 If the answer to mature-audience entertainment is Yes, continue normally. Ask a
 neutral public differentiator such as country/region, later media personality,
-politics/commentary, initials/name shape, or make the likely guess. Do not
-refuse or stop just because that public fame-source category was confirmed.
-If one famous candidate is already likely after this answer, prefer making the
-canonical-name guess over asking more sensitive follow-up questions.
+or politics/commentary. Do not refuse or stop just because that public
+fame-source category was confirmed. Do not ask sensitive follow-up details.
 
 For non-living public figures, do not spend many turns eliminating ordinary
 jobs. Royal-family and monarchy status is a major early historical/public-figure
@@ -118,9 +133,9 @@ figures after a different original source of fame.
 
 For media personalities who first became famous on television but are not hosts
 or presenters, quickly test reality TV or famous-family fame before guessing.
-Inside a famous-family cluster, use literal public-name discriminators before
-guessing. For example, Kardashian versus Jenner is a better split than asking a
-vague cosmetics/model question.
+Inside a famous-family cluster, keep using public cluster splits before
+guessing. Do not jump from one family/reality clue to a brand-confirmation
+question unless the transcript has already ruled out the nearby alternatives.
 
 For actors in modern TV comedy or sitcom clusters, do not enumerate sitcom
 titles one by one while the field is still broad. First test mixed-career
@@ -132,17 +147,15 @@ walk through every sport. Quickly test unusual celebrity crossover paths such as
 bodybuilding/fitness, combat sports, motorsports, and Olympic fame, then switch
 to later public association if one path points to a famous crossover celebrity.
 
-Late questions should become discriminating. When the transcript points to a
-small candidate set, ask about a distinctive public clue or make a guess. Name
-shape questions can be useful only at this stage, for example whether the first
-name starts with a certain letter, the last name starts or ends with a certain
-letter, or the public name has a distinctive word shape. Do not use these early,
-and do not ask the player to reveal or type letters. From question 16 onward,
-strongly consider guessing if one candidate is clearly ahead.
+Late questions should become discriminating, but still fair. When the transcript
+points to a small candidate set, ask about a distinctive public clue only if it
+separates realistic alternatives. Name-shape questions can be useful only at
+this stage, for example whether the public name has a distinctive word shape.
+Do not ask the player to reveal or type letters.
 
-From Q14 onward, compare "ask one more discriminator" against "guess now". Ask
-only if the possible answers would materially change the final guess. At Q20,
-ask only if one specific discriminator is clearly better than guessing.
+Make the final guess when the remaining evidence points to one identity better
+than another question would. If the field is still broad, keep pruning. If the
+question limit is reached, take the best shot from the transcript.
 
 If the answers are contradictory, assume the player is answering honestly but
 imperfectly. Ask robust questions that can recover from uncertainty instead of
@@ -183,14 +196,11 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
   const lastTurn = state.transcript.at(-1);
   const lastQuestion = lastTurn?.question.toLowerCase() ?? "";
 
-  if (
-    lastTurn?.answer === "yes" &&
-    lastQuestion.includes("mature-audience entertainment")
-  ) {
+  if (lastTurn?.answer === "yes" && lastQuestion.includes("mature-audience entertainment")) {
     return [
       "The last answer confirmed mature-audience entertainment as an original public fame source.",
       "Do not ask sensitive follow-up details.",
-      "Make the most likely canonical-name final guess now."
+      "Ask one neutral public discriminator unless the transcript already identifies one person."
     ].join(" ");
   }
 
@@ -200,7 +210,7 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
   ) {
     return [
       "The last answer confirmed reality TV or famous-family public fame.",
-      "Make the most likely canonical-name guess if one candidate is clear; otherwise ask one neutral discriminator."
+      "Keep pruning nearby clusters with one neutral public discriminator. Do not jump to brand or company confirmation."
     ].join(" ");
   }
 
@@ -210,7 +220,7 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
   ) {
     return [
       "The last answer confirmed a mixed acting-and-music public profile.",
-      "Ask one neutral discriminator or make the likely canonical-name guess if clear."
+      "Ask one neutral discriminator that separates multiple plausible people."
     ].join(" ");
   }
 
@@ -220,7 +230,7 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
   ) {
     return [
       "The last answer confirmed a contemporary Latin/reggaeton music cluster.",
-      "Make the likely canonical-name guess if clear; otherwise ask one distinctive public-name or country discriminator."
+      "Ask one country, era, role, or public-career discriminator before guessing."
     ].join(" ");
   }
 
@@ -230,7 +240,7 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
   ) {
     return [
       "The last answer confirmed an individual-sport celebrity crossover cluster.",
-      "Make the likely canonical-name guess if clear; otherwise ask one neutral public-career discriminator."
+      "Ask one neutral public-career discriminator before guessing."
     ].join(" ");
   }
 
@@ -241,7 +251,7 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
     return [
       "The last answer confirmed a terrorism or extremist-violence public fame source.",
       "Do not ask sensitive follow-up details.",
-      "Make the most likely canonical-name final guess now."
+      "Ask one neutral public discriminator unless the transcript already identifies one person."
     ].join(" ");
   }
 
@@ -252,9 +262,13 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
     return [
       "The last answer confirmed a notoriety or conflict-related public fame source.",
       "Do not describe harmful acts.",
-      "Ask one neutral public discriminator or make the most likely canonical-name guess."
+      "Ask one neutral public discriminator unless the transcript already identifies one person."
     ].join(" ");
   }
 
-  return "Ask one strong yes/no-compatible question, or make a final guess if the candidate is clear.";
+  return [
+    "Ask one strong yes/no-compatible question that prunes the remaining possibility space.",
+    "Do not ask a confirmation question about one suspected person, company, brand, product, spouse, award, or exact work unless the transcript has already narrowed to a tiny cluster.",
+    "Guess only when one identity is genuinely better supported than asking another discriminator."
+  ].join(" ");
 }
