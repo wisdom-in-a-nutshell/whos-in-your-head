@@ -46,7 +46,25 @@ on `kv-shared-repos`.
 
 ## DNS
 
-DNS/custom-domain binding is intentionally deferred. The basic deployment is
-available on the Azure default hostname first:
+Primary public hostname:
+
+`https://mindreader.adithyan.io`
+
+Azure fallback hostname:
 
 `https://whos-in-your-head-adi.azurewebsites.net`
+
+Cloudflare records:
+
+- `mindreader.adithyan.io` CNAME -> `whos-in-your-head-adi.azurewebsites.net`, proxied.
+- `asuid.mindreader.adithyan.io` TXT -> the Web App `customDomainVerificationId`.
+
+Azure hostname binding:
+
+- `mindreader.adithyan.io` is verified on `whos-in-your-head-adi`.
+- SNI TLS uses the existing `cf-origin-adithyan-io` wildcard Cloudflare Origin
+  Certificate in Azure.
+
+When setting up another `adithyan.io` toy app, create the CNAME as DNS-only
+first so Azure can verify the hostname, bind the existing wildcard origin cert,
+then switch the CNAME to proxied in Cloudflare.
