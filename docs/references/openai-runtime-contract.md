@@ -27,14 +27,22 @@ The browser must never receive or use:
 
 Required:
 
-- `OPENAI_API_KEY`
+- `LLM_API_KEY`
+- `LLM_API_ENDPOINT`
 
 Optional:
 
-- `OPENAI_MODEL`
-- `OPENAI_BASE_URL`
+- `LLM_MODEL`
+- `LLM_REASONING_EFFORT`
 
-`OPENAI_BASE_URL` exists so local or alternate OpenAI-compatible providers can be tested later without changing app code.
+The server also accepts the OpenAI SDK names `OPENAI_API_KEY`,
+`OPENAI_BASE_URL`, `OPENAI_MODEL`, and `OPENAI_REASONING_EFFORT` as local
+fallbacks. Deployed Azure runtime should use `LLM_API_*` app settings backed by
+Key Vault references so the repo does not depend on ambient global OpenAI
+provider routing.
+
+`LLM_REASONING_EFFORT` accepts `none`, `minimal`, `low`, `medium`, `high`, or
+`xhigh`; the default is `medium`.
 
 ## Scaffold Endpoints
 
@@ -42,9 +50,12 @@ The package scaffold includes these server routes:
 
 - `GET /api/health` returns a basic app health response.
 - `GET /api/openai/status` reports whether OpenAI runtime env is configured without exposing secrets.
-- `GET /api/openai/status?check=1` attempts a server-side OpenAI-compatible connection check when `OPENAI_API_KEY` is configured.
+- `GET /api/openai/status?check=1` attempts a server-side OpenAI-compatible connection check when `LLM_API_KEY` or `OPENAI_API_KEY` is configured.
 - `GET /api/game/turn` confirms the game-turn route exists.
-- `POST /api/game/turn` validates the future turn request shape and returns `501` until the game design and core loop are implemented.
+- `POST /api/game/turn` accepts these actions:
+  - `start`: create a new game and ask OpenAI for the first move.
+  - `answer`: record the answer to the active question and ask OpenAI for the next move.
+  - `judge_guess`: mark the final guess as correct or incorrect without calling OpenAI.
 
 ## Game State Authority
 
@@ -69,27 +80,38 @@ Keep state inspectable:
 - `finalGuess`
 - `result`
 
+The MVP route is stateless between HTTP requests. The browser sends the current explicit game state back with each `answer` or `judge_guess` action. The server validates the shape and turn rules before applying the next transition.
+
 ## Structured Model Move
 
-Prefer a schema shaped like this:
+Use a root object schema because the OpenAI SDK's Zod text format helper expects a root object for Structured Outputs:
 
 ```ts
-type AiMove =
-  | {
-      action: "ask_question";
-      question: string;
-      guess: null;
-      shortRationale?: string;
-    }
-  | {
-      action: "make_guess";
-      question: null;
-      guess: string;
-      shortRationale?: string;
-    };
+type AiMove = {
+  action: "ask_question" | "make_guess";
+  question: string | null;
+  guess: string | null;
+  shortRationale: string | null;
+};
 ```
 
-Use SDK structured output helpers, such as Zod with `openai.responses.parse`, when implementing the real model call.
+The Zod schema then adds semantic validation:
+
+- `ask_question` requires `question` and forbids `guess`.
+- `make_guess` requires `guess` and forbids `question`.
+
+The server calls `openai.responses.parse` with `zodTextFormat(aiMoveSchema, ...)` and never returns the raw OpenAI response to the browser.
+
+## Game-Master Prompt
+
+The game-master prompt lives in `src/lib/game/prompt.ts`. It is intentionally policy-heavy but schema-light:
+
+- stable game behavior goes in `instructions`;
+- dynamic state is sent as JSON inside `<game_state>` tags;
+- output shape is enforced by Structured Outputs, not prompt prose;
+- the prompt prioritizes high-information early questions, narrowing middle questions, and late discriminating guesses.
+
+See `docs/references/game-master-strategy.md` for the play strategy.
 
 ## Tooling Note
 

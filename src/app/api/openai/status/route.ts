@@ -13,9 +13,20 @@ export async function GET(request: Request) {
 
   if (!shouldCheckConnection) {
     return NextResponse.json({
-      ok: true,
+      ok: status.configurationError === null,
       openai: status
     });
+  }
+
+  if (status.configurationError) {
+    return NextResponse.json(
+      {
+        ok: false,
+        openai: status,
+        error: status.configurationError
+      },
+      { status: 400 }
+    );
   }
 
   if (!status.configured) {

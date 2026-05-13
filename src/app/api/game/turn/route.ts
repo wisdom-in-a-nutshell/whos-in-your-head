@@ -1,19 +1,22 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
-import { playerAnswerSchema } from "@/lib/game/ai-move";
+import {
+  applyAiMove,
+  createInitialGameState,
+  finalizeGuess,
+  GameRuleError,
+  gameTurnRequestSchema,
+  recordPlayerAnswer
+} from "@/lib/game/state";
+import { getOpenAIRuntimeStatus } from "@/lib/server/openai";
+import { generateAiMove } from "@/lib/server/game-master";
 
 export const runtime = "nodejs";
-
-const gameTurnRequestSchema = z.object({
-  gameId: z.string().min(1).optional(),
-  answer: playerAnswerSchema.optional()
-});
 
 export function GET() {
   return NextResponse.json({
     ok: true,
-    status: "pending_design",
-    message: "Game turn endpoint scaffold is ready."
+    status: "ready",
+    message: "POST start, answer, or judge_guess actions to drive a game turn."
   });
 }
 
@@ -32,14 +35,66 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json(
-    {
-      ok: false,
-      status: "pending_design",
-      message:
-        "Core game logic is intentionally not implemented until UI/product design is finalized.",
-      acceptedInput: parsed.data
-    },
-    { status: 501 }
-  );
+  try {
+    if (parsed.data.action === "judge_guess") {
+      return NextResponse.json({
+        ok: true,
+        game: finalizeGuess(parsed.data.state, parsed.data.correct)
+      });
+    }
+
+    const status = getOpenAIRuntimeStatus();
+
+    if (status.configurationError) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "openai_configuration_error",
+          error: status.configurationError,
+          openai: status
+        },
+        { status: 503 }
+      );
+    }
+
+    if (!status.configured) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "openai_not_configured",
+          error: "OPENAI_API_KEY is not configured.",
+          openai: status
+        },
+        { status: 503 }
+      );
+    }
+
+    const game =
+      parsed.data.action === "start"
+        ? createInitialGameState()
+        : recordPlayerAnswer(parsed.data.state, parsed.data.answer);
+
+    const move = await generateAiMove(game);
+    const nextGame = applyAiMove(game, move);
+
+    return NextResponse.json({
+      ok: true,
+      game: nextGame,
+      move
+    });
+  } catch (error) {
+    const isRuleError = error instanceof GameRuleError;
+
+    return NextResponse.json(
+      {
+        ok: false,
+        code: isRuleError ? "game_rule_error" : "game_master_error",
+        error:
+          error instanceof Error
+            ? error.message
+            : "The game master could not produce a valid move."
+      },
+      { status: isRuleError ? 409 : 502 }
+    );
+  }
 }

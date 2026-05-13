@@ -30,15 +30,21 @@ npm run dev
 Required env for real OpenAI calls:
 
 ```bash
-OPENAI_API_KEY=...
+LLM_API_KEY=...
+LLM_API_ENDPOINT=...
 ```
 
 Optional env:
 
 ```bash
-OPENAI_MODEL=gpt-5.5
-OPENAI_BASE_URL=
+LLM_MODEL=gpt-5.5
+LLM_REASONING_EFFORT=medium
 ```
+
+The server also accepts `OPENAI_API_KEY`, `OPENAI_BASE_URL`,
+`OPENAI_MODEL`, and `OPENAI_REASONING_EFFORT` as local fallback names.
+For deployed Azure runtime, prefer `LLM_API_*` app settings backed by Key Vault
+references.
 
 Local validation:
 
@@ -50,12 +56,13 @@ Useful scaffold endpoints:
 
 - `GET /api/health`
 - `GET /api/openai/status`
-- `GET /api/openai/status?check=1` checks the configured OpenAI-compatible endpoint when `OPENAI_API_KEY` is set.
-- `GET /api/game/turn` confirms the game-turn route exists. Core game logic is intentionally pending product/UI design.
+- `GET /api/openai/status?check=1` checks the configured OpenAI-compatible endpoint when `LLM_API_KEY` or `OPENAI_API_KEY` is set.
+- `GET /api/game/turn` confirms the game-turn route exists.
+- `POST /api/game/turn` accepts `start`, `answer`, and `judge_guess` actions and returns sanitized game state.
 
 ## Current implementation state
 
-The repository currently has the Next.js/package/backend scaffold only. The playable game UI and core loop are intentionally not implemented yet.
+The repository has a clickable mocked frontend and a backend game-turn route scaffolded for real OpenAI calls. The backend owns game rules, validates structured model moves, and keeps the OpenAI API key server-side.
 
 ## Project tracker
 

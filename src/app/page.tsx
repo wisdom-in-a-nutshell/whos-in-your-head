@@ -189,18 +189,9 @@ export default function Home() {
               Keep them in your head. I get 21 questions and one final guess.
               You just say yes, no, or not sure.
             </p>
-            <p className="start-aside">Psst. I might get it sooner.</p>
             <button className="primary-action" onClick={startGame} type="button">
               I&apos;ve got someone
             </button>
-            <a
-              className="maker-link"
-              href="https://www.adithyan.io/"
-              rel="noreferrer"
-              target="_blank"
-            >
-              Built by Adithyan
-            </a>
           </div>
 
           <div className="progress-lockup" aria-label="21 question limit">
@@ -312,14 +303,6 @@ export default function Home() {
           <button className="primary-action" onClick={startGame} type="button">
             Play again
           </button>
-          <a
-            className="maker-link"
-            href="https://www.adithyan.io/"
-            rel="noreferrer"
-            target="_blank"
-          >
-            Built by Adithyan
-          </a>
         </section>
       ) : null}
     </main>

@@ -50,9 +50,9 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 
 - [x] A local web app runs with one command after setup.
 - [x] User can start a game, think of a famous person, answer button-based yes/no-style questions, and receive a final guess before or at question 21.
-- [ ] The server calls the OpenAI Responses API without exposing `OPENAI_API_KEY` to the browser.
-- [ ] Game rules are enforced by code, not only by prompt.
-- [ ] Model output is parsed/validated as structured JSON before updating UI state.
+- [x] The server calls the OpenAI Responses API without exposing `OPENAI_API_KEY` to the browser.
+- [x] Game rules are enforced by code, not only by prompt.
+- [x] Model output is parsed/validated as structured JSON before updating UI state.
 - [x] README includes setup/run instructions and env vars.
 - [x] Basic validation passes: install/build/lint or equivalent repo-native checks.
 
@@ -60,8 +60,8 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 
 - [x] Milestone 1 — Scaffold the web app. Acceptance: Next.js/TS app or equivalent exists, starts locally, has basic landing page. Validate: `npm run dev` and `npm run build`.
 - [x] Milestone 2 — Implement local game state and UI without OpenAI. Acceptance: start/reset, question counter, answer buttons, transcript, and result screen work with mocked AI turns. Validate: manual browser smoke plus build.
-- [ ] Milestone 3 — Add Responses API server integration. Acceptance: server route calls OpenAI with API key server-side, returns structured next action, and handles errors gracefully. Validate: one local game reaches final guess with real model.
-- [ ] Milestone 4 — Tighten game prompt/rules. Acceptance: AI asks one yes/no-compatible question per turn, respects max 21, makes a final guess, and handles `maybe/not sure`. Validate: 3 manual test games with different famous people.
+- [ ] Milestone 3 — Add Responses API server integration. Acceptance: server route calls OpenAI with API key server-side, returns structured next action, and handles errors gracefully. Validate: one local game reaches final guess with real model. Implementation is in place; real-model smoke is blocked until credentials/base URL are provided.
+- [ ] Milestone 4 — Tighten game prompt/rules. Acceptance: AI asks one yes/no-compatible question per turn, respects max 21, makes a final guess, and handles `maybe/not sure`. Validate: 3 manual test games with different famous people. Prompt/rule scaffold is in place; real-model evaluation is blocked until credentials/base URL are provided.
 - [ ] Milestone 5 — Polish demo/readme. Acceptance: UI copy is clear, repo has setup/run docs, and app is ready for local demo/deploy. Validate: fresh setup path works from README.
 
 ## Execution Rules
@@ -90,12 +90,16 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - 2026-05-13 — Add a narrow `package.json` override for `postcss` to avoid the current npm audit finding inherited through Next's transitive dependency.
 - 2026-05-13 — Visual direction is clean editorial arcade: off-white surface, black type, restrained red primary action, small yellow accent, no visible transcript during active play.
 - 2026-05-13 — Latest copy direction uses first-person host voice: "I get 21 questions. You just say yes or no. Then I guess who's in your head."
+- 2026-05-13 — Keep the start screen stripped down for shareability: no maker attribution or extra aside copy in the first moment. Branding can return later on a result/share surface.
+- 2026-05-13 — Backend turn route is stateless for the MVP: the browser sends explicit game state, the server validates it, applies one action, and asks OpenAI for one structured move.
+- 2026-05-13 — Structured output uses a root object schema with nullable fields plus semantic Zod validation, because the OpenAI SDK Zod text-format helper expects a root object.
+- 2026-05-13 — `scripts/check-fast.sh` is optimized for the Stop hook: repo contract, secret scan, lint, typecheck, and tests. Production build lives in `scripts/check-full.sh`.
 
 ## Open Questions / Blockers
 
-- Which exact model should be the default at implementation time? Use `OPENAI_MODEL` and check latest docs before hardcoding. Current placeholder: `gpt-5.5`.
+- Which exact model should be the default at implementation time? Current default is `gpt-5.5`, based on OpenAI docs checked on 2026-05-13. Keep `OPENAI_MODEL` configurable.
 - Should the first public version restrict to famous real people only, or also support fictional characters? Default for MVP: famous real people only.
-- Should answers remain strictly `Yes`/`No`, or should `Not sure` return later for ambiguous questions? Current MVP direction: `Yes`/`No` only.
+- Should answers remain strictly `Yes`/`No` long-term? Current backend supports `yes`, `no`, and `maybe`; frontend copy can choose the label.
 - User may later provide a custom OpenAI-compatible base URL and API key. Implementation should support optional `OPENAI_BASE_URL`.
 
 ## Current Batch

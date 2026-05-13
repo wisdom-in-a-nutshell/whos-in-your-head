@@ -15,12 +15,14 @@ describe("aiMoveSchema", () => {
       aiMoveSchema.parse({
         action: "ask_question",
         question: "Are they alive?",
-        guess: null
+        guess: null,
+        shortRationale: null
       })
     ).toEqual({
       action: "ask_question",
       question: "Are they alive?",
-      guess: null
+      guess: null,
+      shortRationale: null
     });
   });
 
@@ -29,12 +31,25 @@ describe("aiMoveSchema", () => {
       aiMoveSchema.parse({
         action: "make_guess",
         question: null,
-        guess: "Taylor Swift"
+        guess: "Taylor Swift",
+        shortRationale: "Music clues point strongly to her."
       })
     ).toEqual({
       action: "make_guess",
       question: null,
-      guess: "Taylor Swift"
+      guess: "Taylor Swift",
+      shortRationale: "Music clues point strongly to her."
     });
+  });
+
+  it("rejects a question move with a guess payload", () => {
+    expect(
+      aiMoveSchema.safeParse({
+        action: "ask_question",
+        question: "Are they alive?",
+        guess: "Taylor Swift",
+        shortRationale: null
+      }).success
+    ).toBe(false);
   });
 });
