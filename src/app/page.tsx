@@ -16,24 +16,24 @@ const sampleQuestions = [
 const questionLabels = [
   "Don’t overthink it",
   "Tiny clue, please",
-  "For you, human",
-  "This one matters",
-  "Say what you know",
+  "Keep your face still",
+  "This narrows it",
+  "One tiny tell",
   "One clean answer",
-  "Help me out",
+  "Poker face, please",
   "Mind-reader mode",
   "Your move",
-  "No pressure",
+  "No table talk",
   "Just one clue",
   "Truth serum time",
-  "Human input needed",
+  "Answer under oath",
   "Don’t help too much",
   "One bit of signal",
   "Say it straight",
   "Keep it secret",
   "Stay mysterious",
   "Clue me in",
-  "Don’t blink",
+  "I saw that blink",
   "I’m listening",
   "Tiny data point",
   "Give me the truth",
@@ -47,7 +47,14 @@ const questionLabels = [
   "I’m watching the pattern",
   "Say less, reveal more",
   "A clue for the machine",
-  "Keep a straight face"
+  "Keep a straight face",
+  "The room knows",
+  "Lock in your answer",
+  "Tiny clue detected",
+  "Careful now",
+  "Your silence is loud",
+  "Don’t give them away",
+  "One bit closer"
 ];
 
 const thinkingLabels = [
@@ -79,7 +86,28 @@ const thinkingLabels = [
   "The picture sharpens",
   "A pattern appears",
   "Getting warmer",
-  "Rechecking the map"
+  "Rechecking the map",
+  "Updating my suspect board",
+  "That answer had a vibe",
+  "Re-ranking famous people",
+  "Crossing out half the internet",
+  "A theory just got louder",
+  "Looking for the tell",
+  "The pattern is snitching",
+  "Something clicked",
+  "I’m closer than you want",
+  "Consulting the invisible corkboard"
+];
+
+const playMetaLabels = [
+  "Only you know the name",
+  "No hints from the room",
+  "Keep them in your head",
+  "Your poker face matters",
+  "Everyone else can watch",
+  "Don’t say the name",
+  "The table is suspicious",
+  "No whispering clues"
 ];
 
 function ThinkingDots() {
@@ -116,6 +144,7 @@ export default function Home() {
   const answeredCount = turns.length;
   const questionLabel = questionLabels[questionIndex % questionLabels.length];
   const thinkingLabel = thinkingLabels[answeredCount % thinkingLabels.length];
+  const playMetaLabel = playMetaLabels[questionIndex % playMetaLabels.length];
 
   function startGame() {
     setPhase("asking");
@@ -141,7 +170,7 @@ export default function Home() {
 
       setQuestionIndex((index) => index + 1);
       setPhase("asking");
-    }, 520);
+    }, 860);
   }
 
   function judgeGuess(nextResult: "won" | "lost") {
@@ -155,19 +184,19 @@ export default function Home() {
         <button className="wordmark" onClick={startGame} type="button">
           Who&apos;s In Your Head?
         </button>
-        <span className="round-count">{MAX_QUESTIONS} questions · 1 guess</span>
+        <span className="round-count">{MAX_QUESTIONS} questions / 1 guess</span>
       </header>
 
       {phase === "start" ? (
         <section className="start-screen" aria-labelledby="start-title">
           <div className="start-copy">
-            <p className="kicker">Silent party game</p>
+            <p className="kicker">Let&apos;s play, human</p>
             <h1 id="start-title">Think of someone famous.</h1>
             <p className="start-subtitle">
-              Don&apos;t type it. Don&apos;t say it out loud. I get 21
-              questions and one final guess. You just say yes, no, or not sure.
-              Then I guess who&apos;s in your head.
+              Keep them in your head. I get 21 questions and one final guess.
+              You just say yes, no, or not sure.
             </p>
+            <p className="start-aside">Psst. I might get it sooner.</p>
             <button className="primary-action" onClick={startGame} type="button">
               I&apos;ve got someone
             </button>
@@ -187,7 +216,7 @@ export default function Home() {
       {phase === "asking" || phase === "thinking" ? (
         <section className="play-screen" aria-labelledby="question-title">
           <div className="play-topline">
-            <span>Keep them secret</span>
+            <span>{playMetaLabel}</span>
             <strong>
               Question {questionNumber} / {MAX_QUESTIONS}
             </strong>
@@ -209,7 +238,7 @@ export default function Home() {
             <h2 id="question-title">
               {phase === "thinking" ? (
                 <>
-                  Reading the pattern
+                  Thinking
                   <ThinkingDots />
                 </>
               ) : (

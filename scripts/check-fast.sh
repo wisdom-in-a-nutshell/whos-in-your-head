@@ -22,19 +22,37 @@ fi
 if [[ -f package.json ]]; then
   echo "check-fast: package scripts"
 
-  run_npm_script_if_present() {
+  if [[ ! -f package-lock.json ]]; then
+    echo "check-fast: package-lock.json is required when package.json exists." >&2
+    exit 1
+  fi
+
+  if [[ ! -d node_modules ]]; then
+    echo "check-fast: node_modules is missing. Run npm install before committing." >&2
+    exit 1
+  fi
+
+  require_npm_script() {
     local script_name="$1"
-    if node -e "const s=require('./package.json').scripts||{}; process.exit(s['$script_name'] ? 0 : 1)"; then
-      npm run "$script_name"
-    else
-      echo "check-fast: npm script '$script_name' not defined; skipping"
-    fi
+    node -e "const s=require('./package.json').scripts||{}; if (!s['$script_name']) { console.error('Missing npm script: $script_name'); process.exit(1); }"
   }
 
-  run_npm_script_if_present lint
-  run_npm_script_if_present typecheck
-  run_npm_script_if_present test
-  run_npm_script_if_present build
+  require_npm_script lint
+  require_npm_script typecheck
+  require_npm_script test
+  require_npm_script build
+
+  echo "check-fast: lint"
+  npm run lint
+
+  echo "check-fast: typecheck"
+  npm run typecheck
+
+  echo "check-fast: tests"
+  npm run test
+
+  echo "check-fast: build"
+  npm run build
 else
   echo "check-fast: package.json not present yet; npm validation will activate after app scaffold"
 fi
