@@ -282,16 +282,20 @@ export default function Home() {
     setPhase("result");
   }
 
-  return (
-    <main className="game-shell">
-      <header className="game-header" aria-label="Game header">
-        <button className="wordmark" onClick={startGame} type="button">
-          Who&apos;s In Your Head?
-        </button>
-        <span className="round-count">{MAX_QUESTIONS} questions / 1 guess</span>
-      </header>
+  const isStartScreen = phase === "start";
 
-      {phase === "start" ? (
+  return (
+    <main className={isStartScreen ? "game-shell" : "game-shell is-focused"}>
+      {isStartScreen ? (
+        <header className="game-header" aria-label="Game header">
+          <button className="wordmark" onClick={startGame} type="button">
+            Who&apos;s In Your Head?
+          </button>
+          <span className="round-count">{MAX_QUESTIONS} questions / 1 guess</span>
+        </header>
+      ) : null}
+
+      {isStartScreen ? (
         <section className="start-screen" aria-labelledby="start-title">
           <div className="start-copy">
             <p className="kicker">

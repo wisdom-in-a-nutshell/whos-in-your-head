@@ -47,6 +47,10 @@ button {
   padding: 22px;
 }
 
+.game-shell.is-focused {
+  grid-template-rows: 1fr;
+}
+
 .game-header {
   display: flex;
   align-items: center;
@@ -103,6 +107,12 @@ button {
 
 .start-screen {
   gap: 54px;
+}
+
+.game-shell.is-focused .play-screen,
+.game-shell.is-focused .guess-screen,
+.game-shell.is-focused .result-screen {
+  min-height: calc(100vh - 44px);
 }
 
 .start-copy,
@@ -437,6 +447,12 @@ button {
   .result-screen {
     min-height: calc(100vh - 72px);
     padding: 26px 0 42px;
+  }
+
+  .game-shell.is-focused .play-screen,
+  .game-shell.is-focused .guess-screen,
+  .game-shell.is-focused .result-screen {
+    min-height: calc(100vh - 32px);
   }
 
   .start-screen {
