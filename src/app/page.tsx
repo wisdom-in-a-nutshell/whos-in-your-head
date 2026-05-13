@@ -4,93 +4,96 @@ import { useEffect, useMemo, useState } from "react";
 
 const MAX_QUESTIONS = 21;
 
-const questionLabels = [
-  "Don’t overthink it",
-  "Tiny clue, please",
-  "Keep your face still",
-  "This narrows it",
-  "One tiny tell",
-  "One clean answer",
-  "Poker face, please",
-  "Mind-reader mode",
-  "Your move",
-  "No table talk",
-  "Just one clue",
-  "Truth serum time",
-  "Answer under oath",
-  "Don’t help too much",
-  "One bit of signal",
-  "Say it straight",
-  "Keep it secret",
-  "Stay mysterious",
-  "Clue me in",
-  "I saw that blink",
-  "I’m listening",
-  "Tiny data point",
-  "Give me the truth",
-  "No spoilers",
-  "Answer like you mean it",
-  "I need a clue",
-  "Suspicion rising",
-  "The plot thickens",
-  "Clean yes or no",
-  "Make it count",
-  "I’m watching the pattern",
-  "Say less, reveal more",
-  "A clue for the machine",
-  "Keep a straight face",
-  "The room knows",
-  "Lock in your answer",
-  "Tiny clue detected",
-  "Careful now",
-  "Your silence is loud",
-  "Don’t give them away",
-  "One bit closer"
+type StagePrompt = {
+  text: string;
+  emoji: string;
+};
+
+const questionPrompts: StagePrompt[] = [
+  { text: "Don’t overthink it", emoji: "🧠" },
+  { text: "Tiny clue, please", emoji: "🧩" },
+  { text: "Keep your face still", emoji: "😐" },
+  { text: "This narrows it", emoji: "🔎" },
+  { text: "One tiny tell", emoji: "👀" },
+  { text: "One clean answer", emoji: "✅" },
+  { text: "Poker face, please", emoji: "🃏" },
+  { text: "Mind-reader mode", emoji: "✨" },
+  { text: "Your move", emoji: "🎲" },
+  { text: "No table talk", emoji: "🤐" },
+  { text: "Just one clue", emoji: "🕵️" },
+  { text: "Truth serum time", emoji: "💧" },
+  { text: "Answer under oath", emoji: "✋" },
+  { text: "Don’t help too much", emoji: "🙊" },
+  { text: "One bit of signal", emoji: "📡" },
+  { text: "Say it straight", emoji: "➡️" },
+  { text: "Keep it secret", emoji: "🤫" },
+  { text: "Stay mysterious", emoji: "🎭" },
+  { text: "Clue me in", emoji: "🔦" },
+  { text: "I saw that blink", emoji: "👁️" },
+  { text: "I’m listening", emoji: "👂" },
+  { text: "Tiny data point", emoji: "📍" },
+  { text: "Give me the truth", emoji: "⚖️" },
+  { text: "No spoilers", emoji: "🚫" },
+  { text: "Answer like you mean it", emoji: "🎯" },
+  { text: "I need a clue", emoji: "🗝️" },
+  { text: "Suspicion rising", emoji: "📈" },
+  { text: "The plot thickens", emoji: "🌀" },
+  { text: "Clean yes or no", emoji: "☑️" },
+  { text: "Make it count", emoji: "⏱️" },
+  { text: "I’m watching the pattern", emoji: "🧵" },
+  { text: "Say less, reveal more", emoji: "💬" },
+  { text: "A clue for the machine", emoji: "⚙️" },
+  { text: "Keep a straight face", emoji: "🫥" },
+  { text: "The room knows", emoji: "👥" },
+  { text: "Lock in your answer", emoji: "🔒" },
+  { text: "Tiny clue detected", emoji: "📌" },
+  { text: "Careful now", emoji: "⚠️" },
+  { text: "Your silence is loud", emoji: "🔇" },
+  { text: "Don’t give them away", emoji: "🙈" },
+  { text: "One bit closer", emoji: "➕" }
 ];
 
-const thinkingLabels = [
-  "Narrowing it down",
-  "Reading the pattern",
-  "That helps",
-  "Interesting",
-  "I have a theory",
-  "Adjusting the radar",
-  "Logging that",
-  "New theory loading",
-  "Interesting signal",
-  "Updating my guess",
-  "Connecting dots",
-  "Eliminating suspects",
-  "The net tightens",
-  "Hold that thought",
-  "That changes things",
-  "Making a shortlist",
-  "Crossing names off",
-  "Zooming in",
-  "Rewriting the theory",
-  "Suspicion recalibrated",
-  "Running the vibe math",
-  "Almost seeing it",
-  "Adding that clue",
-  "Noted, human",
-  "Plotting quietly",
-  "The picture sharpens",
-  "A pattern appears",
-  "Getting warmer",
-  "Rechecking the map",
-  "Updating my suspect board",
-  "That answer had a vibe",
-  "Re-ranking famous people",
-  "Crossing out half the internet",
-  "A theory just got louder",
-  "Looking for the tell",
-  "The pattern is snitching",
-  "Something clicked",
-  "I’m closer than you want",
-  "Consulting the invisible corkboard"
+const thinkingPrompts: StagePrompt[] = [
+  { text: "Narrowing it down", emoji: "🔎" },
+  { text: "Reading the pattern", emoji: "🧵" },
+  { text: "That helps", emoji: "✅" },
+  { text: "Interesting", emoji: "👀" },
+  { text: "I have a theory", emoji: "💡" },
+  { text: "Adjusting the radar", emoji: "📡" },
+  { text: "Logging that", emoji: "📝" },
+  { text: "New theory loading", emoji: "⏳" },
+  { text: "Interesting signal", emoji: "📶" },
+  { text: "Updating my guess", emoji: "🔁" },
+  { text: "Connecting dots", emoji: "🧩" },
+  { text: "Eliminating suspects", emoji: "✂️" },
+  { text: "The net tightens", emoji: "🎯" },
+  { text: "Hold that thought", emoji: "📌" },
+  { text: "That changes things", emoji: "🔀" },
+  { text: "Making a shortlist", emoji: "📋" },
+  { text: "Crossing names off", emoji: "❌" },
+  { text: "Zooming in", emoji: "🔬" },
+  { text: "Rewriting the theory", emoji: "✍️" },
+  { text: "Suspicion recalibrated", emoji: "⚙️" },
+  { text: "Running the vibe math", emoji: "🧮" },
+  { text: "Almost seeing it", emoji: "👁️" },
+  { text: "Adding that clue", emoji: "➕" },
+  { text: "Noted, human", emoji: "🫡" },
+  { text: "Plotting quietly", emoji: "🤫" },
+  { text: "The picture sharpens", emoji: "🖼️" },
+  { text: "A pattern appears", emoji: "✨" },
+  { text: "Getting warmer", emoji: "🔥" },
+  { text: "Rechecking the map", emoji: "🗺️" },
+  { text: "Updating my suspect board", emoji: "🕵️" },
+  { text: "That answer had a vibe", emoji: "🪩" },
+  { text: "Re-ranking famous people", emoji: "🏆" },
+  { text: "Crossing out half the internet", emoji: "🌐" },
+  { text: "A theory just got louder", emoji: "🔊" },
+  { text: "Looking for the tell", emoji: "👀" },
+  { text: "The pattern is snitching", emoji: "🧵" },
+  { text: "Something clicked", emoji: "🖱️" },
+  { text: "I’m closer than you want", emoji: "📍" },
+  { text: "Consulting the invisible corkboard", emoji: "🧷" }
 ];
-
-const stageMarks = ["✦", "👀", "🤫", "🎯", "🧠", "🔎", "✨", "🎲", "⚡"];
 
 function ThinkingDots() {
   return (
@@ -99,6 +102,33 @@ function ThinkingDots() {
       <span />
       <span />
     </span>
+  );
+}
+
+function StageLabel({ prompt }: { prompt: StagePrompt }) {
+  if (prompt.text.endsWith(", please")) {
+    const leadText = prompt.text.slice(0, -", please".length);
+
+    return (
+      <>
+        {leadText}
+        {" "}
+        <span className="stage-mark" aria-hidden="true">
+          {prompt.emoji}
+        </span>
+        , please
+      </>
+    );
+  }
+
+  return (
+    <>
+      {prompt.text}
+      {" "}
+      <span className="stage-mark" aria-hidden="true">
+        {prompt.emoji}
+      </span>
+    </>
   );
 }
 
@@ -152,14 +182,10 @@ export default function Home() {
   const questionNumber = Math.max(1, game?.questionCount ?? 1);
   const currentQuestion = game?.latestQuestion;
   const answeredCount = game?.transcript.length ?? 0;
-  const questionLabel =
-    questionLabels[Math.max(0, questionNumber - 1) % questionLabels.length];
-  const thinkingLabel = thinkingLabels[answeredCount % thinkingLabels.length];
-  const stageMark =
-    stageMarks[
-      (phase === "thinking" ? answeredCount + 3 : questionNumber - 1) %
-        stageMarks.length
-    ];
+  const questionPrompt =
+    questionPrompts[Math.max(0, questionNumber - 1) % questionPrompts.length];
+  const thinkingPrompt = thinkingPrompts[answeredCount % thinkingPrompts.length];
+  const currentPrompt = phase === "thinking" ? thinkingPrompt : questionPrompt;
   const modelName = runtimeStatus ? formatModelName(runtimeStatus.model) : "the house model";
   const reasoningLevel = runtimeStatus?.reasoningEffort ?? "medium";
 
@@ -287,10 +313,11 @@ export default function Home() {
         <section className="start-screen" aria-labelledby="start-title">
           <div className="start-copy">
             <p className="kicker">
+              Let&apos;s play, human
+              {" "}
               <span className="stage-mark" aria-hidden="true">
                 ✨
               </span>
-              Let&apos;s play, human
             </p>
             <h1 id="start-title">Think of someone famous.</h1>
             <p className="start-subtitle">
@@ -333,10 +360,7 @@ export default function Home() {
 
           <div className="question-stage">
             <p className="stage-label">
-              <span className="stage-mark" aria-hidden="true">
-                {stageMark}
-              </span>
-              {phase === "thinking" ? thinkingLabel : questionLabel}
+              <StageLabel prompt={currentPrompt} />
             </p>
             <h2 id="question-title">
               {phase === "thinking" ? (
@@ -383,10 +407,11 @@ export default function Home() {
       {phase === "guessing" ? (
         <section className="guess-screen" aria-labelledby="guess-title">
           <p className="stage-label">
+            Final call
+            {" "}
             <span className="stage-mark" aria-hidden="true">
               🎯
             </span>
-            Final call
           </p>
           <h2 id="guess-title">I&apos;m locking in {game?.finalGuess ?? "this guess"}.</h2>
           <p className="guess-stat">{answeredCount} questions used</p>
@@ -413,10 +438,11 @@ export default function Home() {
       {phase === "result" ? (
         <section className="result-screen" aria-labelledby="result-title">
           <p className="stage-label">
+            {game?.result === "correct" ? "Revealed" : "You got away"}
+            {" "}
             <span className="stage-mark" aria-hidden="true">
               {game?.result === "correct" ? "✨" : "🫣"}
             </span>
-            {game?.result === "correct" ? "Revealed" : "You got away"}
           </p>
           <h2 id="result-title">
             {game?.result === "correct"
