@@ -14,9 +14,6 @@ export const size = {
 export const contentType = "image/png";
 
 export default function Image() {
-  const marks = Array.from({ length: 21 }, (_, index) => index);
-  const answers = ["Yes", "No", "Not sure"];
-
   return new ImageResponse(
     (
       <div
@@ -28,7 +25,7 @@ export default function Image() {
           justifyContent: "space-between",
           background: paper,
           color: ink,
-          padding: "48px 58px 46px",
+          padding: "52px 64px 58px",
           fontFamily:
             "ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
         }}
@@ -38,9 +35,9 @@ export default function Image() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            fontSize: 25,
+            fontSize: 28,
             fontWeight: 900,
-            letterSpacing: 2.4,
+            letterSpacing: 2.6,
             textTransform: "uppercase"
           }}
         >
@@ -49,8 +46,8 @@ export default function Image() {
             style={{
               border: `3px solid ${ink}`,
               borderRadius: 999,
-              padding: "13px 22px",
-              fontSize: 23
+              padding: "15px 24px",
+              fontSize: 24
             }}
           >
             21 questions / 1 guess
@@ -60,115 +57,40 @@ export default function Image() {
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 48
+            flexDirection: "column",
+            gap: 26,
+            maxWidth: 1050
           }}
         >
           <div
             style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 24,
-              maxWidth: 725
+              fontSize: 116,
+              fontWeight: 950,
+              lineHeight: 0.9
             }}
           >
-            <div
-              style={{
-                color: accent,
-                fontSize: 28,
-                fontWeight: 900,
-                letterSpacing: 3,
-                textTransform: "uppercase"
-              }}
-            >
-              Let&apos;s play, human
-            </div>
-            <div
-              style={{
-                fontSize: 94,
-                fontWeight: 950,
-                lineHeight: 0.91
-              }}
-            >
-              Think of someone famous. I&apos;ll guess.
-            </div>
-            <div
-              style={{
-                maxWidth: 650,
-                color: muted,
-                fontSize: 34,
-                fontWeight: 750,
-                lineHeight: 1.22
-              }}
-            >
-              I get 21 questions. You only answer yes, no, or not sure.
-            </div>
+            Think of someone famous.
           </div>
-
           <div
             style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 18,
-              width: 310
+              color: accent,
+              fontSize: 108,
+              fontWeight: 950,
+              lineHeight: 0.9
             }}
           >
-            {answers.map((answer, index) => (
-              <div
-                key={answer}
-                style={{
-                  height: 84,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  border: `3px solid ${ink}`,
-                  borderRadius: 14,
-                  background: index === 0 ? accent : paper,
-                  color: index === 0 ? paper : ink,
-                  boxShadow: index === 0 ? `10px 10px 0 ${ink}` : "none",
-                  fontSize: 34,
-                  fontWeight: 900
-                }}
-              >
-                {answer}
-              </div>
-            ))}
+            I&apos;ll guess who.
           </div>
         </div>
 
         <div
           style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 16
+            color: muted,
+            fontSize: 34,
+            fontWeight: 800
           }}
         >
-          <div
-            style={{
-              color: muted,
-              fontSize: 23,
-              fontWeight: 900,
-              letterSpacing: 2.6,
-              textTransform: "uppercase"
-            }}
-          >
-            Question limit
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {marks.map((mark) => (
-              <div
-                key={mark}
-                style={{
-                  width: 45,
-                  height: 18,
-                  border: `3px solid ${ink}`,
-                  borderRadius: 999,
-                  background: mark < 6 ? accent : paper
-                }}
-              />
-            ))}
-          </div>
+          Don&apos;t say it out loud.
         </div>
       </div>
     ),
