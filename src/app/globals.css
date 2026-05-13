@@ -42,7 +42,7 @@ button {
 
 .game-shell {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto 1fr auto;
   min-height: 100vh;
   padding: 22px;
 }
@@ -366,6 +366,23 @@ button {
   line-height: 1.45;
 }
 
+.game-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 18px;
+  padding-top: 10px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.game-footer span:first-child {
+  color: var(--ink);
+}
+
 @media (max-width: 760px) {
   body {
     background: var(--paper);
@@ -458,5 +475,10 @@ button {
 
   .mark {
     height: 10px;
+  }
+
+  .game-footer {
+    gap: 4px;
+    font-size: 0.7rem;
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const MAX_QUESTIONS = 21;
 
@@ -130,11 +130,17 @@ type GameTurnResponse =
       code?: string;
     };
 
+type RuntimeStatus = {
+  model: string;
+  reasoningEffort: string;
+};
+
 export default function Home() {
   const [phase, setPhase] = useState<Phase>("start");
   const [game, setGame] = useState<GameState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
+  const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus | null>(null);
 
   const progressMarks = useMemo(
     () => Array.from({ length: MAX_QUESTIONS }, (_, index) => index + 1),
@@ -147,6 +153,33 @@ export default function Home() {
   const questionLabel =
     questionLabels[Math.max(0, questionNumber - 1) % questionLabels.length];
   const thinkingLabel = thinkingLabels[answeredCount % thinkingLabels.length];
+  const modelName = runtimeStatus ? formatModelName(runtimeStatus.model) : "the house model";
+  const reasoningLevel = runtimeStatus?.reasoningEffort ?? "medium";
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadRuntimeStatus() {
+      const response = await fetch("/api/openai/status");
+      const data = (await response.json()) as {
+        openai?: RuntimeStatus;
+      };
+
+      if (active && data.openai) {
+        setRuntimeStatus(data.openai);
+      }
+    }
+
+    loadRuntimeStatus().catch(() => {
+      if (active) {
+        setRuntimeStatus(null);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function startGame() {
     setError(null);
@@ -363,6 +396,14 @@ export default function Home() {
           </button>
         </section>
       ) : null}
+
+      <footer className="game-footer">
+        <span>
+          Talking to {modelName} at {reasoningLevel} reasoning.
+        </span>
+        <span>More models are coming soon to guess who&apos;s in your head.</span>
+        <span>Built by Adityan.io with Codex.</span>
+      </footer>
     </main>
   );
 }
@@ -398,4 +439,8 @@ function readErrorMessage(error: unknown): string {
   }
 
   return error.message;
+}
+
+function formatModelName(model: string): string {
+  return model.replace(/^gpt/i, "GPT");
 }
