@@ -232,7 +232,7 @@ button {
 
 .play-screen {
   align-content: stretch;
-  gap: 34px;
+  gap: 30px;
 }
 
 .play-topline {
@@ -252,41 +252,23 @@ button {
 }
 
 .question-stage {
-  position: relative;
   display: grid;
   align-content: center;
   justify-items: center;
-  gap: 24px;
+  gap: 22px;
   width: min(900px, 100%);
-  min-height: 340px;
+  min-height: 324px;
   border-block: 1px solid var(--line-strong);
   overflow: hidden;
   background: var(--paper);
 }
 
-.question-stage::before {
-  position: absolute;
-  top: calc(50% - 78px);
-  left: 50%;
-  width: 92px;
-  height: 12px;
-  border-radius: 999px;
-  background: var(--highlight);
-  content: "";
-  transform: translateX(-50%);
-}
-
-.question-stage > * {
-  position: relative;
-  z-index: 1;
-}
-
 .question-stage h2,
 .guess-screen h2,
 .result-screen h2 {
-  font-size: 4.35rem;
+  font-size: 3.95rem;
   font-weight: 900;
-  line-height: 0.98;
+  line-height: 1.03;
 }
 
 .answer-grid,
@@ -387,14 +369,14 @@ button {
   }
 
   .question-stage {
-    min-height: 310px;
+    min-height: 292px;
     gap: 18px;
   }
 
   .question-stage h2,
   .guess-screen h2,
   .result-screen h2 {
-    font-size: 2.8rem;
+    font-size: 2.45rem;
     line-height: 1;
   }
 
