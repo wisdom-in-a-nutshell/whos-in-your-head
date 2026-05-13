@@ -100,6 +100,8 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - 2026-05-13 — Deploy as a standalone Next.js container to Azure Web App `whos-in-your-head-adi` on the shared `ASP-aipodcastinggroup-aef6` plan, with images in `aipodcasting.azurecr.io/whos-in-your-head`.
 - 2026-05-13 — Runtime LLM config uses Azure App Service Key Vault references for `LLM_API_ENDPOINT` and `LLM_API_KEY`; GitHub Actions only gets Azure OIDC identifiers as repo variables.
 - 2026-05-13 — Use `mindreader.adithyan.io` as the public demo hostname. Cloudflare owns the proxied CNAME; Azure owns the verified hostname binding and SNI binding to the existing `cf-origin-adithyan-io` wildcard origin certificate.
+- 2026-05-13 — Keep the opening question deterministic as `Is this person alive?` so starting a round feels instant; use the model for answered turns after the opener.
+- 2026-05-13 — Default runtime model calls to `high` reasoning and request-level `priority` service tier for the demo, while keeping both configurable through runtime app settings.
 
 ## Open Questions / Blockers
 
@@ -118,8 +120,8 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 | done | Implement mocked game loop after design direction is agreed. | parent | `src/app/page.tsx`, `src/app/globals.css` |
 | done | Implement backend game-state, structured output, and server-side Responses API turn route. | parent | `src/app/api/game/turn/route.ts`, `src/lib/game/state.ts`, `src/lib/server/game-master.ts` |
 | done | Add Azure Web App deployment target, Dockerfile, GitHub Actions workflow, and Key Vault-backed runtime config. | parent | `.github/workflows/deploy.yml`, `Dockerfile`, `docs/references/deployment.md` |
-| todo | Wire the mocked frontend flow to the server-side Responses API route when the parallel frontend work is ready. | parent | `docs/references/openai-runtime-contract.md` |
-| todo | Smoke a real model game after frontend wiring is complete. | parent | `README.md`, `src/lib/game/prompt.ts` |
+| done | Wire the mocked frontend flow to the server-side Responses API route when the parallel frontend work is ready. | parent | `docs/references/openai-runtime-contract.md` |
+| in_progress | Smoke a real model game after frontend wiring is complete. | parent | `README.md`, `src/lib/game/prompt.ts` |
 
 ## Backlog / Remaining Work
 
@@ -137,7 +139,7 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - [x] Enforce game rules in code: max 21 questions, one question per turn, final guess path, no open-ended user answers required.
 - [x] Add backend error states for invalid request, missing OpenAI config, rule violations, and invalid model moves.
 - [x] Add deployment workflow and Azure Web App runtime wiring.
-- [ ] Add frontend loading/error states when wiring the UI to the backend.
+- [x] Add frontend loading/error states when wiring the UI to the backend.
 - [ ] Polish UI enough for a 30-second demo.
 - [ ] Update README with exact setup/run/deploy steps after implementation choices are real.
 - [x] Run validation and record exact results.
@@ -163,3 +165,4 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - 2026-05-13: [DONE] Validation after backend scaffold: `scripts/check-fast.sh` passed with repo contract, secret scan, lint, typecheck, and 9 Vitest tests; `scripts/check-full.sh` passed with production `next build`.
 - 2026-05-13: [DONE] Added Azure Web App deployment scaffolding: Docker standalone build, GitHub Actions OIDC/ACR/Web App workflow, repo-level Azure variables, Web App `whos-in-your-head-adi`, managed identity with `AcrPull` and `Key Vault Secrets User`, and Key Vault-backed `LLM_API_*` app settings. Validation: `npm run typecheck`, `npm test`, `npm run lint`, `npm run build`, and `scripts/check-fast.sh` passed. The GitHub Actions deploy run `25792126358` completed successfully, pushed `aipodcasting.azurecr.io/whos-in-your-head:cc530b073a5da5f00a3a33b9702e5627c25bd1b5`, and `https://whos-in-your-head-adi.azurewebsites.net/api/health` plus `/api/openai/status?check=1` returned `ok: true`.
 - 2026-05-13: [DONE] Added custom domain `mindreader.adithyan.io`: Cloudflare CNAME + Azure `asuid` TXT verification, Azure hostname binding, SNI binding with the existing `cf-origin-adithyan-io` wildcard origin cert, and proxied Cloudflare CNAME. Verified through Cloudflare with trusted edge TLS by forcing a Cloudflare IP: `/api/health` and `/api/openai/status?check=1` returned `ok: true`. Local macOS resolver cache still temporarily resolved the pre-proxy Azure origin path during setup.
+- 2026-05-13: [IN PROGRESS] Added request-level `service_tier` support for Responses API calls, changed the default runtime to `gpt-5.5` with `high` reasoning and `priority` service tier, and made the opening question deterministic so a new game starts without model latency.
