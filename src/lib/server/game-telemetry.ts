@@ -818,14 +818,18 @@ async function getTelemetryDb(): Promise<Db> {
 
 async function ensureIndexes(db: Db) {
   if (!indexesPromise) {
-    indexesPromise = Promise.all([
-      resultsCollection(db).createIndex({ gameId: 1 }, { unique: true }),
-      resultsCollection(db).createIndex({ completedAt: -1 }),
-      eventsCollection(db).createIndex({ gameId: 1, createdAt: 1 }),
-      eventsCollection(db).createIndex({ createdAt: -1 }),
-      failuresCollection(db).createIndex({ gameId: 1, createdAt: 1 }),
-      failuresCollection(db).createIndex({ createdAt: -1 })
-    ]).then(() => undefined);
+    indexesPromise = (async () => {
+      const results = resultsCollection(db);
+      const events = eventsCollection(db);
+      const failures = failuresCollection(db);
+
+      await results.createIndex({ gameId: 1 }, { unique: true });
+      await results.createIndex({ completedAt: -1 });
+      await events.createIndex({ gameId: 1, createdAt: 1 });
+      await events.createIndex({ createdAt: -1 });
+      await failures.createIndex({ gameId: 1, createdAt: 1 });
+      await failures.createIndex({ createdAt: -1 });
+    })();
   }
 
   return indexesPromise;

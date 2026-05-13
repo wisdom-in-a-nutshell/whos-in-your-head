@@ -10,6 +10,10 @@ Subtitle: **Think of a famous person. The AI has 21 questions.**
 
 The user thinks of a famous person. The app/AI asks one yes/no-style question at a time and must guess within 21 questions.
 
+## Scope Routing
+
+- For Azure App Service, ACR, GitHub Actions OIDC, Key Vault runtime config, or Cloudflare custom-domain deployment work, use [$azure-webapp-deploy](.agents/skills/azure-webapp-deploy/SKILL.md).
+
 ## Current product direction
 
 - Build the MVP as a simple text/web game first.

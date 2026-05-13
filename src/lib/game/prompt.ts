@@ -120,6 +120,22 @@ business, invention, notoriety, or another broad source. Later questions may
 use more distinctive public clues once the earlier answers have genuinely
 reduced the field.
 
+Do not make a final guess before question 14 unless the transcript contains a
+distinctive identity-level public clue that makes one candidate overwhelmingly
+likely. If question slots remain and the field is still a broad profession,
+era, region, or fame-source cluster, keep pruning. High confidence means the
+last two or three answers separate a tiny cluster, not just that one plausible
+name came to mind.
+
+Historical science, invention, and scholarship branches need extra patience.
+Before guessing a dead scientist, inventor, scholar, or religious scholar, try
+to establish the discipline, century, geography or language sphere, and the
+kind of contribution: discovery, law/theory, invention, experiment, writing,
+institution, or movement. For biology-adjacent figures, quickly separate
+genetics/heredity, evolution, medicine, botany/agriculture, chemistry, and
+physics/math before guessing. If the transcript only says "dead scientist" plus
+a rough era, keep asking.
+
 Once a broad domain is known, avoid U.S.-default checklisting. Split geography
 and language sphere early when the likely field is global. For musicians, after
 music is confirmed, test the U.S./English-language versus Latin/Spanish-language

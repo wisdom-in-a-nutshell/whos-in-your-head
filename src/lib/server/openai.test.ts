@@ -33,16 +33,16 @@ describe("OpenAI runtime defaults", () => {
   });
 
   it("reports and samples a weighted reasoning mix", async () => {
-    process.env.LLM_REASONING_MIX = "high:2, medium:1, low:1";
+    process.env.LLM_REASONING_MIX = "high:4, medium:1, low:1";
     const { selectGameReasoningEffort } = await import("./openai");
 
     expect(getOpenAIRuntimeStatus().reasoningMix).toEqual([
-      { effort: "high", weight: 2 },
+      { effort: "high", weight: 4 },
       { effort: "medium", weight: 1 },
       { effort: "low", weight: 1 }
     ]);
     expect(selectGameReasoningEffort(() => 0.1)).toBe("high");
-    expect(selectGameReasoningEffort(() => 0.62)).toBe("medium");
+    expect(selectGameReasoningEffort(() => 0.72)).toBe("medium");
     expect(selectGameReasoningEffort(() => 0.9)).toBe("low");
   });
 });
