@@ -9,19 +9,17 @@ import {
   recordPlayerAnswer,
   type GameState
 } from "@/lib/game/state";
+import { isFirstOpeningAnswer, OPENING_MOVE } from "@/lib/game/opening";
 import { getOpenAIRuntimeStatus } from "@/lib/server/openai";
-import { generateAiMove, type GeneratedAiMove } from "@/lib/server/game-master";
-import type { AiMove } from "@/lib/game/ai-move";
+import {
+  generateAiMove,
+  readWarmedOpeningMove,
+  warmOpeningMoveResponses,
+  type GeneratedAiMove
+} from "@/lib/server/game-master";
 
 export const runtime = "nodejs";
 const MODEL_MOVE_ATTEMPTS = 2;
-
-const OPENING_MOVE: AiMove = {
-  action: "ask_question",
-  question: "Is this person alive?",
-  guess: null,
-  shortRationale: "Open with a broad split."
-};
 
 export function GET() {
   return NextResponse.json({
@@ -56,6 +54,7 @@ export async function POST(request: Request) {
 
     if (parsed.data.action === "start") {
       const nextGame = applyAiMove(createInitialGameState(), OPENING_MOVE);
+      warmOpeningMoveResponses();
 
       return NextResponse.json({
         ok: true,
@@ -94,7 +93,7 @@ export async function POST(request: Request) {
     }
 
     const game = recordPlayerAnswer(parsed.data.state, parsed.data.answer);
-    const { generated, nextGame } = await generateNextGameState(game);
+    const { generated, nextGame, source } = await generateNextGameState(game);
     const move = generated.move;
     logAnsweredTurn({
       game,
@@ -108,6 +107,7 @@ export async function POST(request: Request) {
       game: nextGame,
       move,
       runtime: {
+        source,
         requestedServiceTier: generated.requestedServiceTier,
         actualServiceTier: generated.actualServiceTier,
         promptCacheKey: generated.promptCacheKey,
@@ -140,7 +140,13 @@ export async function POST(request: Request) {
 
 async function generateNextGameState(
   game: GameState
-): Promise<{ generated: GeneratedAiMove; nextGame: GameState }> {
+): Promise<{ generated: GeneratedAiMove; nextGame: GameState; source: string }> {
+  const warmedOpening = readWarmedOpeningGameState(game);
+
+  if (warmedOpening) {
+    return warmedOpening;
+  }
+
   for (let attempt = 1; attempt <= MODEL_MOVE_ATTEMPTS; attempt += 1) {
     try {
       const generated = await generateAiMove(game);
@@ -151,7 +157,8 @@ async function generateNextGameState(
 
       return {
         generated,
-        nextGame
+        nextGame,
+        source: "model_move"
       };
     } catch (error) {
       console.warn(
@@ -169,6 +176,31 @@ async function generateNextGameState(
   }
 
   throw new Error("The game master failed to produce a valid move after retries.");
+}
+
+function readWarmedOpeningGameState(
+  game: GameState
+): { generated: GeneratedAiMove; nextGame: GameState; source: string } | null {
+  if (!isFirstOpeningAnswer(game)) {
+    return null;
+  }
+
+  const generated = readWarmedOpeningMove(game.transcript[0].answer);
+
+  if (!generated || generated.move.action !== "ask_question") {
+    return null;
+  }
+
+  const nextGame = attachModelResponseId(
+    applyAiMove(game, generated.move),
+    generated.responseId
+  );
+
+  return {
+    generated,
+    nextGame,
+    source: "warmed_opening_move"
+  };
 }
 
 function logAnsweredTurn({

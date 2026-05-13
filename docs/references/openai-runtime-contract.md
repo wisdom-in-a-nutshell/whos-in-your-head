@@ -59,7 +59,7 @@ The package scaffold includes these server routes:
 - `GET /api/openai/status?check=1` attempts a server-side OpenAI-compatible connection check when `LLM_API_KEY` or `OPENAI_API_KEY` is configured.
 - `GET /api/game/turn` confirms the game-turn route exists.
 - `POST /api/game/turn` accepts these actions:
-  - `start`: create a new game with the deterministic opening question, `Is this person alive?`, without calling OpenAI.
+  - `start`: create a new game with the deterministic opening question, `Is this person alive?`, without blocking on OpenAI. The server also starts a background warmup for the first post-opener model moves.
   - `answer`: record the answer to the active question and ask OpenAI for the next move.
   - `judge_guess`: mark the final guess as correct or incorrect without calling OpenAI.
 
@@ -140,6 +140,15 @@ Because `previous_response_id` depends on provider-stored Responses state, the
 game-master call uses `store: true`. If a future privacy mode requires zero
 provider state, switch to manual context management by sending the prior output
 items back instead of the response id.
+
+The first public question is local so the round starts instantly. On `start`,
+the server asynchronously prewarms shared model responses for the possible
+answers to that opener. If the player spends even a short moment on the first
+question, answering it can reuse the warmed model move and response id instead
+of waiting for a fresh model call. The warmed response ids contain only the
+generic opener transcript (`Is this person alive?` plus `yes`, `no`, or
+`maybe`), not a player-specific target. Player games still keep unique `gameId`
+values and branch into unique model response chains after the next answer.
 
 Local smoke on 2026-05-13 showed that prompt caching is supported through the
 current LiteLLM/Azure path when a stable user-message prefix is followed by a

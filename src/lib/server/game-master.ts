@@ -1,7 +1,8 @@
 import "server-only";
 import type { ResponseUsage } from "openai/resources/responses/responses";
 import { zodTextFormat } from "openai/helpers/zod";
-import { aiMoveSchema, type AiMove } from "@/lib/game/ai-move";
+import { aiMoveSchema, type AiMove, type PlayerAnswer } from "@/lib/game/ai-move";
+import { createSharedOpeningAnswerState } from "@/lib/game/opening";
 import { buildGameMasterContinuationInput, buildGameMasterInput } from "@/lib/game/prompt";
 import type { GameState } from "@/lib/game/state";
 import { getOpenAIRequestConfig } from "./openai";
@@ -10,6 +11,10 @@ const AI_MOVE_FORMAT_NAME = "who_in_your_head_ai_move";
 const PROMPT_CACHE_KEY = "whos-in-your-head-game-master-v1";
 const GAME_MASTER_REQUEST_INSTRUCTIONS =
   "Follow the static game-master instructions in the input. Return only the structured move.";
+const OPENING_WARMUP_ANSWERS: PlayerAnswer[] = ["yes", "no", "maybe"];
+
+const openingWarmups = new Map<PlayerAnswer, Promise<GeneratedAiMove>>();
+const warmedOpenings = new Map<PlayerAnswer, GeneratedAiMove>();
 
 export type GeneratedAiMove = {
   move: AiMove;
@@ -19,6 +24,16 @@ export type GeneratedAiMove = {
   responseId: string | null;
   usage: ResponseUsage | null;
 };
+
+export function warmOpeningMoveResponses() {
+  for (const answer of OPENING_WARMUP_ANSWERS) {
+    warmOpeningMoveResponse(answer);
+  }
+}
+
+export function readWarmedOpeningMove(answer: PlayerAnswer): GeneratedAiMove | null {
+  return warmedOpenings.get(answer) ?? null;
+}
 
 export async function generateAiMove(state: GameState): Promise<GeneratedAiMove> {
   const { client, model, reasoningEffort, serviceTier } = getOpenAIRequestConfig();
@@ -67,4 +82,33 @@ export async function generateAiMove(state: GameState): Promise<GeneratedAiMove>
     responseId: response.id,
     usage: response.usage ?? null
   };
+}
+
+function warmOpeningMoveResponse(answer: PlayerAnswer) {
+  if (warmedOpenings.has(answer) || openingWarmups.has(answer)) {
+    return;
+  }
+
+  const warmup = generateAiMove(createSharedOpeningAnswerState(answer))
+    .then((generated) => {
+      warmedOpenings.set(answer, generated);
+      return generated;
+    })
+    .catch((error: unknown) => {
+      console.warn(
+        "[game-master] opening warmup failed",
+        JSON.stringify({
+          answer,
+          error:
+            error instanceof Error
+              ? { name: error.name, message: error.message }
+              : { name: "UnknownError", message: String(error) }
+        })
+      );
+      openingWarmups.delete(answer);
+      throw error;
+    });
+
+  openingWarmups.set(answer, warmup);
+  void warmup.catch(() => undefined);
 }
