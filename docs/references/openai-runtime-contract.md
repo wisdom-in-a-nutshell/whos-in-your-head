@@ -132,9 +132,13 @@ Structured Outputs, conversation state, prompt caching, and static prompt
 prefixes for this style of reasoning workload. The game-master call follows
 that shape: stable instructions first, dynamic state last, `previous_response_id`
 for continued turns, `zodTextFormat` for the move schema,
-`reasoning.effort=medium` by default, `service_tier=priority`, and a stable
+`reasoning.effort=high` by default, `service_tier=priority`, and a stable
 `prompt_cache_key`. It also requests `prompt_cache_retention=24h` for
 GPT-5.5-compatible extended prompt caching.
+
+Do not set a small `max_output_tokens` limit on this call. Reasoning tokens
+count against the output budget, and a high-reasoning request can otherwise
+spend the entire budget before emitting the structured JSON payload.
 
 Because `previous_response_id` depends on provider-stored Responses state, the
 game-master call uses `store: true`. If a future privacy mode requires zero
