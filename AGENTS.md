@@ -35,6 +35,9 @@ The user thinks of a famous person. The app/AI asks one yes/no-style question at
 
 - Use `docs/references/agent-native-workflow.md` for repo-owned checks and docs maintenance rules.
 - Use `docs/references/openai-runtime-contract.md` for the OpenAI integration boundary.
+- For exploratory or multi-step implementation work, create a short-lived
+  branch before editing so unfinished work is not swept into `main` by the
+  machine-wide Stop hook.
 - Run `scripts/check-fast.sh` before ending meaningful implementation work.
 
 ## Project tracking

@@ -304,9 +304,11 @@ structured game records rather than log lines:
 ```bash
 npm run telemetry -- misses --json --minutes 30
 npm run telemetry -- misses --plain --minutes 30
+npm run telemetry -- misses --json --minutes 30 --limit 8 --include-transcript
 npm run telemetry -- misses --json --minutes 60 --group-by model
 npm run telemetry -- model-stats --json --minutes 60
 npm run telemetry -- model-results --json --model gemini --minutes 60 --limit 12
+npm run telemetry -- model-results --json --model gpt --minutes 60 --limit 8 --include-transcript
 npm run telemetry -- token-stats --json --minutes 60
 npm run telemetry -- token-stats --plain --model gemini --minutes 30 --limit 8
 npm run telemetry -- summary --plain --minutes 30 --limit 8
@@ -321,13 +323,32 @@ and `--group-by model` answers which final model has the most reported misses
 inside the window. `model-stats` summarizes completed rounds by final model, and
 `model-results --model <substring>` returns recent completed rounds plus an
 aggregate for models whose `finalModel` contains that substring. These commands
-intentionally do not include full transcripts by default. `token-stats`
-aggregates turn-level runtime telemetry from `whiyh_game_events`, including
-input, cached, output, reasoning, and total tokens, cache read rate, model
-duration, route duration, guesses, fallback turns, and recent sanitized turn
-samples. `summary` combines the common operational snapshot into one call:
-completed-game aggregate, active-game count, per-model result stats, reported
-miss groups, token/cache stats, and recent completed games.
+intentionally do not include full transcripts by default. Add
+`--include-transcript` to `misses` or `model-results` when doing private
+operator diagnosis of prompt/mechanics failures; keep the default compact for
+regular automation and public-safe summaries. `token-stats` aggregates
+turn-level runtime telemetry from `whiyh_game_events`, including input, cached,
+output, reasoning, and total tokens, cache read rate, model duration, route
+duration, guesses, fallback turns, and recent sanitized turn samples. `summary`
+combines the common operational snapshot into one call: completed-game
+aggregate, active-game count, per-model result stats, reported miss groups,
+token/cache stats, and recent completed games.
+
+For the prompt/mechanics hill-climb loop, use a 30-minute review cadence once a
+change has settled:
+
+1. Run `summary` for the last 30 minutes.
+2. If misses are high or a model regresses, run `misses --include-transcript`
+   with a small limit.
+3. Classify recurring failure modes before editing: premature narrow guesses,
+   weak geography/field splits, nearby-person confusion, stale model routing,
+   or user-answer ambiguity.
+4. Make at most one prompt or mechanics change per loop, on a short-lived
+   branch, and compare the next window before changing again.
+
+Use 15-minute checks only immediately after a deploy or routing change. Avoid
+editing prompts from one isolated miss unless the transcript shows a clear,
+repeatable rule violation.
 
 ## Game Telemetry
 

@@ -41,6 +41,32 @@ This repo is intended to work with the machine-wide agent Stop hook and shared l
 
 Keep `scripts/check-fast.sh` deterministic, local, quick, and actionable. If a check becomes slow or flaky, move it to `scripts/check-full.sh`.
 
+## Branch-First Work
+
+Use short-lived branches for exploratory or multi-step agent work.
+
+Default pattern:
+
+1. Start from `main`.
+2. Create a branch named `agent/<short-task-name>` before editing.
+3. Make changes, inspect telemetry, and iterate on that branch.
+4. Run `scripts/check-fast.sh` when the change is ready.
+5. Merge back to `main` only when the user or repo automation is ready for the
+   Stop hook to commit, push, and trigger any normal deploy path.
+
+Reasoning:
+
+- `main` is treated as deployable.
+- The machine-wide Stop hook may stage, commit, rebase, and push at the end of
+  an agent turn.
+- Keeping in-progress work off `main` prevents half-finished telemetry,
+  prompt, or mechanics changes from being published while an investigation is
+  still underway.
+
+Do not manually commit or push during normal work. Let the hook and repo-owned
+automation handle sync after the branch has been merged or explicitly handed
+off.
+
 ## Documentation Rule
 
 When implementation changes durable behavior, update docs in the same change:

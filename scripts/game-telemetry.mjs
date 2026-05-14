@@ -70,7 +70,8 @@ function parseArgs(argv) {
     limit: DEFAULT_LIMIT,
     timeoutMs: 5000,
     groupBy: "none",
-    model: null
+    model: null,
+    includeTranscript: false
   };
 
   const rest = [...argv];
@@ -111,6 +112,10 @@ function parseArgs(argv) {
     }
     if (arg === "--model") {
       args.model = readString(rest, arg);
+      continue;
+    }
+    if (arg === "--include-transcript") {
+      args.includeTranscript = true;
       continue;
     }
 
@@ -177,7 +182,8 @@ async function readRecentMisses(args) {
               finalGuess: 1,
               questionCount: 1,
               finalModel: 1,
-              answerPath: 1
+              answerPath: 1,
+              ...transcriptProjection(args)
             },
             sort: {
               actualAnswerReportedAt: -1
@@ -204,9 +210,10 @@ async function readRecentMisses(args) {
       event_count: eventCount,
       total_reported_misses: totalReportedMisses,
       limit: args.limit,
+      include_transcript: args.includeTranscript,
       group_by: args.groupBy,
       groups,
-      misses: misses.map(formatMiss)
+      misses: misses.map((miss) => formatMiss(miss, args))
     };
   });
 }
@@ -374,7 +381,8 @@ async function readModelResults(args) {
             finalGuess: 1,
             questionCount: 1,
             finalModel: 1,
-            answerPath: 1
+            answerPath: 1,
+            ...transcriptProjection(args)
           },
           sort: {
             completedAt: -1
@@ -389,8 +397,9 @@ async function readModelResults(args) {
       db: buildDbInfo(dbName),
       model_filter: args.model,
       limit: args.limit,
+      include_transcript: args.includeTranscript,
       stats,
-      recent_results: recent_results.map(formatResult)
+      recent_results: recent_results.map((result) => formatResult(result, args))
     };
   });
 }
@@ -973,8 +982,8 @@ async function connectMongo(mongoUri, timeoutMs) {
   }
 }
 
-function formatMiss(miss) {
-  return {
+function formatMiss(miss, args = { includeTranscript: false }) {
+  const formatted = {
     game_id: miss.gameId ?? null,
     reported_answer: miss.actualAnswer ?? null,
     reported_at_utc: toIsoOrNull(miss.actualAnswerReportedAt),
@@ -984,10 +993,16 @@ function formatMiss(miss) {
     final_model: miss.finalModel ?? null,
     answer_path: miss.answerPath ?? null
   };
+
+  if (args.includeTranscript) {
+    formatted.transcript = formatTranscript(miss.transcript);
+  }
+
+  return formatted;
 }
 
-function formatResult(result) {
-  return {
+function formatResult(result, args = { includeTranscript: false }) {
+  const formatted = {
     game_id: result.gameId ?? null,
     completed_at_utc: toIsoOrNull(result.completedAt),
     correct: result.correct === true,
@@ -1001,6 +1016,30 @@ function formatResult(result) {
     final_model: result.finalModel ?? null,
     answer_path: result.answerPath ?? null
   };
+
+  if (args.includeTranscript) {
+    formatted.transcript = formatTranscript(result.transcript);
+  }
+
+  return formatted;
+}
+
+function formatTranscript(transcript) {
+  if (!Array.isArray(transcript)) {
+    return [];
+  }
+
+  return transcript.map((turn, index) => ({
+    index: index + 1,
+    question:
+      typeof turn?.question === "string" && turn.question.trim()
+        ? turn.question.trim()
+        : null,
+    answer:
+      typeof turn?.answer === "string" && turn.answer.trim()
+        ? turn.answer.trim()
+        : null
+  }));
 }
 
 function resultProjection() {
@@ -1018,6 +1057,10 @@ function resultProjection() {
     finalModel: 1,
     answerPath: 1
   };
+}
+
+function transcriptProjection(args) {
+  return args.includeTranscript ? { transcript: 1 } : {};
 }
 
 function formatTurn(turn) {
@@ -1191,6 +1234,9 @@ function emitPlain(result) {
       console.log(
         `${miss.reported_at_utc ?? "-"} answer=${miss.reported_answer ?? "-"} guessed=${miss.final_guess ?? "-"} questions=${miss.question_count ?? "-"} model=${miss.final_model ?? "-"}`
       );
+      if (Array.isArray(miss.transcript) && miss.transcript.length > 0) {
+        console.log(`  transcript=${formatTranscriptPlain(miss.transcript)}`);
+      }
     }
     return;
   }
@@ -1217,6 +1263,9 @@ function emitPlain(result) {
       console.log(
         `${game.completed_at_utc ?? "-"} correct=${game.correct} guessed=${game.final_guess ?? "-"} reported_answer=${game.reported_answer ?? "-"} questions=${game.question_count ?? "-"} model=${game.final_model ?? "-"}`
       );
+      if (Array.isArray(game.transcript) && game.transcript.length > 0) {
+        console.log(`  transcript=${formatTranscriptPlain(game.transcript)}`);
+      }
     }
     return;
   }
@@ -1266,6 +1315,17 @@ function emitPlain(result) {
 
 function usageError(message, hint = "Run `npm run telemetry -- misses --json --minutes 30`.") {
   return cliError("E_USAGE", message, false, hint, EXIT_USAGE);
+}
+
+function formatTranscriptPlain(transcript) {
+  return transcript
+    .map((turn) => {
+      const question = turn.question ?? "-";
+      const answer = turn.answer ?? "-";
+
+      return `${turn.index ?? "?"}:${answer}:${question}`;
+    })
+    .join(" | ");
 }
 
 function cliError(code, message, retryable, hint, exitCode = EXIT_GENERIC) {
