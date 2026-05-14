@@ -45,6 +45,7 @@ export default async function StatsPage() {
       {stats ? (
         <>
           <section className="stats-grid stats-grid-primary" aria-label="Game stats">
+            <StatBlock label="Live now" value={stats.activeGames.toString()} />
             <StatBlock label="Rounds completed" value={stats.totalGames.toString()} />
             <StatBlock label="Correct" value={formatPercent(stats.correctRate)} />
             <StatBlock
