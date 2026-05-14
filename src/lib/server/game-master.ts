@@ -22,6 +22,7 @@ const GAME_MASTER_REQUEST_INSTRUCTIONS =
   "Follow the static game-master instructions in the input. Return only the structured move.";
 const OPENING_WARMUP_ANSWERS: PlayerAnswer[] = ["yes", "no"];
 const OUTPUT_PREVIEW_CHARACTERS = 220;
+const DISABLE_LITELLM_RESPONSE_CACHE = true;
 
 const openingWarmups = new Map<string, Promise<GeneratedAiMove>>();
 const warmedOpenings = new Map<string, GeneratedAiMove>();
@@ -102,8 +103,8 @@ export async function generateAiMove(
   } = getOpenAIRequestConfig(reasoningEffort);
   const model = modelOverride ?? state.model ?? configuredModel;
 
-  const bypassResponseCache = retryAttempt > 1;
-  const usesPreviousResponse = state.modelResponseId !== null && !bypassResponseCache;
+  const rebuildFromFullState = retryAttempt > 1;
+  const usesPreviousResponse = state.modelResponseId !== null && !rebuildFromFullState;
   const startedAt = Date.now();
 
   logInfo("game_master_request_started", {
@@ -119,7 +120,8 @@ export async function generateAiMove(
     requestedServiceTier: serviceTier,
     promptCacheKey: PROMPT_CACHE_KEY,
     retryAttempt,
-    bypassResponseCache,
+    disableLiteLLMResponseCache: DISABLE_LITELLM_RESPONSE_CACHE,
+    rebuildFromFullState,
     usesPreviousResponse,
     hasModelResponseId: state.modelResponseId !== null,
     latestAnswer: state.transcript.at(-1)?.answer ?? null
@@ -149,7 +151,7 @@ export async function generateAiMove(
     prompt_cache_key: PROMPT_CACHE_KEY,
     prompt_cache_retention: "24h",
     store: true,
-    ...(bypassResponseCache
+    ...(DISABLE_LITELLM_RESPONSE_CACHE
       ? {
           cache: {
             "no-cache": true,
@@ -174,7 +176,8 @@ export async function generateAiMove(
         reasoningEffort,
         requestedServiceTier: serviceTier,
         retryAttempt,
-        bypassResponseCache,
+        disableLiteLLMResponseCache: DISABLE_LITELLM_RESPONSE_CACHE,
+        rebuildFromFullState,
         usesPreviousResponse,
         durationMs: Date.now() - startedAt,
         error: describeError(error)
@@ -187,7 +190,8 @@ export async function generateAiMove(
     gameId: state.gameId,
     durationMs: Date.now() - startedAt,
     retryAttempt,
-    bypassResponseCache
+    bypassResponseCache: DISABLE_LITELLM_RESPONSE_CACHE,
+    rebuildFromFullState
   });
 
   logInfo("game_master_request_succeeded", {
@@ -200,7 +204,8 @@ export async function generateAiMove(
     reasoningEffort,
     actualServiceTier: response.service_tier ?? null,
     retryAttempt,
-    bypassResponseCache,
+    disableLiteLLMResponseCache: DISABLE_LITELLM_RESPONSE_CACHE,
+    rebuildFromFullState,
     moveAction: move.action,
     question: move.question,
     guess: move.guess,
@@ -229,6 +234,7 @@ function parseGameMasterMove(
     durationMs: number;
     retryAttempt: number;
     bypassResponseCache: boolean;
+    rebuildFromFullState: boolean;
   }
 ): AiMove {
   const outputText = extractResponseOutputText(response).trim();

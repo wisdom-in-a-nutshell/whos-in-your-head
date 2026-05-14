@@ -263,6 +263,12 @@ export function buildGameMasterContinuationInput(state: GameState, retryAttempt 
 
   return [
     "Continue the same game from the previous response.",
+    "Use this current game state as the complete source of truth. If it conflicts with earlier stored response context, this current game state wins.",
+    "",
+    "<game_state>",
+    JSON.stringify(snapshot, null, 2),
+    "</game_state>",
+    "",
     "The app has recorded this newest player answer:",
     "",
     "<latest_answered_turn>",
