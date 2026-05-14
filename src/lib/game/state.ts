@@ -10,12 +10,10 @@ import { gameReasoningEffortSchema, type GameReasoningEffort } from "./reasoning
 export const MAX_QUESTIONS = 21;
 export const DEFAULT_GAME_REASONING_EFFORT: GameReasoningEffort = "high";
 export const gameModelValues = [
-  "gpt-5.4-mini",
-  "gpt-5.4",
-  "gpt-5.5",
-  "gpt-chat-latest"
+  "gpt-chat-latest",
+  "gpt-5.4-mini"
 ] as const;
-export const DEFAULT_GAME_MODEL = "gpt-5.4-mini";
+export const DEFAULT_GAME_MODEL = "gpt-chat-latest";
 
 export const gamePhaseSchema = z.enum(["asking", "guessing", "result"]);
 export const gameResultSchema = z.enum(["unknown", "correct", "incorrect"]);

@@ -94,14 +94,14 @@ describe("generateAiMove", () => {
     }));
 
     const { generateAiMove } = await import("./game-master");
-    const state = createSharedOpeningAnswerState("yes", "low", "gpt-5.5");
+    const state = createSharedOpeningAnswerState("yes", "low", "gpt-chat-latest");
 
     const generated = await generateAiMove(state, "model-request");
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
-    expect(generated.requestedModel).toBe("gpt-5.5");
+    expect(generated.requestedModel).toBe("gpt-chat-latest");
     expect(request).toMatchObject({
-      model: "gpt-5.5"
+      model: "gpt-chat-latest"
     });
   });
 

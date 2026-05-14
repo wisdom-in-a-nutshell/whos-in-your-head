@@ -48,8 +48,9 @@ fallback names.
 For deployed Azure runtime, prefer `LLM_API_*` app settings backed by Key Vault
 references.
 
-The start screen lets players choose `gpt-5.4-mini`, `gpt-5.4`, `gpt-5.5`, or
-`gpt-chat-latest` for that round. The UI defaults to `gpt-5.4-mini`.
+The start screen lets players choose `gpt-chat-latest` or `gpt-5.4-mini` for
+that round. The UI defaults to `gpt-chat-latest`; other model names can appear
+as disabled coming-soon options.
 
 Local validation:
 

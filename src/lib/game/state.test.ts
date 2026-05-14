@@ -19,15 +19,15 @@ describe("game state transitions", () => {
     expect(state.latestQuestion).toBeNull();
     expect(state.finalGuess).toBeNull();
     expect(state.result).toBe("unknown");
-    expect(state.model).toBe("gpt-5.4-mini");
+    expect(state.model).toBe("gpt-chat-latest");
     expect(state.reasoningEffort).toBe("high");
     expect(state.modelResponseId).toBeNull();
   });
 
   it("keeps the assigned model on the game state", () => {
-    const state = createInitialGameState("high", "gpt-5.5");
+    const state = createInitialGameState("high", "gpt-5.4-mini");
 
-    expect(state.model).toBe("gpt-5.5");
+    expect(state.model).toBe("gpt-5.4-mini");
     expect(
       applyAiMove(state, {
         action: "ask_question",
@@ -35,7 +35,7 @@ describe("game state transitions", () => {
         guess: null,
         shortRationale: null
       }).model
-    ).toBe("gpt-5.5");
+    ).toBe("gpt-5.4-mini");
   });
 
   it("keeps the assigned reasoning effort on the game state", () => {

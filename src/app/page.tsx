@@ -3,23 +3,42 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 const MAX_QUESTIONS = 21;
-const DEFAULT_GAME_MODEL = "gpt-5.4-mini";
+const DEFAULT_GAME_MODEL = "gpt-chat-latest";
+const liveGameModelValues = ["gpt-chat-latest", "gpt-5.4-mini"] as const;
 const gameModelOptions = [
   {
+    value: "gpt-chat-latest",
+    label: "GPT Chat Latest",
+    disabled: false
+  },
+  {
     value: "gpt-5.4-mini",
-    label: "GPT-5.4 Mini"
+    label: "GPT-5.4 Mini",
+    disabled: false
   },
   {
     value: "gpt-5.4",
-    label: "GPT-5.4"
+    label: "GPT-5.4",
+    suffix: "coming soon",
+    disabled: true
   },
   {
     value: "gpt-5.5",
-    label: "GPT-5.5"
+    label: "GPT-5.5",
+    suffix: "coming soon",
+    disabled: true
   },
   {
-    value: "gpt-chat-latest",
-    label: "GPT Chat Latest"
+    value: "claude-sonnet",
+    label: "Claude Sonnet",
+    suffix: "coming soon",
+    disabled: true
+  },
+  {
+    value: "claude-opus",
+    label: "Claude Opus",
+    suffix: "coming soon",
+    disabled: true
   }
 ] as const;
 
@@ -121,7 +140,7 @@ function ThinkingDots() {
 
 type Phase = "start" | "asking" | "thinking" | "guessing" | "result";
 type Answer = "yes" | "no" | "maybe";
-type GameModel = (typeof gameModelOptions)[number]["value"];
+type GameModel = (typeof liveGameModelValues)[number];
 
 type Turn = {
   question: string;
@@ -453,14 +472,34 @@ export default function Home() {
               <span className="model-select-wrap">
                 <select
                   aria-label="Choose model"
-                  onChange={(event) => setSelectedModel(event.target.value as GameModel)}
+                  onChange={(event) => {
+                    const nextModel = event.target.value;
+
+                    if (isLiveGameModel(nextModel)) {
+                      setSelectedModel(nextModel);
+                    }
+                  }}
                   value={selectedModel}
                 >
-                  {gameModelOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
+                  <optgroup label="Recommended">
+                    <option value="gpt-chat-latest">GPT Chat Latest</option>
+                  </optgroup>
+                  <optgroup label="Available">
+                    <option value="gpt-5.4-mini">GPT-5.4 Mini</option>
+                  </optgroup>
+                  <optgroup label="Coming soon">
+                    {gameModelOptions
+                      .filter((option) => option.disabled)
+                      .map((option) => (
+                        <option
+                          disabled
+                          key={option.value}
+                          value={option.value}
+                        >
+                          {option.label}
+                        </option>
+                      ))}
+                  </optgroup>
                 </select>
               </span>
             </label>
@@ -678,6 +717,10 @@ function formatModelName(model: string): string {
     .replace(/^gpt/i, "GPT")
     .replace("-mini", " Mini")
     .replace("-nano", " Nano");
+}
+
+function isLiveGameModel(model: string): model is GameModel {
+  return (liveGameModelValues as readonly string[]).includes(model);
 }
 
 function formatPercent(value: number | null): string {
