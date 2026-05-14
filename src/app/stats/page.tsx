@@ -3,9 +3,21 @@ import { getPublicGameStats } from "@/lib/server/game-telemetry";
 
 export const dynamic = "force-dynamic";
 
+type LoadedStats = NonNullable<Awaited<ReturnType<typeof getPublicGameStats>>>;
+type ModelBreakdown = {
+  model: string;
+  completedGames: number;
+  correctGames: number;
+  correctRate: number | null;
+  turns: number;
+  fallbackTurns: number;
+  averageTurnDurationMs: number | null;
+};
+
 export default async function StatsPage() {
   const stats = await getPublicGameStats().catch(() => null);
   const hasCompletedRounds = Boolean(stats && stats.totalGames > 0);
+  const modelBreakdown = stats ? getModelBreakdown(stats) : [];
 
   return (
     <main className="stats-shell">
@@ -18,10 +30,10 @@ export default async function StatsPage() {
 
       <section className="stats-hero" aria-labelledby="stats-title">
         <p className="kicker">The scoreboard</p>
-        <h1 id="stats-title">How the mind-reader is doing.</h1>
+        <h1 id="stats-title">Live game stats.</h1>
         <p>
-          Aggregate stats only. No transcripts, answers, or individual rounds
-          are shown.
+          Aggregate numbers only. No transcripts, answers, or individual rounds
+          are public.
         </p>
         <div className="stats-actions">
           <Link className="primary-action" href="/">
@@ -32,8 +44,8 @@ export default async function StatsPage() {
 
       {stats ? (
         <>
-          <section className="stats-grid" aria-label="Game stats">
-            <StatBlock label="Completed" value={stats.totalGames.toString()} />
+          <section className="stats-grid stats-grid-primary" aria-label="Game stats">
+            <StatBlock label="Rounds completed" value={stats.totalGames.toString()} />
             <StatBlock label="Correct" value={formatPercent(stats.correctRate)} />
             <StatBlock
               label="Avg questions"
@@ -43,37 +55,29 @@ export default async function StatsPage() {
               label="Avg response"
               value={formatDuration(stats.averageTurnDurationMs)}
             />
+          </section>
+
+          <section className="stats-strip" aria-label="Operational stats">
             <StatBlock label="Started" value={stats.startedGames.toString()} />
             <StatBlock label="Dropped" value={stats.abandonedGames.toString()} />
-            <StatBlock label="Reported misses" value={stats.reportedMisses.toString()} />
+            <StatBlock label="Misses reported" value={stats.reportedMisses.toString()} />
             <StatBlock label="Fallback turns" value={stats.fallbackTurns.toString()} />
-            <StatBlock
-              label="Cached tokens"
-              value={formatCompactNumber(stats.averageCachedTokens)}
-            />
           </section>
 
           <section className="model-table" aria-labelledby="model-title">
             <div>
-              <p className="kicker">Model paths</p>
-              <h2 id="model-title">Who took the turns?</h2>
+              <p className="kicker">Model breakdown</p>
+              <h2 id="model-title">Which mind-reader is playing?</h2>
             </div>
-            {stats.modelStats.length > 0 ? (
+            {modelBreakdown.length > 0 ? (
               <div className="model-rows">
-                {stats.modelStats.map((model) => (
-                  <div
-                    className="model-row"
-                    key={`${model.model}-${model.reasoningEffort}`}
-                  >
+                {modelBreakdown.map((model) => (
+                  <div className="model-row" key={model.model}>
                     <strong>{formatModelName(model.model)}</strong>
-                    <span>{model.reasoningEffort} reasoning</span>
                     <span>{formatPercent(model.correctRate)} correct</span>
-                    <span>{model.completedGames} games</span>
+                    <span>{model.completedGames} rounds</span>
                     <span>{model.turns} turns</span>
                     <span>{formatDuration(model.averageTurnDurationMs)}</span>
-                    <span>
-                      {formatCompactNumber(model.averageReasoningTokens)} reason tokens
-                    </span>
                     <span>{model.fallbackTurns} fallback</span>
                   </div>
                 ))}
@@ -124,6 +128,63 @@ function StatBlock({ label, value }: { label: string; value: string }) {
   );
 }
 
+function getModelBreakdown(stats: LoadedStats): ModelBreakdown[] {
+  const modelMap = new Map<
+    ModelBreakdown["model"],
+    ModelBreakdown & { durationWeight: number }
+  >();
+
+  for (const model of stats.modelStats) {
+    const existing = modelMap.get(model.model) ?? {
+      model: model.model,
+      completedGames: 0,
+      correctGames: 0,
+      correctRate: null,
+      turns: 0,
+      fallbackTurns: 0,
+      averageTurnDurationMs: null,
+      durationWeight: 0
+    };
+    const nextCompletedGames = existing.completedGames + model.completedGames;
+    const nextCorrectGames = existing.correctGames + model.correctGames;
+    const durationWeight = model.averageTurnDurationMs === null ? 0 : model.turns;
+    const nextDurationWeight = existing.durationWeight + durationWeight;
+    const totalDuration =
+      (existing.averageTurnDurationMs ?? 0) * existing.durationWeight +
+      (model.averageTurnDurationMs ?? 0) * durationWeight;
+
+    modelMap.set(model.model, {
+      model: model.model,
+      completedGames: nextCompletedGames,
+      correctGames: nextCorrectGames,
+      correctRate:
+        nextCompletedGames > 0 ? nextCorrectGames / nextCompletedGames : null,
+      turns: existing.turns + model.turns,
+      fallbackTurns: existing.fallbackTurns + model.fallbackTurns,
+      averageTurnDurationMs:
+        nextDurationWeight > 0 ? totalDuration / nextDurationWeight : null,
+      durationWeight: nextDurationWeight
+    });
+  }
+
+  return Array.from(modelMap.values())
+    .map((model) => ({
+      model: model.model,
+      completedGames: model.completedGames,
+      correctGames: model.correctGames,
+      correctRate: model.correctRate,
+      turns: model.turns,
+      fallbackTurns: model.fallbackTurns,
+      averageTurnDurationMs: model.averageTurnDurationMs
+    }))
+    .sort(
+      (left, right) =>
+        right.completedGames - left.completedGames ||
+        right.turns - left.turns ||
+        left.model.localeCompare(right.model)
+    );
+}
+
 function formatPercent(value: number | null) {
   if (value === null) {
     return "new";
@@ -146,17 +207,6 @@ function formatDuration(valueMs: number | null) {
   }
 
   return `${(valueMs / 1000).toFixed(1)}s`;
-}
-
-function formatCompactNumber(value: number | null) {
-  if (value === null) {
-    return "new";
-  }
-
-  return Intl.NumberFormat("en", {
-    notation: "compact",
-    maximumFractionDigits: 1
-  }).format(value);
 }
 
 function formatModelName(model: string) {
