@@ -488,6 +488,10 @@ function getReusableResponseId(generated: GeneratedAiMove) {
     return null;
   }
 
+  if (generated.requestedModel.startsWith("gemini-")) {
+    return null;
+  }
+
   return generated.responseId;
 }
 

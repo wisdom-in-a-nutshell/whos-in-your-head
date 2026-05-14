@@ -45,13 +45,15 @@ Deployed Azure runtime should use
 depend on ambient global OpenAI provider routing.
 
 Players can choose the game model at the start of a round. The public picker is
-allowlisted to `gpt-chat-latest`, `gpt-5.4-mini`, and
+allowlisted to `gpt-chat-latest`, `gpt-5.4-mini`, `gemini-3.1-flash-lite`, and
 `claude-sonnet-4-6`; `gpt-chat-latest` is the UI default and is labeled as
 recommended in the dropdown. Other model names, including Claude Opus and
 Claude Haiku, may appear as disabled coming-soon options, but they must not be
 accepted by the game-turn schema until they are real choices. The selected
 model is stored on the explicit game state and reused for the normal model
-path, opening warmup, retries, and telemetry.
+path, opening warmup, retries, and telemetry. Gemini routes are treated as
+OpenAI-compatible LiteLLM routes, but their response ids are not reused for
+future `previous_response_id` continuation.
 
 `LLM_FALLBACK_MODELS` is a comma- or newline-separated model chain. It is used
 only when the primary Responses call returns `status: "incomplete"` with
@@ -204,10 +206,10 @@ model turns; the next turn rebuilds from transcript rather than crossing model
 response chains.
 
 The server only stores response ids that begin with `resp_` for future
-`previous_response_id` use. If LiteLLM internally falls back to a
-chat-completions-shaped provider and returns a `chatcmpl-...` id, the move is
-still accepted after schema validation, but the next turn rebuilds from the
-explicit transcript instead of sending that chat id to the Responses API.
+`previous_response_id` use on models known to support that continuation path.
+Gemini routes and chat-completions-shaped provider ids such as `chatcmpl-...`
+are still accepted after schema validation, but the next turn rebuilds from the
+explicit transcript instead of sending that id to the Responses API.
 
 OpenAI's GPT-5.5 guidance says to use the Responses API, Structured Outputs,
 conversation state, prompt caching, and static prompt prefixes for this style

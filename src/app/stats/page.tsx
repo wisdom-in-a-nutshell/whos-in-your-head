@@ -447,6 +447,10 @@ function formatModelName(model: string) {
     return "GPT Chat Latest";
   }
 
+  if (model === "gemini-3.1-flash-lite") {
+    return "Gemini Flash Lite";
+  }
+
   if (model === "claude-sonnet-4-6" || model === "claude-4.6-sonnet") {
     return "Claude Sonnet";
   }

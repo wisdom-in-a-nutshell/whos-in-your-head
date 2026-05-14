@@ -39,6 +39,20 @@ describe("game state transitions", () => {
     ).toBe("gpt-5.4-mini");
   });
 
+  it("accepts the Gemini Flash Lite game model", () => {
+    const parsed = gameTurnRequestSchema.parse({
+      action: "start",
+      model: "gemini-3.1-flash-lite"
+    });
+
+    expect(parsed.action).toBe("start");
+    if (parsed.action !== "start") {
+      throw new Error("Expected a start action.");
+    }
+
+    expect(parsed.model).toBe("gemini-3.1-flash-lite");
+  });
+
   it("keeps the assigned reasoning effort on the game state", () => {
     const state = createInitialGameState("low");
 

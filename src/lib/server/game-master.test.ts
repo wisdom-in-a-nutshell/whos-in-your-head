@@ -154,6 +154,33 @@ describe("generateAiMove", () => {
     );
   });
 
+  it("uses the Gemini Flash Lite model on the OpenAI-compatible path", async () => {
+    createMock.mockResolvedValue(createResponse({
+      id: "resp-gemini-model-test",
+      outputText: JSON.stringify({
+        action: "ask_question",
+        question: "Are they mostly known for entertainment?",
+        guess: null,
+        shortRationale: null
+      })
+    }));
+
+    const { generateAiMove } = await import("./game-master");
+    const state = createSharedOpeningAnswerState(
+      "yes",
+      "low",
+      "gemini-3.1-flash-lite"
+    );
+
+    const generated = await generateAiMove(state, "gemini-model-request");
+    const request = createMock.mock.calls[0][0] as Record<string, unknown>;
+
+    expect(generated.requestedModel).toBe("gemini-3.1-flash-lite");
+    expect(request).toMatchObject({
+      model: "gemini-3.1-flash-lite"
+    });
+  });
+
   it("upgrades gpt-chat-latest games to gpt-5.5 from question 13 onward", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-late-upgrade-test",

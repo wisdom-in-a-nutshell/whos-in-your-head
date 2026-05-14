@@ -7,6 +7,7 @@ const DEFAULT_GAME_MODEL = "gpt-chat-latest";
 const liveGameModelValues = [
   "gpt-chat-latest",
   "gpt-5.4-mini",
+  "gemini-3.1-flash-lite",
   "claude-sonnet-4-6"
 ] as const;
 const gameModelOptions = [
@@ -18,6 +19,11 @@ const gameModelOptions = [
   {
     value: "gpt-5.4-mini",
     label: "GPT-5.4 Mini",
+    disabled: false
+  },
+  {
+    value: "gemini-3.1-flash-lite",
+    label: "Gemini Flash Lite",
     disabled: false
   },
   {
@@ -524,6 +530,7 @@ export default function Home() {
                   </optgroup>
                   <optgroup label="Available">
                     <option value="gpt-5.4-mini">GPT-5.4 Mini</option>
+                    <option value="gemini-3.1-flash-lite">Gemini Flash Lite</option>
                     <option value="claude-sonnet-4-6">Claude Sonnet</option>
                   </optgroup>
                   <optgroup label="Coming soon">
@@ -750,6 +757,10 @@ function readErrorMessage(error: unknown): string {
 function formatModelName(model: string): string {
   if (model === "gpt-chat-latest") {
     return "GPT Chat Latest";
+  }
+
+  if (model === "gemini-3.1-flash-lite") {
+    return "Gemini Flash Lite";
   }
 
   if (model === "claude-4.6-sonnet" || model === "claude-sonnet-4-6") {
