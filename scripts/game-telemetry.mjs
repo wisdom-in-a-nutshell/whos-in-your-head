@@ -31,6 +31,8 @@ try {
     data = await readModelStats(args);
   } else if (command === "model-results") {
     data = await readModelResults(args);
+  } else if (command === "token-stats") {
+    data = await readTokenStats(args);
   } else {
     throw usageError(`Unknown command: ${command}`);
   }
@@ -391,6 +393,72 @@ async function readModelResults(args) {
   });
 }
 
+async function readTokenStats(args) {
+  return withTelemetryDb(args, async ({ db, dbName, since, until }) => {
+    const events = db.collection(EVENTS_COLLECTION);
+    const query = {
+      eventType: "game_turn",
+      createdAt: {
+        $gte: since,
+        $lte: until
+      },
+      ...modelEventFilter(args.model)
+    };
+
+    const [models, recentTurns] = await Promise.all([
+      events
+        .aggregate([
+          {
+            $match: query
+          },
+          {
+            $group: tokenStatsGroupStage()
+          },
+          {
+            $project: tokenStatsProjectStage()
+          },
+          {
+            $sort: {
+              turns: -1,
+              total_tokens: -1,
+              model: 1
+            }
+          },
+          {
+            $limit: args.limit
+          }
+        ])
+        .toArray(),
+      events
+        .find(query, {
+          projection: {
+            _id: 0,
+            gameId: 1,
+            createdAt: 1,
+            questionCount: 1,
+            move: 1,
+            routeDurationMs: 1,
+            runtime: 1
+          },
+          sort: {
+            createdAt: -1
+          },
+          limit: args.limit
+        })
+        .toArray()
+    ]);
+
+    return {
+      window: buildWindow(args, since, until, "game_turn.createdAt"),
+      db: buildDbInfo(dbName),
+      model_filter: args.model,
+      limit: args.limit,
+      models,
+      recent_turns: recentTurns.map(formatTurn)
+    };
+  });
+}
+
 async function withTelemetryDb(args, reader) {
   const mongoUri = process.env.MONGODB_URI?.trim();
   if (!mongoUri) {
@@ -417,6 +485,100 @@ async function withTelemetryDb(args, reader) {
   } finally {
     await client.close();
   }
+}
+
+function tokenStatsGroupStage() {
+  return {
+    _id: modelExpression(),
+    turns: {
+      $sum: 1
+    },
+    guesses: {
+      $sum: {
+        $cond: [
+          {
+            $eq: ["$move.action", "make_guess"]
+          },
+          1,
+          0
+        ]
+      }
+    },
+    fallback_turns: {
+      $sum: {
+        $cond: [
+          {
+            $eq: ["$runtime.source", "model_move_content_filter_fallback"]
+          },
+          1,
+          0
+        ]
+      }
+    },
+    total_input_tokens: {
+      $sum: {
+        $ifNull: ["$runtime.usage.inputTokens", 0]
+      }
+    },
+    total_cached_tokens: {
+      $sum: {
+        $ifNull: ["$runtime.usage.cachedTokens", 0]
+      }
+    },
+    total_output_tokens: {
+      $sum: {
+        $ifNull: ["$runtime.usage.outputTokens", 0]
+      }
+    },
+    total_reasoning_tokens: {
+      $sum: {
+        $ifNull: ["$runtime.usage.reasoningTokens", 0]
+      }
+    },
+    total_tokens: {
+      $sum: {
+        $ifNull: ["$runtime.usage.totalTokens", 0]
+      }
+    },
+    average_route_duration_ms: {
+      $avg: "$routeDurationMs"
+    },
+    average_model_duration_ms: {
+      $avg: "$runtime.modelDurationMs"
+    },
+    latest_turn_at: {
+      $max: "$createdAt"
+    }
+  };
+}
+
+function tokenStatsProjectStage() {
+  return {
+    _id: 0,
+    model: "$_id",
+    turns: 1,
+    guesses: 1,
+    fallback_turns: 1,
+    total_input_tokens: 1,
+    total_cached_tokens: 1,
+    total_output_tokens: 1,
+    total_reasoning_tokens: 1,
+    total_tokens: 1,
+    average_input_tokens: roundedAverage("$total_input_tokens", "$turns", 1),
+    average_cached_tokens: roundedAverage("$total_cached_tokens", "$turns", 1),
+    average_output_tokens: roundedAverage("$total_output_tokens", "$turns", 1),
+    average_reasoning_tokens: roundedAverage("$total_reasoning_tokens", "$turns", 1),
+    average_total_tokens: roundedAverage("$total_tokens", "$turns", 1),
+    cache_read_rate: roundedRatio("$total_cached_tokens", "$total_input_tokens", 4),
+    output_to_input_ratio: roundedRatio("$total_output_tokens", "$total_input_tokens", 4),
+    average_route_duration_ms: {
+      $round: ["$average_route_duration_ms", 0]
+    },
+    average_model_duration_ms: {
+      $round: ["$average_model_duration_ms", 0]
+    },
+    latest_turn_at: 1
+  };
 }
 
 function modelStatsGroupStage() {
@@ -448,6 +610,74 @@ function modelStatsGroupStage() {
     latest_completed_at: {
       $max: "$completedAt"
     }
+  };
+}
+
+function modelEventFilter(model) {
+  if (!model) {
+    return {};
+  }
+
+  const regex = new RegExp(escapeRegex(model), "i");
+
+  return {
+    $or: [
+      {
+        "runtime.actualModel": regex
+      },
+      {
+        "runtime.requestedModel": regex
+      }
+    ]
+  };
+}
+
+function modelExpression() {
+  return {
+    $ifNull: [
+      "$runtime.actualModel",
+      {
+        $ifNull: ["$runtime.requestedModel", "unknown"]
+      }
+    ]
+  };
+}
+
+function roundedAverage(numerator, denominator, places) {
+  return {
+    $cond: [
+      {
+        $gt: [denominator, 0]
+      },
+      {
+        $round: [
+          {
+            $divide: [numerator, denominator]
+          },
+          places
+        ]
+      },
+      null
+    ]
+  };
+}
+
+function roundedRatio(numerator, denominator, places) {
+  return {
+    $cond: [
+      {
+        $gt: [denominator, 0]
+      },
+      {
+        $round: [
+          {
+            $divide: [numerator, denominator]
+          },
+          places
+        ]
+      },
+      null
+    ]
   };
 }
 
