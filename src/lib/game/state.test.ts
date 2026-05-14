@@ -19,7 +19,7 @@ describe("game state transitions", () => {
     expect(state.latestQuestion).toBeNull();
     expect(state.finalGuess).toBeNull();
     expect(state.result).toBe("unknown");
-    expect(state.model).toBe("gemini-3.1-flash-lite");
+    expect(state.model).toBe("gpt-chat-latest");
     expect(state.reasoningEffort).toBe("high");
     expect(state.modelResponseId).toBeNull();
     expect(state.modelResponseModel).toBeNull();

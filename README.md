@@ -50,7 +50,7 @@ references.
 
 The start screen lets players choose `gpt-chat-latest`, `gpt-5.4-mini`,
 `gemini-3.1-flash-lite`, or `claude-sonnet-4-6` for that round. The UI defaults
-to `gemini-3.1-flash-lite`; other model names can appear as disabled coming-soon
+to `gpt-chat-latest`; other model names can appear as disabled coming-soon
 options.
 
 Share links can preselect the start-screen model with `?model=`. Use an exact

@@ -15,7 +15,7 @@ export const gameModelValues = [
   "gemini-3.1-flash-lite",
   "claude-sonnet-4-6"
 ] as const;
-export const DEFAULT_GAME_MODEL = "gemini-3.1-flash-lite";
+export const DEFAULT_GAME_MODEL = "gpt-chat-latest";
 
 export const gamePhaseSchema = z.enum(["asking", "guessing", "result"]);
 export const gameResultSchema = z.enum(["unknown", "correct", "incorrect"]);
