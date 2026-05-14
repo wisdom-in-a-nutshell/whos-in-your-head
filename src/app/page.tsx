@@ -440,11 +440,13 @@ export default function Home() {
           </div>
 
           <div className="progress-lockup" aria-label="21 question limit">
-            <span>Question limit</span>
-            <div className="progress-marks" aria-hidden="true">
-              {progressMarks.map((mark) => (
-                <span key={mark} className="mark" />
-              ))}
+            <div className="question-limit-meter">
+              <span>Question limit</span>
+              <div className="progress-marks" aria-hidden="true">
+                {progressMarks.map((mark) => (
+                  <span key={mark} className="mark" />
+                ))}
+              </div>
             </div>
             <label className="model-picker">
               <span>Playing with</span>

@@ -64,7 +64,7 @@ button {
 .round-count,
 .kicker,
 .stage-label,
-.progress-lockup > span,
+.question-limit-meter > span,
 .play-topline,
 .guess-stat {
   font-size: 0.78rem;
@@ -267,11 +267,19 @@ button {
 
 .progress-lockup {
   display: grid;
-  gap: 12px;
-  width: min(680px, 100%);
+  justify-items: center;
+  gap: 14px;
+  width: min(620px, 100%);
 }
 
-.progress-lockup > span,
+.question-limit-meter {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.question-limit-meter > span,
 .guess-stat {
   color: var(--muted);
 }
@@ -279,13 +287,13 @@ button {
 .progress-marks {
   display: grid;
   grid-template-columns: repeat(21, 1fr);
-  gap: 5px;
-  width: 100%;
+  gap: 4px;
+  width: min(540px, 100%);
 }
 
 .mark {
   display: block;
-  height: 12px;
+  height: 10px;
   border: 1px solid var(--line-strong);
   border-radius: 999px;
   background: var(--paper);
@@ -699,7 +707,7 @@ button {
   .round-count,
   .kicker,
   .stage-label,
-  .progress-lockup > span,
+  .question-limit-meter > span,
   .play-topline,
   .guess-stat {
     font-size: 0.68rem;
@@ -783,10 +791,11 @@ button {
 
   .progress-marks {
     gap: 3px;
+    width: 100%;
   }
 
   .mark {
-    height: 10px;
+    height: 9px;
   }
 
   .result-meta {
