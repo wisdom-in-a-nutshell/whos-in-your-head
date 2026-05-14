@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { getPublicGameStats } from "@/lib/server/game-telemetry";
 
 export const dynamic = "force-dynamic";
@@ -13,12 +14,9 @@ type ModelBreakdown = {
   fallbackTurns: number;
   averageTurnDurationMs: number | null;
 };
+type TrendBucket = LoadedStats["trendStats"][number];
 
-export default async function StatsPage() {
-  const stats = await getPublicGameStats().catch(() => null);
-  const hasCompletedRounds = Boolean(stats && stats.totalGames > 0);
-  const modelBreakdown = stats ? getModelBreakdown(stats) : [];
-
+export default function StatsPage() {
   return (
     <main className="stats-shell">
       <header className="stats-header">
@@ -42,6 +40,20 @@ export default async function StatsPage() {
         </div>
       </section>
 
+      <Suspense fallback={<StatsLoading />}>
+        <StatsContent />
+      </Suspense>
+    </main>
+  );
+}
+
+async function StatsContent() {
+  const stats = await getPublicGameStats().catch(() => null);
+  const hasCompletedRounds = Boolean(stats && stats.totalGames > 0);
+  const modelBreakdown = stats ? getModelBreakdown(stats) : [];
+
+  return (
+    <>
       {stats ? (
         <>
           <section className="stats-grid stats-grid-primary" aria-label="Game stats">
@@ -64,6 +76,8 @@ export default async function StatsPage() {
             <StatBlock label="Misses reported" value={stats.reportedMisses.toString()} />
             <StatBlock label="Fallback turns" value={stats.fallbackTurns.toString()} />
           </section>
+
+          <TrendPanel trend={stats.trendStats} />
 
           <section className="model-table" aria-labelledby="model-title">
             <div>
@@ -105,7 +119,187 @@ export default async function StatsPage() {
           body="The public page is ready. It will fill itself in as soon as telemetry is available."
         />
       )}
-    </main>
+    </>
+  );
+}
+
+function StatsLoading() {
+  return (
+    <section className="stats-loading" aria-busy="true" aria-label="Loading stats">
+      <div className="stats-grid stats-grid-primary">
+        {["Live now", "Rounds completed", "Correct", "Avg questions", "Avg response"].map(
+          (label) => (
+            <StatBlock key={label} label={label} value="..." />
+          )
+        )}
+      </div>
+      <p>Pulling the live board.</p>
+    </section>
+  );
+}
+
+function TrendPanel({ trend }: { trend: TrendBucket[] }) {
+  const hasTrendData = trend.some(
+    (bucket) =>
+      bucket.startedGames > 0 ||
+      bucket.completedGames > 0 ||
+      bucket.reportedMisses > 0 ||
+      bucket.droppedGames > 0
+  );
+  const completedGames = trend.reduce(
+    (total, bucket) => total + bucket.completedGames,
+    0
+  );
+  const reportedMisses = trend.reduce(
+    (total, bucket) => total + bucket.reportedMisses,
+    0
+  );
+  const droppedGames = trend.reduce(
+    (total, bucket) => total + bucket.droppedGames,
+    0
+  );
+  const windowMinutes = trend.length * 10;
+
+  return (
+    <section className="trend-panel" aria-labelledby="trend-title">
+      <div className="trend-heading">
+        <p className="kicker">Last {windowMinutes} minutes</p>
+        <h2 id="trend-title">Is it getting sharper?</h2>
+        <p>
+          {hasTrendData
+            ? `${completedGames} completed, ${reportedMisses} misses reported, ${droppedGames} dropped.`
+            : "Waiting for enough recent games to draw a useful trend."}
+        </p>
+      </div>
+      <TrendChart trend={trend} hasTrendData={hasTrendData} />
+    </section>
+  );
+}
+
+function TrendChart({
+  trend,
+  hasTrendData
+}: {
+  trend: TrendBucket[];
+  hasTrendData: boolean;
+}) {
+  const width = 1000;
+  const height = 260;
+  const paddingX = 42;
+  const lineTop = 28;
+  const lineBottom = 132;
+  const barBase = 218;
+  const maxBarHeight = 70;
+  const step =
+    trend.length > 1 ? (width - paddingX * 2) / (trend.length - 1) : 0;
+  const maxBarCount = Math.max(
+    1,
+    ...trend.map((bucket) => Math.max(bucket.reportedMisses, bucket.droppedGames))
+  );
+  const correctPoints = trend.flatMap((bucket, index) => {
+    if (bucket.correctRate === null) {
+      return [];
+    }
+
+    return [
+      {
+        x: paddingX + index * step,
+        y: lineBottom - bucket.correctRate * (lineBottom - lineTop),
+        bucket
+      }
+    ];
+  });
+  const correctSegments = correctPoints.slice(1).map((point, index) => ({
+    from: correctPoints[index],
+    to: point
+  }));
+  const firstLabel = trend[0]?.label ?? "";
+  const lastLabel = trend.at(-1)?.label ?? "";
+
+  return (
+    <div className="trend-chart-wrap">
+      <div className="trend-legend" aria-hidden="true">
+        <span>
+          <i className="trend-key trend-key-correct" />
+          Correct
+        </span>
+        <span>
+          <i className="trend-key trend-key-miss" />
+          Misses
+        </span>
+        <span>
+          <i className="trend-key trend-key-drop" />
+          Dropped
+        </span>
+      </div>
+      <svg
+        className="trend-chart"
+        role="img"
+        aria-label="Recent trend for correct rate, reported misses, and dropped games"
+        viewBox={`0 0 ${width} ${height}`}
+      >
+        <line className="trend-grid-line" x1={paddingX} x2={width - paddingX} y1={lineTop} y2={lineTop} />
+        <line className="trend-grid-line" x1={paddingX} x2={width - paddingX} y1={(lineTop + lineBottom) / 2} y2={(lineTop + lineBottom) / 2} />
+        <line className="trend-grid-line trend-grid-line-strong" x1={paddingX} x2={width - paddingX} y1={lineBottom} y2={lineBottom} />
+        <text className="trend-axis-label" x={0} y={lineTop + 4}>100%</text>
+        <text className="trend-axis-label" x={8} y={lineBottom + 4}>0%</text>
+        {trend.map((bucket, index) => {
+          const x = paddingX + index * step;
+          const missHeight = (bucket.reportedMisses / maxBarCount) * maxBarHeight;
+          const dropHeight = (bucket.droppedGames / maxBarCount) * maxBarHeight;
+          const barWidth = Math.max(8, step * 0.2);
+
+          return (
+            <g key={bucket.bucketStart}>
+              <rect
+                className="trend-bar trend-bar-miss"
+                x={x - barWidth - 2}
+                y={barBase - missHeight}
+                width={barWidth}
+                height={missHeight}
+                rx={2}
+              />
+              <rect
+                className="trend-bar trend-bar-drop"
+                x={x + 2}
+                y={barBase - dropHeight}
+                width={barWidth}
+                height={dropHeight}
+                rx={2}
+              />
+            </g>
+          );
+        })}
+        {correctSegments.map((segment) => (
+          <line
+            className="trend-line"
+            key={`${segment.from.bucket.bucketStart}-${segment.to.bucket.bucketStart}`}
+            x1={segment.from.x}
+            y1={segment.from.y}
+            x2={segment.to.x}
+            y2={segment.to.y}
+          />
+        ))}
+        {correctPoints.map((point) => (
+          <circle
+            className="trend-dot"
+            key={point.bucket.bucketStart}
+            cx={point.x}
+            cy={point.y}
+            r={5}
+          />
+        ))}
+        {!hasTrendData ? (
+          <text className="trend-empty-label" x={width / 2} y={height / 2}>
+            Waiting for games
+          </text>
+        ) : null}
+      </svg>
+      <div className="trend-axis-row" aria-hidden="true">
+        <span>{firstLabel}</span>
+        <span>{lastLabel}</span>
+      </div>
+    </div>
   );
 }
 

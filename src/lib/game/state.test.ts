@@ -22,6 +22,7 @@ describe("game state transitions", () => {
     expect(state.model).toBe("gpt-chat-latest");
     expect(state.reasoningEffort).toBe("high");
     expect(state.modelResponseId).toBeNull();
+    expect(state.modelResponseModel).toBeNull();
   });
 
   it("keeps the assigned model on the game state", () => {

@@ -18,6 +18,9 @@ const EVENTS_COLLECTION = "whiyh_game_events";
 const FAILURES_COLLECTION = "whiyh_game_failures";
 const CONNECTION_TIMEOUT_MS = 2500;
 const DEFAULT_ABANDON_AFTER_MINUTES = 20;
+const TREND_BUCKET_MINUTES = 10;
+const TREND_BUCKET_COUNT = 12;
+const PUBLIC_STATS_CACHE_TTL_MS = 5000;
 
 type RuntimeSnapshot = {
   source: string;
@@ -53,6 +56,19 @@ export type PublicGameStats = {
   fallbackGames: number;
   fallbackTurns: number;
   modelStats: PublicModelStats[];
+  trendStats: PublicTrendStats[];
+};
+
+export type PublicTrendStats = {
+  label: string;
+  bucketStart: string;
+  startedGames: number;
+  completedGames: number;
+  correctGames: number;
+  incorrectGames: number;
+  reportedMisses: number;
+  droppedGames: number;
+  correctRate: number | null;
 };
 
 export type PublicModelStats = {
@@ -72,6 +88,13 @@ export type PublicModelStats = {
 
 let clientPromise: Promise<MongoClient> | null = null;
 let indexesPromise: Promise<void> | null = null;
+let publicStatsCache:
+  | {
+      expiresAt: number;
+      value: PublicGameStats | null;
+    }
+  | null = null;
+let publicStatsPromise: Promise<PublicGameStats | null> | null = null;
 
 export function isGameTelemetryEnabled() {
   if (process.env.GAME_TELEMETRY_ENABLED?.trim().toLowerCase() === "false") {
@@ -353,6 +376,32 @@ export async function getPublicGameStats(): Promise<PublicGameStats | null> {
     return null;
   }
 
+  const now = Date.now();
+
+  if (publicStatsCache && publicStatsCache.expiresAt > now) {
+    return publicStatsCache.value;
+  }
+
+  if (publicStatsPromise) {
+    return publicStatsPromise;
+  }
+
+  publicStatsPromise = readPublicGameStats()
+    .then((value) => {
+      publicStatsCache = {
+        value,
+        expiresAt: Date.now() + PUBLIC_STATS_CACHE_TTL_MS
+      };
+      return value;
+    })
+    .finally(() => {
+      publicStatsPromise = null;
+    });
+
+  return publicStatsPromise;
+}
+
+async function readPublicGameStats(): Promise<PublicGameStats | null> {
   const db = await getTelemetryDb();
   await ensureIndexes(db);
 
@@ -388,7 +437,10 @@ export async function getPublicGameStats(): Promise<PublicGameStats | null> {
     .next();
 
   if (!stats) {
-    const abandonmentStats = await getAbandonmentStats(db);
+    const [abandonmentStats, trendStats] = await Promise.all([
+      getAbandonmentStats(db),
+      getPublicTrendStats(db)
+    ]);
 
     return {
       startedGames: abandonmentStats.startedGames,
@@ -410,7 +462,8 @@ export async function getPublicGameStats(): Promise<PublicGameStats | null> {
       averageCachedTokens: null,
       fallbackGames: 0,
       fallbackTurns: 0,
-      modelStats: []
+      modelStats: [],
+      trendStats
     };
   }
 
@@ -420,7 +473,8 @@ export async function getPublicGameStats(): Promise<PublicGameStats | null> {
     fallbackTurns,
     abandonmentStats,
     reportedMisses,
-    modelStats
+    modelStats,
+    trendStats
   ] = await Promise.all([
     eventsCollection(db)
       .distinct("gameId", {
@@ -462,7 +516,8 @@ export async function getPublicGameStats(): Promise<PublicGameStats | null> {
         $ne: null
       }
     }),
-    getPublicModelStats(db)
+    getPublicModelStats(db),
+    getPublicTrendStats(db)
   ]);
 
   return {
@@ -506,7 +561,8 @@ export async function getPublicGameStats(): Promise<PublicGameStats | null> {
         : Math.round(turnStats.averageCachedTokens),
     fallbackGames: fallbackGameIds,
     fallbackTurns,
-    modelStats
+    modelStats,
+    trendStats
   };
 }
 
@@ -745,6 +801,160 @@ async function getPublicModelStats(db: Db): Promise<PublicModelStats[]> {
   );
 }
 
+async function getPublicTrendStats(db: Db): Promise<PublicTrendStats[]> {
+  const bucketMs = TREND_BUCKET_MINUTES * 60 * 1000;
+  const currentBucketStartMs = Math.floor(Date.now() / bucketMs) * bucketMs;
+  const startMs = currentBucketStartMs - (TREND_BUCKET_COUNT - 1) * bucketMs;
+  const startDate = new Date(startMs);
+  const abandonAfterMs = readAbandonAfterMinutes() * 60 * 1000;
+  const dropLookbackStart = new Date(startMs - abandonAfterMs);
+  const dropCutoffMs = Date.now() - abandonAfterMs;
+  const buckets = Array.from({ length: TREND_BUCKET_COUNT }, (_, index) => ({
+    label: formatTrendBucketLabel(TREND_BUCKET_COUNT - index - 1),
+    bucketStart: new Date(startMs + index * bucketMs).toISOString(),
+    startedGames: 0,
+    completedGames: 0,
+    correctGames: 0,
+    incorrectGames: 0,
+    reportedMisses: 0,
+    droppedGames: 0,
+    correctRate: null as number | null
+  }));
+
+  const [
+    startedEvents,
+    completedResults,
+    reportedMissEvents,
+    completedGameIds,
+    latestGameEvents
+  ] = await Promise.all([
+    eventsCollection(db)
+      .find(
+        {
+          eventType: "game_started",
+          createdAt: {
+            $gte: startDate
+          }
+        },
+        {
+          projection: {
+            createdAt: 1
+          }
+        }
+      )
+      .toArray(),
+    resultsCollection(db)
+      .find(
+        {
+          completedAt: {
+            $gte: startDate
+          }
+        },
+        {
+          projection: {
+            completedAt: 1,
+            correct: 1
+          }
+        }
+      )
+      .toArray(),
+    eventsCollection(db)
+      .find(
+        {
+          eventType: "actual_answer_reported",
+          createdAt: {
+            $gte: startDate
+          }
+        },
+        {
+          projection: {
+            createdAt: 1
+          }
+        }
+      )
+      .toArray(),
+    resultsCollection(db).distinct("gameId", {}),
+    eventsCollection(db)
+      .aggregate<{
+        gameId: string;
+        lastEventAt: Date;
+      }>([
+        {
+          $match: {
+            gameId: {
+              $ne: null
+            },
+            createdAt: {
+              $gte: dropLookbackStart
+            }
+          }
+        },
+        {
+          $group: {
+            _id: "$gameId",
+            lastEventAt: {
+              $max: "$createdAt"
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            gameId: "$_id",
+            lastEventAt: 1
+          }
+        }
+      ])
+      .toArray()
+  ]);
+
+  for (const event of startedEvents) {
+    incrementBucket(buckets, event.createdAt, startMs, bucketMs, "startedGames");
+  }
+
+  for (const result of completedResults) {
+    const bucket = getTrendBucket(buckets, result.completedAt, startMs, bucketMs);
+
+    if (!bucket) {
+      continue;
+    }
+
+    bucket.completedGames += 1;
+
+    if (result.correct === true) {
+      bucket.correctGames += 1;
+    } else {
+      bucket.incorrectGames += 1;
+    }
+  }
+
+  for (const event of reportedMissEvents) {
+    incrementBucket(buckets, event.createdAt, startMs, bucketMs, "reportedMisses");
+  }
+
+  const completedGameIdSet = new Set(completedGameIds);
+
+  for (const game of latestGameEvents) {
+    if (completedGameIdSet.has(game.gameId)) {
+      continue;
+    }
+
+    if (!(game.lastEventAt instanceof Date) || game.lastEventAt.getTime() >= dropCutoffMs) {
+      continue;
+    }
+
+    incrementBucket(buckets, game.lastEventAt, startMs, bucketMs, "droppedGames");
+  }
+
+  return buckets.map((bucket) => ({
+    ...bucket,
+    correctRate:
+      bucket.completedGames > 0
+        ? round(bucket.correctGames / bucket.completedGames, 4)
+        : null
+  }));
+}
+
 async function getAbandonmentStats(db: Db) {
   const abandonAfterMs = readAbandonAfterMinutes() * 60 * 1000;
   const cutoff = new Date(Date.now() - abandonAfterMs);
@@ -901,8 +1111,14 @@ async function ensureIndexes(db: Db) {
 
       await createTelemetryIndex(results, { gameId: 1 });
       await createTelemetryIndex(results, { completedAt: -1 });
+      await createTelemetryIndex(results, { actualAnswer: 1 });
+      await createTelemetryIndex(results, { actualAnswerReportedAt: -1 });
+      await createTelemetryIndex(results, { finalModel: 1, finalReasoningEffort: 1 });
       await createTelemetryIndex(events, { gameId: 1, createdAt: 1 });
       await createTelemetryIndex(events, { createdAt: -1 });
+      await createTelemetryIndex(events, { eventType: 1, createdAt: -1 });
+      await createTelemetryIndex(events, { eventType: 1, gameId: 1, createdAt: -1 });
+      await createTelemetryIndex(events, { "runtime.source": 1, gameId: 1 });
       await createTelemetryIndex(failures, { gameId: 1, createdAt: 1 });
       await createTelemetryIndex(failures, { createdAt: -1 });
     })();
@@ -1006,6 +1222,65 @@ function roundNullable(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value)
     ? Math.round(value)
     : null;
+}
+
+type TrendCountKey = "startedGames" | "reportedMisses" | "droppedGames";
+
+function incrementBucket(
+  buckets: PublicTrendStats[],
+  value: unknown,
+  startMs: number,
+  bucketMs: number,
+  key: TrendCountKey
+) {
+  const bucket = getTrendBucket(buckets, value, startMs, bucketMs);
+
+  if (bucket) {
+    bucket[key] += 1;
+  }
+}
+
+function getTrendBucket(
+  buckets: PublicTrendStats[],
+  value: unknown,
+  startMs: number,
+  bucketMs: number
+) {
+  const date = readTelemetryDate(value);
+
+  if (!date) {
+    return null;
+  }
+
+  const bucketIndex = Math.floor((date.getTime() - startMs) / bucketMs);
+
+  if (bucketIndex < 0 || bucketIndex >= buckets.length) {
+    return null;
+  }
+
+  return buckets[bucketIndex];
+}
+
+function readTelemetryDate(value: unknown) {
+  if (value instanceof Date && Number.isFinite(value.getTime())) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const date = new Date(value);
+
+    return Number.isFinite(date.getTime()) ? date : null;
+  }
+
+  return null;
+}
+
+function formatTrendBucketLabel(bucketsAgo: number) {
+  if (bucketsAgo === 0) {
+    return "now";
+  }
+
+  return `${bucketsAgo * TREND_BUCKET_MINUTES}m ago`;
 }
 
 function modelStatsKey(model: string, reasoningEffort: string) {

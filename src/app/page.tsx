@@ -159,6 +159,7 @@ type GameState = {
   model: GameModel;
   reasoningEffort: string;
   modelResponseId: string | null;
+  modelResponseModel: string | null;
 };
 
 type GameTurnResponse =
@@ -856,6 +857,7 @@ function getPreviewGame(): GameState | null {
     result: missedGuess ? "incorrect" : "correct",
     model: DEFAULT_GAME_MODEL,
     reasoningEffort: "high",
-    modelResponseId: null
+    modelResponseId: null,
+    modelResponseModel: null
   };
 }

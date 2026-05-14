@@ -131,6 +131,84 @@ describe("generateAiMove", () => {
     );
   });
 
+  it("upgrades gpt-chat-latest games to gpt-5.5 from question 13 onward", async () => {
+    createMock.mockResolvedValue(createResponse({
+      id: "resp-late-upgrade-test",
+      outputText: JSON.stringify({
+        action: "ask_question",
+        question: "Are they primarily known for work outside the United States?",
+        guess: null,
+        shortRationale: null
+      })
+    }));
+
+    const { generateAiMove } = await import("./game-master");
+    const state = createAnsweredState(12, "gpt-chat-latest");
+
+    const generated = await generateAiMove(state, "late-upgrade-request");
+    const request = createMock.mock.calls[0][0] as Record<string, unknown>;
+
+    expect(generated.requestedModel).toBe("gpt-5.5");
+    expect(request).toMatchObject({
+      model: "gpt-5.5"
+    });
+  });
+
+  it("does not continue a stored response chain across the late-game model switch", async () => {
+    createMock.mockResolvedValue(createResponse({
+      id: "resp-late-switch-rebuild-test",
+      outputText: JSON.stringify({
+        action: "ask_question",
+        question: "Are they primarily known for work outside the United States?",
+        guess: null,
+        shortRationale: null
+      })
+    }));
+
+    const { generateAiMove } = await import("./game-master");
+    const state = {
+      ...createAnsweredState(12, "gpt-chat-latest"),
+      modelResponseId: "resp-chat-latest-chain",
+      modelResponseModel: "gpt-chat-latest"
+    };
+
+    await generateAiMove(state, "late-switch-rebuild-request");
+
+    const request = createMock.mock.calls[0][0] as Record<string, unknown>;
+
+    expect(request).not.toHaveProperty("previous_response_id");
+    expect(JSON.stringify(request.input)).toContain("<game_state>");
+  });
+
+  it("continues the stored response chain after the late-game model matches", async () => {
+    createMock.mockResolvedValue(createResponse({
+      id: "resp-late-chain-test",
+      outputText: JSON.stringify({
+        action: "ask_question",
+        question: "Were they primarily active before 2000?",
+        guess: null,
+        shortRationale: null
+      })
+    }));
+
+    const { generateAiMove } = await import("./game-master");
+    const state = {
+      ...createAnsweredState(13, "gpt-chat-latest"),
+      modelResponseId: "resp-gpt-55-chain",
+      modelResponseModel: "gpt-5.5"
+    };
+
+    await generateAiMove(state, "late-chain-request");
+
+    const request = createMock.mock.calls[0][0] as Record<string, unknown>;
+
+    expect(request).toMatchObject({
+      model: "gpt-5.5",
+      previous_response_id: "resp-gpt-55-chain"
+    });
+    expect(JSON.stringify(request.input)).not.toContain("<game_state>");
+  });
+
   it("tracks medium reasoning for middle turns without sending request controls", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-medium-test",
@@ -348,6 +426,31 @@ describe("generateAiMove", () => {
       question: "Were they primarily associated with the Middle East or the Islamic world?",
       guess: null,
       shortRationale: "Split the narrowed public-notoriety cluster geographically."
+    });
+  });
+
+  it("trims an overlong private rationale instead of failing an otherwise valid move", async () => {
+    createMock.mockResolvedValue(createResponse({
+      id: "resp-long-rationale-test",
+      outputText: JSON.stringify({
+        action: "make_guess",
+        question: null,
+        guess: "Richard Ayoade",
+        shortRationale: "x".repeat(260)
+      })
+    }));
+
+    const { generateAiMove } = await import("./game-master");
+    const generated = await generateAiMove(
+      createSharedOpeningAnswerState("yes"),
+      "long-rationale-request"
+    );
+
+    expect(generated.move).toEqual({
+      action: "make_guess",
+      question: null,
+      guess: "Richard Ayoade",
+      shortRationale: "x".repeat(240)
     });
   });
 });

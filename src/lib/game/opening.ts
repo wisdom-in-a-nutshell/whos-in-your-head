@@ -47,6 +47,7 @@ export function createSharedOpeningAnswerState(
     result: "unknown",
     model,
     reasoningEffort,
-    modelResponseId: null
+    modelResponseId: null,
+    modelResponseModel: null
   };
 }

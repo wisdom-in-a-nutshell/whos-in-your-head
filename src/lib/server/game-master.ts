@@ -23,6 +23,8 @@ const GAME_MASTER_REQUEST_INSTRUCTIONS =
 const OPENING_WARMUP_ANSWERS: PlayerAnswer[] = ["yes", "no"];
 const OUTPUT_PREVIEW_CHARACTERS = 220;
 const DISABLE_LITELLM_RESPONSE_CACHE = true;
+const LATE_GAME_UPGRADE_START_AFTER_QUESTIONS = 12;
+const LATE_GAME_UPGRADE_MODEL = "gpt-5.5";
 
 const openingWarmups = new Map<string, Promise<GeneratedAiMove>>();
 const warmedOpenings = new Map<string, GeneratedAiMove>();
@@ -101,10 +103,12 @@ export async function generateAiMove(
     model: configuredModel,
     serviceTier
   } = getOpenAIRequestConfig(reasoningEffort);
-  const model = modelOverride ?? state.model ?? configuredModel;
+  const model = selectGameMasterModel(state, configuredModel, modelOverride);
 
   const rebuildFromFullState = retryAttempt > 1;
-  const usesPreviousResponse = state.modelResponseId !== null && !rebuildFromFullState;
+  const responseChainModelMatches = state.modelResponseModel === model;
+  const usesPreviousResponse =
+    state.modelResponseId !== null && !rebuildFromFullState && responseChainModelMatches;
   const startedAt = Date.now();
 
   logInfo("game_master_request_started", {
@@ -114,6 +118,8 @@ export async function generateAiMove(
     transcriptLength: state.transcript.length,
     model,
     configuredModel,
+    storedResponseModel: state.modelResponseModel,
+    responseChainModelMatches,
     modelOverride: modelOverride ?? null,
     gameReasoningEffort: state.reasoningEffort,
     reasoningEffort,
@@ -171,6 +177,8 @@ export async function generateAiMove(
         transcriptLength: state.transcript.length,
         model,
         configuredModel,
+        storedResponseModel: state.modelResponseModel,
+        responseChainModelMatches,
         modelOverride: modelOverride ?? null,
         gameReasoningEffort: state.reasoningEffort,
         reasoningEffort,
@@ -201,6 +209,8 @@ export async function generateAiMove(
     durationMs: Date.now() - startedAt,
     requestedModel: model,
     actualModel: response.model ?? null,
+    storedResponseModel: state.modelResponseModel,
+    responseChainModelMatches,
     reasoningEffort,
     actualServiceTier: response.service_tier ?? null,
     retryAttempt,
@@ -224,6 +234,27 @@ export async function generateAiMove(
     usage: response.usage ?? null,
     durationMs: Date.now() - startedAt
   };
+}
+
+function selectGameMasterModel(
+  state: GameState,
+  configuredModel: string,
+  modelOverride?: string
+) {
+  if (modelOverride) {
+    return modelOverride;
+  }
+
+  const selectedModel = state.model ?? configuredModel;
+
+  if (
+    selectedModel === "gpt-chat-latest" &&
+    state.questionCount >= LATE_GAME_UPGRADE_START_AFTER_QUESTIONS
+  ) {
+    return LATE_GAME_UPGRADE_MODEL;
+  }
+
+  return selectedModel;
 }
 
 function parseGameMasterMove(
@@ -274,6 +305,7 @@ function parseGameMasterMove(
     throw error;
   }
 
+  parsedJson = trimPrivateRationale(parsedJson);
   const parsedMove = aiMoveSchema.safeParse(parsedJson);
 
   if (!parsedMove.success) {
@@ -287,6 +319,26 @@ function parseGameMasterMove(
   }
 
   return parsedMove.data;
+}
+
+function trimPrivateRationale(value: unknown) {
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (
+    typeof record.shortRationale !== "string" ||
+    record.shortRationale.length <= 240
+  ) {
+    return value;
+  }
+
+  return {
+    ...record,
+    shortRationale: record.shortRationale.slice(0, 240)
+  };
 }
 
 function warmOpeningMoveResponse(

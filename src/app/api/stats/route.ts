@@ -8,10 +8,17 @@ export async function GET() {
   try {
     const stats = await getPublicGameStats();
 
-    return NextResponse.json({
-      ok: true,
-      stats
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        stats
+      },
+      {
+        headers: {
+          "cache-control": "public, max-age=0, s-maxage=5, stale-while-revalidate=20"
+        }
+      }
+    );
   } catch (error) {
     logWarn("game_stats_failed", {
       error: describeError(error)

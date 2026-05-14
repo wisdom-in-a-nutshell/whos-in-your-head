@@ -299,7 +299,8 @@ async function generateNextGameState(
       const generated = await generateAiMove(game, requestId, attempt);
       const nextGame = attachModelResponseId(
         applyAiMove(game, generated.move),
-        getReusableResponseId(generated)
+        getReusableResponseId(generated),
+        getReusableResponseModel(generated)
       );
 
       return {
@@ -414,7 +415,8 @@ function readWarmedOpeningGameState(
 
   const nextGame = attachModelResponseId(
     applyAiMove(game, generated.move),
-    getReusableResponseId(generated)
+    getReusableResponseId(generated),
+    getReusableResponseModel(generated)
   );
 
   return {
@@ -484,6 +486,10 @@ function getReusableResponseId(generated: GeneratedAiMove) {
   }
 
   return generated.responseId;
+}
+
+function getReusableResponseModel(generated: GeneratedAiMove) {
+  return getReusableResponseId(generated) === null ? null : generated.requestedModel;
 }
 
 function summarizeUsage(usage: GeneratedAiMove["usage"]) {

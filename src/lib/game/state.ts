@@ -37,7 +37,8 @@ export const gameStateSchema = z
     result: gameResultSchema,
     model: gameModelSchema.default(DEFAULT_GAME_MODEL),
     reasoningEffort: gameReasoningEffortSchema.default(DEFAULT_GAME_REASONING_EFFORT),
-    modelResponseId: z.string().trim().min(1).nullable()
+    modelResponseId: z.string().trim().min(1).nullable(),
+    modelResponseModel: z.string().trim().min(1).nullable().default(null)
   })
   .strict();
 
@@ -92,7 +93,8 @@ export function createInitialGameState(
     result: "unknown",
     model,
     reasoningEffort,
-    modelResponseId: null
+    modelResponseId: null,
+    modelResponseModel: null
   };
 }
 
@@ -197,10 +199,15 @@ export function buildModelGameSnapshot(state: GameState) {
   };
 }
 
-export function attachModelResponseId(state: GameState, modelResponseId: string | null): GameState {
+export function attachModelResponseId(
+  state: GameState,
+  modelResponseId: string | null,
+  modelResponseModel: string | null = null
+): GameState {
   return gameStateSchema.parse({
     ...state,
-    modelResponseId
+    modelResponseId,
+    modelResponseModel: modelResponseId === null ? null : modelResponseModel
   });
 }
 
