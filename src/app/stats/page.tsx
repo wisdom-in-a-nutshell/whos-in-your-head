@@ -158,19 +158,31 @@ function TrendPanel({ trend }: { trend: TrendBucket[] }) {
     (total, bucket) => total + bucket.droppedGames,
     0
   );
+  const startedGames = trend.reduce(
+    (total, bucket) => total + bucket.startedGames,
+    0
+  );
   const windowMinutes = trend.length * 10;
 
   return (
     <section className="trend-panel" aria-labelledby="trend-title">
       <div className="trend-heading">
         <p className="kicker">Last {windowMinutes} minutes</p>
-        <h2 id="trend-title">Is it getting sharper?</h2>
+        <h2 id="trend-title">How are rounds ending?</h2>
         <p>
           {hasTrendData
-            ? `${completedGames} completed, ${reportedMisses} misses reported, ${droppedGames} dropped.`
+            ? "Each line uses the same denominator: rounds started in that ten-minute window."
             : "Waiting for enough recent games to draw a useful trend."}
         </p>
       </div>
+      {hasTrendData ? (
+        <div className="trend-summary" aria-label="Recent totals">
+          <StatBlock label="Started" value={startedGames.toString()} />
+          <StatBlock label="Completed" value={completedGames.toString()} />
+          <StatBlock label="Miss reports" value={reportedMisses.toString()} />
+          <StatBlock label="Dropped" value={droppedGames.toString()} />
+        </div>
+      ) : null}
       <TrendChart trend={trend} hasTrendData={hasTrendData} />
     </section>
   );
@@ -183,112 +195,137 @@ function TrendChart({
   trend: TrendBucket[];
   hasTrendData: boolean;
 }) {
-  const width = 1000;
-  const height = 260;
-  const paddingX = 42;
-  const lineTop = 28;
-  const lineBottom = 132;
-  const barBase = 218;
-  const maxBarHeight = 70;
+  const width = 1080;
+  const height = 330;
+  const paddingX = 58;
+  const chartTop = 34;
+  const chartBottom = 268;
   const step =
     trend.length > 1 ? (width - paddingX * 2) / (trend.length - 1) : 0;
-  const maxBarCount = Math.max(
-    1,
-    ...trend.map((bucket) => Math.max(bucket.reportedMisses, bucket.droppedGames))
-  );
-  const correctPoints = trend.flatMap((bucket, index) => {
-    if (bucket.correctRate === null) {
-      return [];
-    }
+  const buildPoints = (key: "correctRate" | "missRate" | "dropRate") =>
+    trend.flatMap((bucket, index) => {
+      const value = bucket[key];
 
-    return [
-      {
-        x: paddingX + index * step,
-        y: lineBottom - bucket.correctRate * (lineBottom - lineTop),
-        bucket
+      if (value === null) {
+        return [];
       }
-    ];
-  });
-  const correctSegments = correctPoints.slice(1).map((point, index) => ({
-    from: correctPoints[index],
-    to: point
-  }));
+
+      return [
+        {
+          x: paddingX + index * step,
+          y: chartBottom - value * (chartBottom - chartTop),
+          bucket
+        }
+      ];
+    });
+  const lines = [
+    {
+      key: "correct",
+      label: "Correct",
+      className: "trend-line-correct",
+      points: buildPoints("correctRate")
+    },
+    {
+      key: "miss",
+      label: "Miss reports",
+      className: "trend-line-miss",
+      points: buildPoints("missRate")
+    },
+    {
+      key: "drop",
+      label: "Dropped",
+      className: "trend-line-drop",
+      points: buildPoints("dropRate")
+    }
+  ];
+  const axisMarks = [
+    { label: "100%", value: 1 },
+    { label: "50%", value: 0.5 },
+    { label: "0%", value: 0 }
+  ];
+  const toPath = (points: Array<{ x: number; y: number }>) =>
+    points
+      .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+      .join(" ");
   const firstLabel = trend[0]?.label ?? "";
   const lastLabel = trend.at(-1)?.label ?? "";
 
   return (
     <div className="trend-chart-wrap">
       <div className="trend-legend" aria-hidden="true">
-        <span>
-          <i className="trend-key trend-key-correct" />
-          Correct
-        </span>
-        <span>
-          <i className="trend-key trend-key-miss" />
-          Misses
-        </span>
-        <span>
-          <i className="trend-key trend-key-drop" />
-          Dropped
-        </span>
+        {lines.map((line) => (
+          <span key={line.key}>
+            <i className={`trend-key ${line.className}`} />
+            {line.label}
+          </span>
+        ))}
       </div>
       <svg
         className="trend-chart"
         role="img"
-        aria-label="Recent trend for correct rate, reported misses, and dropped games"
+        aria-label="Recent percentages for correct rounds, reported misses, and dropped rounds"
         viewBox={`0 0 ${width} ${height}`}
       >
-        <line className="trend-grid-line" x1={paddingX} x2={width - paddingX} y1={lineTop} y2={lineTop} />
-        <line className="trend-grid-line" x1={paddingX} x2={width - paddingX} y1={(lineTop + lineBottom) / 2} y2={(lineTop + lineBottom) / 2} />
-        <line className="trend-grid-line trend-grid-line-strong" x1={paddingX} x2={width - paddingX} y1={lineBottom} y2={lineBottom} />
-        <text className="trend-axis-label" x={0} y={lineTop + 4}>100%</text>
-        <text className="trend-axis-label" x={8} y={lineBottom + 4}>0%</text>
-        {trend.map((bucket, index) => {
-          const x = paddingX + index * step;
-          const missHeight = (bucket.reportedMisses / maxBarCount) * maxBarHeight;
-          const dropHeight = (bucket.droppedGames / maxBarCount) * maxBarHeight;
-          const barWidth = Math.max(8, step * 0.2);
+        {axisMarks.map((mark) => {
+          const y = chartBottom - mark.value * (chartBottom - chartTop);
 
           return (
-            <g key={bucket.bucketStart}>
-              <rect
-                className="trend-bar trend-bar-miss"
-                x={x - barWidth - 2}
-                y={barBase - missHeight}
-                width={barWidth}
-                height={missHeight}
-                rx={2}
+            <g key={mark.label}>
+              <line
+                className={
+                  mark.value === 0
+                    ? "trend-grid-line trend-grid-line-strong"
+                    : "trend-grid-line"
+                }
+                x1={paddingX}
+                x2={width - paddingX}
+                y1={y}
+                y2={y}
               />
-              <rect
-                className="trend-bar trend-bar-drop"
-                x={x + 2}
-                y={barBase - dropHeight}
-                width={barWidth}
-                height={dropHeight}
-                rx={2}
-              />
+              <text className="trend-axis-label" x={0} y={y + 5}>
+                {mark.label}
+              </text>
             </g>
           );
         })}
-        {correctSegments.map((segment) => (
-          <line
-            className="trend-line"
-            key={`${segment.from.bucket.bucketStart}-${segment.to.bucket.bucketStart}`}
-            x1={segment.from.x}
-            y1={segment.from.y}
-            x2={segment.to.x}
-            y2={segment.to.y}
-          />
-        ))}
-        {correctPoints.map((point) => (
-          <circle
-            className="trend-dot"
-            key={point.bucket.bucketStart}
-            cx={point.x}
-            cy={point.y}
-            r={5}
-          />
-        ))}
+        {trend.map((bucket, index) => {
+          const x = paddingX + index * step;
+
+          return (
+            <g key={bucket.bucketStart}>
+              <line
+                className="trend-bucket-line"
+                x1={x}
+                x2={x}
+                y1={chartTop}
+                y2={chartBottom}
+              />
+              <text className="trend-start-label" x={x} y={height - 22}>
+                {bucket.startedGames}
+              </text>
+            </g>
+          );
+        })}
+        {lines.map((line) =>
+          line.points.length > 0 ? (
+            <path
+              className={`trend-line ${line.className}`}
+              d={toPath(line.points)}
+              key={line.key}
+            />
+          ) : null
+        )}
+        {lines.flatMap((line) =>
+          line.points.map((point) => (
+            <circle
+              className={`trend-dot ${line.className}`}
+              key={`${line.key}-${point.bucket.bucketStart}`}
+              cx={point.x}
+              cy={point.y}
+              r={5}
+            />
+          ))
+        )}
         {!hasTrendData ? (
           <text className="trend-empty-label" x={width / 2} y={height / 2}>
             Waiting for games
@@ -297,6 +334,7 @@ function TrendChart({
       </svg>
       <div className="trend-axis-row" aria-hidden="true">
         <span>{firstLabel}</span>
+        <span>Starts per bucket</span>
         <span>{lastLabel}</span>
       </div>
     </div>

@@ -978,17 +978,25 @@ async function getPublicTrendStats(db: Db): Promise<PublicTrendStats[]> {
     }
   }
 
-  return buckets.map((bucket) => ({
-    ...bucket,
-    correctRate:
-      bucket.startedGames > 0 ? round(bucket.correctGames / bucket.startedGames, 4) : null,
-    missRate:
-      bucket.startedGames > 0
-        ? round(bucket.reportedMisses / bucket.startedGames, 4)
-        : null,
-    dropRate:
-      bucket.startedGames > 0 ? round(bucket.droppedGames / bucket.startedGames, 4) : null
-  }));
+  return buckets.map((bucket) => {
+    const settledGames = bucket.completedGames + bucket.droppedGames;
+
+    return {
+      ...bucket,
+      correctRate:
+        bucket.startedGames > 0 && settledGames > 0
+          ? round(bucket.correctGames / bucket.startedGames, 4)
+          : null,
+      missRate:
+        bucket.startedGames > 0 && settledGames > 0
+          ? round(bucket.reportedMisses / bucket.startedGames, 4)
+          : null,
+      dropRate:
+        bucket.startedGames > 0 && settledGames > 0
+          ? round(bucket.droppedGames / bucket.startedGames, 4)
+          : null
+    };
+  });
 }
 
 async function getAbandonmentStats(db: Db) {

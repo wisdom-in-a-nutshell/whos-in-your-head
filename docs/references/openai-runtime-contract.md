@@ -327,6 +327,11 @@ tokens, fallback counts, started/completed/abandoned counts, and per-model turn
 and guess aggregates. It may return the aggregate count of reported misses, but
 never returns actual answers or raw transcripts.
 
+Unfinished rounds are considered live only while their last telemetry event is
+recent. `GAME_STATS_ABANDON_AFTER_MINUTES` controls that cutoff and defaults to
+5 minutes, after which unfinished rounds are counted as dropped rather than
+live.
+
 Public stats use a short in-process fresh cache and a longer stale window. Once
 stats have been computed, stale aggregates can be returned immediately while a
 single background refresh recomputes Mongo/Cosmos aggregates.
@@ -334,4 +339,6 @@ single background refresh recomputes Mongo/Cosmos aggregates.
 `GET /stats` renders those public aggregates as a shareable scoreboard page.
 The page is intentionally aggregate-only: it can show how often the game wins,
 how many rounds dropped off, how long turns take, and which models took turns or
-made guesses, but it does not expose any individual transcript.
+made guesses, but it does not expose any individual transcript. The recent trend
+graph normalizes correct, reported-miss, and dropped rounds as percentages of
+rounds started in each ten-minute bucket so the lines share one readable axis.
