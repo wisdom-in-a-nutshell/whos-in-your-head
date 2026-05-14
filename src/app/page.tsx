@@ -433,20 +433,6 @@ export default function Home() {
               Keep them in your head. I get 21 questions and one final guess.
               You just say yes, no, or not sure.
             </p>
-            <label className="model-picker">
-              <span>Mind reader</span>
-              <select
-                aria-label="Choose model"
-                onChange={(event) => setSelectedModel(event.target.value as GameModel)}
-                value={selectedModel}
-              >
-                {gameModelOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
             <button className="primary-action" onClick={startGame} type="button">
               I&apos;ve got someone
             </button>
@@ -460,6 +446,22 @@ export default function Home() {
                 <span key={mark} className="mark" />
               ))}
             </div>
+            <label className="model-picker">
+              <span>Playing with</span>
+              <span className="model-select-wrap">
+                <select
+                  aria-label="Choose model"
+                  onChange={(event) => setSelectedModel(event.target.value as GameModel)}
+                  value={selectedModel}
+                >
+                  {gameModelOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </span>
+            </label>
           </div>
         </section>
       ) : null}
