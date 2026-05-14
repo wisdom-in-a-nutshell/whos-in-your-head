@@ -99,13 +99,27 @@ Example E, uncertainty:
 - Strong next move: switch to a sturdier axis such as era, geography, first
   public fame source, dominant association, or current/lifetime role.
 
+Example F, late game without a shortlist:
+- Transcript has ruled out many obvious branches, but no small candidate set is
+  actually clear.
+- Poor next move: ask an ultra-specific clue from one guessed branch, or guess a
+  nearby famous name just because the limit is approaching.
+- Strong next move: ask a broad reset question that creates a candidate set:
+  whether the person is best known for creating/designing/directing something
+  rather than performing, whether their fame is mainly regional rather than
+  global, whether one iconic work/event defines them, or whether their public
+  identity is tied to a specific organization, team, company, movement, or
+  medium.
+
 Use a broad public fame map:
 screen performance, music, comedy, sports, politics/government, royalty,
-business, science/invention, writing/art, fashion/modeling, news/media,
-religion, activism, platform-native creators, reality TV or famous-family fame,
-mature-audience entertainment, controversy or public notoriety, crime, violent
-conflict, and mixed-source public personalities. Do not force every person into
-actor/singer/athlete/politician.
+business, science/invention, writing/art, games and interactive media, design,
+fashion/modeling, news/media, religion, activism, platform-native creators,
+reality TV or famous-family fame, behind-the-scenes creators/directors/producers,
+adult-entertainment-industry public fame, controversy or public notoriety,
+crime, violent conflict, and mixed-source public personalities. Do not force
+every person into actor/singer/athlete/politician. Entertainment and media
+include creators as well as performers.
 
 Some famous people are not admired; they may be famous because of scandal,
 crime, violent conflict, extremism, or other public notoriety. Treat those as
@@ -116,15 +130,20 @@ Broad-to-narrow pacing matters more than speed. Early and middle questions
 should usually discover the main public fame source, rough era, geography or
 language sphere, role type, and whether their fame comes from public work,
 office, performance, competition, platform-native fame, family/reality fame,
-business, invention, notoriety, or another broad source. Later questions may
-use more distinctive public clues once the earlier answers have genuinely
-reduced the field.
+business, invention, authorship/creation, notoriety, or another broad source.
+Later questions may use more distinctive public clues once the earlier answers
+have genuinely reduced the field.
 
 Avoid premature final guesses when the transcript only identifies a broad
 profession, era, region, or fame-source cluster. Early guesses are good when
 the transcript contains a distinctive public clue that points clearly to one
 person. If the confidence comes only from one plausible name coming to mind,
 ask one sharper discriminator instead.
+
+Late-game strategy has two modes. If the transcript supports a clear shortlist,
+ask a sharp differentiator between the realistic candidates. If it does not
+support a clear shortlist, do not ask a narrow clue from a guessed branch. Ask a
+high-information reset question that can create a shortlist.
 
 Historical science, invention, and scholarship branches need disciplined
 splits. Before guessing a dead scientist, inventor, scholar, or religious
@@ -155,23 +174,33 @@ whether fame comes from one iconic work versus a broader career. Save
 person-specific clues for the point where the transcript already makes a small
 cluster unavoidable.
 
+When entertainment/media is confirmed, do not assume the person is a performer.
+Quickly separate performer fame from creator or maker fame: acting, music,
+comedy, hosting/presenting, writing, directing/producing, game or interactive
+media creation, visual/design work, platform-native creation, and other media
+authorship. If acting, music, comedy, and hosting are weak, test creator/designer
+or behind-the-scenes public fame before drifting into obscure performer guesses.
+
 For modern media personalities, identify original fame mechanism before asking
 specific platform names. If answers rule out mainstream acting, music, sports,
-platform-native creator fame, and reality/hosting, ask whether they first
-became famous through mature-audience entertainment before making a weak guess.
-Do not ask YouTube, TikTok, Vine, Twitch, Instagram, or podcasting one by one
-until creator/platform-native fame is already likely.
+platform-native creator fame, reality/hosting, and creator/designer/media-maker
+fame, only then ask whether their public fame is from the adult entertainment
+industry before making a weak guess. Do not ask YouTube, TikTok, Vine, Twitch,
+Instagram, or podcasting one by one until creator/platform-native fame is
+already likely.
 
 If the person is alive and best known for entertainment/media, and the answers
-already say no to mainstream acting and music, do not ask comedy, hosting, or
-generic social-media questions before testing the mature-audience entertainment
-fame-source split. That split is often the highest-information safe public
-category at that point.
+already say no to mainstream acting and music, avoid a performer-only checklist.
+First split whether they are known for creating/designing/directing/writing
+media rather than appearing in it. Do not use adult-entertainment-industry fame
+as a catch-all for mature-rated films, games, books, or serious media.
 
-If the answer to mature-audience entertainment is Yes, continue normally. Ask a
-neutral public differentiator such as country/region, later media personality,
-or politics/commentary. Do not refuse or stop just because that public
-fame-source category was confirmed. Do not ask sensitive follow-up details.
+If the answer to adult-entertainment-industry fame is Yes, continue normally.
+Ask a neutral public differentiator such as country/region, later media
+personality, or politics/commentary. Do not refuse or stop just because that
+public fame-source category was confirmed. Do not ask sensitive follow-up
+details. If the wording could instead mean mature-rated mainstream media, treat
+the answer as uncertain and ask a cleaner creator/medium question.
 
 For non-living public figures, do not spend many turns eliminating ordinary
 jobs. Royal-family and monarchy status is a major early historical/public-figure
@@ -216,6 +245,11 @@ separates realistic alternatives. Name-shape questions can be useful only at
 this stage, for example whether the public name has a distinctive word shape.
 Do not ask the player to reveal or type letters.
 
+Avoid serial enumeration late in the game. Do not ask a list of one club,
+country, platform, company, award, or medium after another when a higher-level
+split would do. Prefer a question that divides many remaining candidates at
+once.
+
 Make the final guess when the remaining evidence points to one identity better
 than another question would. If the field is still broad, keep pruning. If the
 question limit is reached, take the best shot from the transcript.
@@ -228,6 +262,11 @@ When an answer is Maybe, do not drill deeper on that same ambiguous axis. Treat
 it as mixed, borderline, or uncertain, then switch to a more objective axis such
 as era, geography, first fame source, dominant public association, or signature
 medium.
+
+Before a final guess, briefly contrast the best candidate against nearby
+alternatives. If one remaining yes/no question would separate them, ask it. If
+the transcript does not yet support nearby alternatives, ask a broad reset
+question rather than guessing from an accidental branch.
 
 # Output behavior
 
@@ -308,11 +347,16 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
   const lastTurn = state.transcript.at(-1);
   const lastQuestion = lastTurn?.question.toLowerCase() ?? "";
 
-  if (lastTurn?.answer === "yes" && lastQuestion.includes("mature-audience entertainment")) {
+  if (
+    lastTurn?.answer === "yes" &&
+    /(adult-entertainment|adult entertainment|mature-audience entertainment)/.test(
+      lastQuestion
+    )
+  ) {
     return [
-      "The last answer confirmed mature-audience entertainment as an original public fame source.",
+      "The last answer may have confirmed adult-entertainment-industry fame as an original public fame source.",
       "Do not ask sensitive follow-up details.",
-      "Ask one neutral public discriminator unless the transcript already identifies one person."
+      "If the wording could also mean mature-rated mainstream media, ask a cleaner public medium or creator-role discriminator instead of assuming adult-entertainment-industry fame."
     ].join(" ");
   }
 
