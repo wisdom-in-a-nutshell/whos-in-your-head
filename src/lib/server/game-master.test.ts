@@ -208,7 +208,7 @@ describe("generateAiMove", () => {
     });
   });
 
-  it("upgrades gpt-chat-latest games to gpt-5.5 from question 13 onward", async () => {
+  it("upgrades gpt-chat-latest games to gpt-5.5 from question 19 onward", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-late-upgrade-test",
       outputText: JSON.stringify({
@@ -220,7 +220,7 @@ describe("generateAiMove", () => {
     }));
 
     const { generateAiMove } = await import("./game-master");
-    const state = createAnsweredState(12, "gpt-chat-latest");
+    const state = createAnsweredState(18, "gpt-chat-latest");
 
     const generated = await generateAiMove(state, "late-upgrade-request");
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
@@ -283,7 +283,7 @@ describe("generateAiMove", () => {
     });
   });
 
-  it("keeps clean gpt-chat-latest paths on the fast model before question 13", async () => {
+  it("keeps clean gpt-chat-latest paths on the fast model before question 19", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-clean-fast-test",
       outputText: JSON.stringify({
@@ -322,7 +322,7 @@ describe("generateAiMove", () => {
 
     const { generateAiMove } = await import("./game-master");
     const state = {
-      ...createAnsweredState(12, "gpt-chat-latest"),
+      ...createAnsweredState(18, "gpt-chat-latest"),
       modelResponseId: "resp-chat-latest-chain",
       modelResponseModel: "gpt-chat-latest"
     };
@@ -348,7 +348,7 @@ describe("generateAiMove", () => {
 
     const { generateAiMove } = await import("./game-master");
     const state = {
-      ...createAnsweredState(13, "gpt-chat-latest"),
+      ...createAnsweredState(18, "gpt-chat-latest"),
       modelResponseId: "resp-gpt-55-chain",
       modelResponseModel: "gpt-5.5"
     };
