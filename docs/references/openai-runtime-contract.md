@@ -165,13 +165,16 @@ server-side cause. If both attempts fail, it returns a failed-turn response so
 the browser can keep the same preserved game state and let the player retry the
 same answer. The app does not invent local recovery questions.
 
-The first model-move attempt uses the normal LiteLLM response cache behavior.
-If that attempt fails schema parsing or game-rule application, the second
-attempt adds a retry marker to the model input and sends LiteLLM cache controls
-to bypass response-cache replay and avoid storing the failed retry response.
-The retry also ignores `previous_response_id` and rebuilds from the full
-transcript, so one bad stored Responses branch cannot trap a game turn. This
-keeps the healthy path fast while making recovery intentionally fresh.
+Every game-master model call sends LiteLLM response-cache controls:
+`cache: { "no-cache": true, "no-store": true }`. Per LiteLLM's caching docs,
+`no-cache` bypasses returning a cached response and calls the upstream endpoint,
+while `no-store` prevents writing the response back to LiteLLM's response cache.
+This disables LiteLLM full-response replay for gameplay while preserving
+provider-side prompt caching through `prompt_cache_key` and
+`prompt_cache_retention`. If a model-move attempt fails schema parsing or
+game-rule application, the second attempt still adds a retry marker, ignores
+`previous_response_id`, and rebuilds from the full transcript so one bad stored
+Responses branch cannot trap a game turn.
 
 If the failed response is specifically an incomplete content-filter response,
 the route tries `LLM_FALLBACK_MODELS` before giving up. Fallback model calls use

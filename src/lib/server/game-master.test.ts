@@ -173,9 +173,9 @@ describe("generateAiMove", () => {
     expect(request).not.toHaveProperty("reasoning");
   });
 
-  it("bypasses LiteLLM response caching only on retry attempts", async () => {
+  it("bypasses LiteLLM response caching on every game-master call", async () => {
     createMock.mockResolvedValue(createResponse({
-      id: "resp-retry-test",
+      id: "resp-cache-bypass-test",
       outputText: JSON.stringify({
         action: "ask_question",
         question: "Were they famous before 2010?",
@@ -186,7 +186,7 @@ describe("generateAiMove", () => {
 
     const { generateAiMove } = await import("./game-master");
 
-    await generateAiMove(createSharedOpeningAnswerState("no"), "retry-request", 2);
+    await generateAiMove(createSharedOpeningAnswerState("no"), "cache-bypass-request");
 
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
@@ -196,7 +196,7 @@ describe("generateAiMove", () => {
         "no-store": true
       }
     });
-    expect(JSON.stringify(request.input)).toContain("<retry_attempt>2</retry_attempt>");
+    expect(JSON.stringify(request.input)).not.toContain("<retry_attempt>");
   });
 
   it("rebuilds from full state instead of continuing a stored response chain on retry", async () => {
