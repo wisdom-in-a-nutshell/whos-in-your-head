@@ -148,7 +148,7 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - [x] Simplify result sharing UI to one friend-share action and one replay action.
 - [x] Update README with exact setup/run/deploy steps after implementation choices are real.
 - [x] Run validation and record exact results.
-- [x] Review and finalize `docs/projects/whos-in-your-head/learnings/README.md` before archive if the project becomes long-running.
+- [x] Review and finalize `docs/projects/archive/whos-in-your-head/learnings/README.md` before archive if the project becomes long-running.
 - [x] Close/archive tracker when scoped work is actually done.
 
 ## Validation / Test Plan
