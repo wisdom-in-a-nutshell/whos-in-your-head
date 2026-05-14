@@ -323,7 +323,10 @@ async function generateNextGameState(
         error: describeError(error)
       });
 
-      if (isContentFilterIncompleteResponseError(error)) {
+      if (
+        isContentFilterIncompleteResponseError(error) &&
+        shouldTryContentFilterFallback(attempt, MODEL_MOVE_ATTEMPTS)
+      ) {
         const fallback = await tryContentFilterFallbacks(game, requestId, attempt + 1);
 
         if (fallback) {
@@ -334,6 +337,13 @@ async function generateNextGameState(
   }
 
   throw new Error("The game master failed to produce a valid move after retries.");
+}
+
+export function shouldTryContentFilterFallback(
+  attempt: number,
+  maxAttempts: number
+) {
+  return attempt >= maxAttempts;
 }
 
 async function tryContentFilterFallbacks(
