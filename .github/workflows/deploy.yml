@@ -18,9 +18,6 @@ on:
       - "scripts/check-full.sh"
       - "scripts/game-telemetry.mjs"
       - "scripts/prod-logs.mjs"
-      - "src/app/api/stats/**"
-      - "src/app/stats/**"
-      - "src/lib/server/game-telemetry.ts"
   workflow_dispatch:
 
 permissions:
