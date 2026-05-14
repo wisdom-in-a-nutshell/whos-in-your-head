@@ -50,6 +50,16 @@ const gameModelOptions = [
     disabled: true
   }
 ] as const;
+const modelUrlAliases: Record<string, GameModel> = {
+  chat: "gpt-chat-latest",
+  gpt: "gpt-chat-latest",
+  gpt54mini: "gpt-5.4-mini",
+  mini: "gpt-5.4-mini",
+  gemini: "gemini-3.1-flash-lite",
+  flash: "gemini-3.1-flash-lite",
+  claude: "claude-sonnet-4-6",
+  sonnet: "claude-sonnet-4-6"
+};
 
 const questionPrompts = [
   "Don’t overthink it",
@@ -215,7 +225,7 @@ export default function Home() {
   const [phase, setPhase] = useState<Phase>("start");
   const [game, setGame] = useState<GameState | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState<GameModel>(DEFAULT_GAME_MODEL);
+  const [selectedModel, setSelectedModel] = useState<GameModel>(getInitialSelectedModel);
   const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus | null>(null);
   const [publicStats, setPublicStats] = useState<PublicStats | null>(null);
@@ -779,6 +789,28 @@ function formatModelName(model: string): string {
 
 function isLiveGameModel(model: string): model is GameModel {
   return (liveGameModelValues as readonly string[]).includes(model);
+}
+
+function getInitialSelectedModel(): GameModel {
+  if (typeof window === "undefined") {
+    return DEFAULT_GAME_MODEL;
+  }
+
+  return readModelFromUrl(window.location.search) ?? DEFAULT_GAME_MODEL;
+}
+
+function readModelFromUrl(search: string): GameModel | null {
+  const rawModel = new URLSearchParams(search).get("model")?.trim().toLowerCase();
+
+  if (!rawModel) {
+    return null;
+  }
+
+  if (isLiveGameModel(rawModel)) {
+    return rawModel;
+  }
+
+  return modelUrlAliases[rawModel] ?? null;
 }
 
 function formatPercent(value: number | null): string {

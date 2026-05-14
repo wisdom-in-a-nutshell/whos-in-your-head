@@ -53,6 +53,12 @@ The start screen lets players choose `gpt-chat-latest`, `gpt-5.4-mini`,
 to `gemini-3.1-flash-lite`; other model names can appear as disabled coming-soon
 options.
 
+Share links can preselect the start-screen model with `?model=`. Use an exact
+live model id such as `?model=gpt-chat-latest`, `?model=gpt-5.4-mini`,
+`?model=gemini-3.1-flash-lite`, or `?model=claude-sonnet-4-6`; short aliases
+such as `?model=chat`, `?model=mini`, `?model=gemini`, and `?model=claude`
+also work.
+
 Local validation:
 
 ```bash

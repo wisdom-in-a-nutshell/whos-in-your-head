@@ -55,6 +55,11 @@ path, opening warmup, retries, and telemetry. Gemini routes are treated as
 OpenAI-compatible LiteLLM routes, but their response ids are not reused for
 future `previous_response_id` continuation.
 
+The home page accepts a `model` query parameter to preselect the model before a
+round starts. Exact live model ids are accepted, along with short aliases:
+`chat`, `gpt`, `mini`, `gemini`, `flash`, `claude`, and `sonnet`. Empty,
+unknown, or disabled model values fall back to `gemini-3.1-flash-lite`.
+
 `LLM_FALLBACK_MODELS` is a comma- or newline-separated model chain. It is used
 only when the primary Responses call returns `status: "incomplete"` with
 `incomplete_details.reason: "content_filter"`. That shape is currently logged
