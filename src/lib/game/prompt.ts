@@ -164,6 +164,20 @@ the transcript contains a distinctive public clue that points clearly to one
 person. If the confidence comes only from one plausible name coming to mind,
 ask one sharper discriminator instead.
 
+Small high-fame clusters still need a clean split before a final guess. If the
+transcript identifies a compact public-office, award, team, band, film, or
+sports cluster and more than five question slots remain, do not guess just
+because one date, award, club, country, or role answer points to one nearby
+name. Ask one robust discriminator that separates the obvious nearby candidates
+and survives a player misremembering a year or category boundary.
+
+For recent U.S. president branches, do not guess from a single election-year
+answer while several question slots remain. Separate nearby candidates with
+durable public-office clues such as whether the person served as vice president
+before becoming president, took office after 2020, served two elected terms, or
+was primarily known as a state governor before national office. Treat exact
+election-year answers as easy for players to misremember.
+
 Late-game strategy has two modes. If the transcript supports a clear shortlist,
 ask a sharp differentiator between the realistic candidates. If it does not
 support a clear shortlist, do not ask a narrow clue from a guessed branch. Ask a
@@ -469,9 +483,60 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
     ].join(" ");
   }
 
+  if (isRecentUsPresidentCluster(state, remainingQuestionSlots)) {
+    return [
+      "The transcript is in a recent U.S. president cluster.",
+      "Do not make a final guess from one election-year answer while several question slots remain.",
+      "Ask one robust nearby-candidate split, preferably whether the person served as vice president before becoming president or took office after 2020, unless that split has already been asked.",
+      "Treat exact election-year answers as easy for players to misremember."
+    ].join(" ");
+  }
+
+  if (isMaybeHeavy(state, remainingQuestionSlots)) {
+    return [
+      "The transcript has several Maybe answers, so confidence is unstable.",
+      "Do not make a narrow final guess from award, date, nationality, club, or genre details alone.",
+      "Ask one objective discriminator on a sturdier axis such as first fame source, dominant public association, era, geography, role type, or signature medium."
+    ].join(" ");
+  }
+
   return [
     "Ask one strong yes/no-compatible question that prunes the remaining possibility space.",
     "Do not ask a confirmation question about one suspected person, company, brand, product, spouse, award, or exact work unless the transcript has already narrowed to a tiny cluster.",
     "Guess only when one identity is genuinely better supported than asking another discriminator."
   ].join(" ");
+}
+
+function isRecentUsPresidentCluster(
+  state: GameState,
+  remainingQuestionSlots: number
+): boolean {
+  if (remainingQuestionSlots <= 5) {
+    return false;
+  }
+
+  const answeredYes = state.transcript
+    .filter((turn) => turn.answer === "yes")
+    .map((turn) => turn.question.toLowerCase());
+  const askedQuestions = state.transcript.map((turn) => turn.question.toLowerCase());
+
+  return (
+    answeredYes.some((question) => /president of the united states/.test(question)) &&
+    answeredYes.some((question) => /21st century/.test(question)) &&
+    (answeredYes.some((question) => /democratic party/.test(question)) ||
+      askedQuestions.some((question) => /first elected president/.test(question)))
+  );
+}
+
+function isMaybeHeavy(state: GameState, remainingQuestionSlots: number): boolean {
+  if (remainingQuestionSlots <= 0) {
+    return false;
+  }
+
+  const totalMaybes = state.transcript.filter((turn) => turn.answer === "maybe").length;
+  const recentMaybes = state.transcript
+    .slice(-8)
+    .filter((turn) => turn.answer === "maybe").length;
+
+  return totalMaybes >= 4 || recentMaybes >= 3;
 }

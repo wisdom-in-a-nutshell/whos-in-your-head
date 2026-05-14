@@ -166,7 +166,8 @@ async function readRecentMisses(args) {
       actualAnswerReportedAt: {
         $gte: since,
         $lte: until
-      }
+      },
+      ...modelResultFilter(args.model)
     };
 
     const [misses, windowReportedMisses, eventCount, totalReportedMisses, groups] =
@@ -210,6 +211,7 @@ async function readRecentMisses(args) {
       event_count: eventCount,
       total_reported_misses: totalReportedMisses,
       limit: args.limit,
+      model_filter: args.model,
       include_transcript: args.includeTranscript,
       group_by: args.groupBy,
       groups,
@@ -494,6 +496,13 @@ async function readSummary(args) {
         $lte: until
       }
     };
+    const shareWindowQuery = {
+      eventType: "game_share",
+      createdAt: {
+        $gte: since,
+        $lte: until
+      }
+    };
 
     const [
       summary,
@@ -503,7 +512,8 @@ async function readSummary(args) {
       recentMisses,
       tokenStats,
       recentResults,
-      activeGames
+      activeGames,
+      shareStats
     ] = await Promise.all([
       readCompletedSummary(results, resultWindowQuery),
       readModelStatsList(results, resultWindowQuery, args.limit),
@@ -531,7 +541,8 @@ async function readSummary(args) {
           limit: args.limit
         })
         .toArray(),
-      readActiveGameCount(events, results, until)
+      readActiveGameCount(events, results, until),
+      readShareStats(events, shareWindowQuery)
     ]);
 
     return {
@@ -548,6 +559,7 @@ async function readSummary(args) {
         recent: recentMisses.map(formatMiss)
       },
       token_stats: tokenStats,
+      share_stats: shareStats,
       recent_results: recentResults.map(formatResult)
     };
   });
@@ -691,6 +703,67 @@ async function readTokenStatsList(events, query, limit) {
       }
     ])
     .toArray();
+}
+
+async function readShareStats(events, query) {
+  return (
+    (await events
+      .aggregate([
+        {
+          $match: query
+        },
+        {
+          $group: {
+            _id: null,
+            total_shares: {
+              $sum: 1
+            },
+            native_shares: {
+              $sum: {
+                $cond: [{ $eq: ["$method", "native"] }, 1, 0]
+              }
+            },
+            copy_shares: {
+              $sum: {
+                $cond: [{ $eq: ["$method", "copy"] }, 1, 0]
+              }
+            },
+            correct_result_shares: {
+              $sum: {
+                $cond: ["$correct", 1, 0]
+              }
+            },
+            incorrect_result_shares: {
+              $sum: {
+                $cond: ["$correct", 0, 1]
+              }
+            },
+            latest_shared_at: {
+              $max: "$createdAt"
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            total_shares: 1,
+            native_shares: 1,
+            copy_shares: 1,
+            correct_result_shares: 1,
+            incorrect_result_shares: 1,
+            latest_shared_at: 1
+          }
+        }
+      ])
+      .next()) ?? {
+      total_shares: 0,
+      native_shares: 0,
+      copy_shares: 0,
+      correct_result_shares: 0,
+      incorrect_result_shares: 0,
+      latest_shared_at: null
+    }
+  );
 }
 
 async function readActiveGameCount(events, results, now) {
@@ -868,6 +941,16 @@ function modelEventFilter(model) {
         "runtime.requestedModel": regex
       }
     ]
+  };
+}
+
+function modelResultFilter(model) {
+  if (!model) {
+    return {};
+  }
+
+  return {
+    finalModel: new RegExp(escapeRegex(model), "i")
   };
 }
 
@@ -1289,6 +1372,7 @@ function emitPlain(result) {
 
   if (result.command === "game-telemetry.summary") {
     const summary = result.data.completed_summary;
+    const shares = result.data.share_stats;
     console.log(
       `completed=${summary.total_games} correct=${summary.correct_games} incorrect=${summary.incorrect_games} correct_rate=${summary.correct_rate ?? "-"} reported_misses=${result.data.reported_misses.count} active_5m=${result.data.active_games_5m} since=${result.data.window.since_utc}`
     );
@@ -1302,6 +1386,9 @@ function emitPlain(result) {
         `tokens model=${tokens.model ?? "-"} turns=${tokens.turns} avg_total=${tokens.average_total_tokens ?? "-"} cache_rate=${tokens.cache_read_rate ?? "-"} avg_ms=${tokens.average_model_duration_ms ?? "-"}`
       );
     }
+    console.log(
+      `shares total=${shares.total_shares} native=${shares.native_shares} copy=${shares.copy_shares} correct_results=${shares.correct_result_shares} incorrect_results=${shares.incorrect_result_shares}`
+    );
     for (const game of result.data.recent_results) {
       console.log(
         `${game.completed_at_utc ?? "-"} correct=${game.correct} guessed=${game.final_guess ?? "-"} reported_answer=${game.reported_answer ?? "-"} questions=${game.question_count ?? "-"} model=${game.final_model ?? "-"}`

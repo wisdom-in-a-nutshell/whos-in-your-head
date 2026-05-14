@@ -337,6 +337,36 @@ export function recordActualAnswerTelemetry({
   });
 }
 
+export function recordGameShareTelemetry({
+  requestId,
+  state,
+  method,
+  routeDurationMs
+}: {
+  requestId: string;
+  state: GameState;
+  method: "native" | "copy";
+  routeDurationMs: number;
+}) {
+  void writeTelemetry("game_share", async (db) => {
+    await eventsCollection(db).insertOne({
+      eventType: "game_share",
+      requestId,
+      gameId: state.gameId,
+      createdAt: new Date(),
+      method,
+      result: state.result,
+      correct: state.result === "correct",
+      model: state.model,
+      reasoningEffort: state.reasoningEffort,
+      questionCount: state.questionCount,
+      finalGuess: state.finalGuess,
+      answerPath: buildAnswerPath(state),
+      routeDurationMs
+    });
+  });
+}
+
 export function recordGameFailureTelemetry({
   requestId,
   action,

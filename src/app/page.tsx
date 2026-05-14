@@ -183,6 +183,7 @@ type GameTurnResponse =
 
 type ActualAnswerStatus = "idle" | "sending" | "sent" | "error";
 type ShareStatus = "idle" | "copied" | "shared" | "error";
+type ShareMethod = "native" | "copy";
 
 type RuntimeStatus = {
   model: string;
@@ -441,11 +442,13 @@ export default function Home() {
           url: shareUrl
         });
         setShareStatus("shared");
+        void postGameShare(game, "native");
         return;
       }
 
       await copyShareText(shareText, shareUrl);
       setShareStatus("copied");
+      void postGameShare(game, "copy");
     } catch (shareError) {
       if (shareError instanceof DOMException && shareError.name === "AbortError") {
         return;
@@ -753,6 +756,19 @@ async function postGameTurn(payload: unknown): Promise<GameState> {
   }
 
   return data.game;
+}
+
+async function postGameShare(game: GameState, method: ShareMethod): Promise<void> {
+  await fetch("/api/game/share", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      state: game,
+      method
+    })
+  }).catch(() => null);
 }
 
 function readErrorMessage(error: unknown): string {

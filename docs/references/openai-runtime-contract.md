@@ -304,6 +304,7 @@ structured game records rather than log lines:
 ```bash
 npm run telemetry -- misses --json --minutes 30
 npm run telemetry -- misses --plain --minutes 30
+npm run telemetry -- misses --json --minutes 30 --model gpt --limit 8 --include-transcript
 npm run telemetry -- misses --json --minutes 30 --limit 8 --include-transcript
 npm run telemetry -- misses --json --minutes 60 --group-by model
 npm run telemetry -- model-stats --json --minutes 60
@@ -320,7 +321,8 @@ The JSON contract returns `data.count`, `data.event_count`,
 array with reported answer, final guess, question count, final model, and answer
 path. `--group-by reported-answer` answers which reported targets recur most,
 and `--group-by model` answers which final model has the most reported misses
-inside the window. `model-stats` summarizes completed rounds by final model, and
+inside the window. `misses --model <substring>` filters reported misses by
+`finalModel`. `model-stats` summarizes completed rounds by final model, and
 `model-results --model <substring>` returns recent completed rounds plus an
 aggregate for models whose `finalModel` contains that substring. These commands
 intentionally do not include full transcripts by default. Add
@@ -332,7 +334,7 @@ output, reasoning, and total tokens, cache read rate, model duration, route
 duration, guesses, fallback turns, and recent sanitized turn samples. `summary`
 combines the common operational snapshot into one call: completed-game
 aggregate, active-game count, per-model result stats, reported miss groups,
-token/cache stats, and recent completed games.
+token/cache stats, share counts, and recent completed games.
 
 For the prompt/mechanics hill-climb loop, use a 30-minute review cadence once a
 change has settled:
@@ -349,6 +351,10 @@ change has settled:
 Use 15-minute checks only immediately after a deploy or routing change. Avoid
 editing prompts from one isolated miss unless the transcript shows a clear,
 repeatable rule violation.
+
+Use measurable targets for this loop. The primary optimization goals are fast
+model turns and correct final guesses. Supporting diagnostics are reported-miss
+rate, route/model error rate, drop rate, and token/cache efficiency.
 
 ## Game Telemetry
 
@@ -372,7 +378,9 @@ Collections:
   model duration, model/source, fallback source, prompt-cache key, response id,
   input/cached/output/reasoning/total token counts, current question count, and
   the proposed next move. It also records `actual_answer_reported` events when
-  a player tells the app who they were thinking of after a missed final guess.
+  a player tells the app who they were thinking of after a missed final guess,
+  and `game_share` events when a completed result is successfully shared or
+  copied from the result screen.
 - `whiyh_game_failures`: append-only failure records. Stores request id, game
   id when available, phase, question count, latest question, compact answer
   path, transcript, sanitized action body, and structured error details.
