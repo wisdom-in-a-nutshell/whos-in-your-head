@@ -63,6 +63,18 @@ and Responses state chain stay the same.
 so the app can choose priority processing per game-master call without changing
 the Azure deployment-level setting.
 
+## Provider Architecture
+
+The game is OpenAI/Responses-primary. Keep the main game-master path on the
+Responses API with Structured Outputs, `previous_response_id`, reasoning
+controls, and OpenAI-compatible prompt caching.
+
+Do not add a Claude-first or Anthropic-native gameplay adapter for prompt
+caching unless telemetry shows the OpenAI/Responses path cannot meet the game
+latency/reliability target. The current Claude model is a narrow fallback for
+provider content-filter incomplete responses only; it is not the primary game
+state architecture.
+
 ## Scaffold Endpoints
 
 The package scaffold includes these server routes:
