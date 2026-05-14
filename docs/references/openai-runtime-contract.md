@@ -70,12 +70,14 @@ as a successful LiteLLM `/responses` call instead of a router
 deterministic per-turn reasoning schedule for telemetry and future product
 experiments: turns generated after questions 1-8 map to `low`, turns after
 questions 9-16 map to `medium`, and turns after question 17+ map to
-`LLM_REASONING_EFFORT`. The live game-master request does not currently send
+`LLM_REASONING_EFFORT`. Gemini Flash Lite is the exception: when selected, the
+OpenAI-compatible LiteLLM request sends `reasoning_effort: "medium"` for every
+model move so the route prioritizes accuracy while early production stats are
+still small. Other OpenAI-compatible models do not receive explicit
 request-level `reasoning.effort` or `text.verbosity`; strict structured output
-already keeps the response compact, and provider defaults keep the selectable
+already keeps those responses compact, and provider defaults keep the selectable
 models on their native paths. The stable prompt prefix, `prompt_cache_key`, and
-Responses state chain stay the same. Reintroduce explicit reasoning controls
-only after production stats show a clear quality/latency tradeoff worth tuning.
+Responses state chain stay the same.
 
 `LLM_SERVICE_TIER` accepts `auto`, `default`, or `priority`; the default is
 `priority`. The value is sent as the Responses API request-level `service_tier`,

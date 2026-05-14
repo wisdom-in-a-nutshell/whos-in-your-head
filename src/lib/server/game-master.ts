@@ -82,7 +82,13 @@ type LiteLLMCacheControls = {
   };
 };
 
-type GameMasterResponseRequest = ResponseCreateParamsNonStreaming & LiteLLMCacheControls;
+type LiteLLMReasoningControls = {
+  reasoning_effort?: "medium";
+};
+
+type GameMasterResponseRequest = ResponseCreateParamsNonStreaming &
+  LiteLLMCacheControls &
+  LiteLLMReasoningControls;
 
 export class ContentFilterIncompleteResponseError extends Error {
   constructor(
@@ -148,10 +154,7 @@ async function generateOpenAIAiMove(
   model: string,
   escalationReason: string | null
 ): Promise<GeneratedAiMove> {
-  const reasoningEffort = selectTurnReasoningEffort({
-    lateGameReasoningEffort: state.reasoningEffort,
-    questionCount: state.questionCount
-  });
+  const reasoningEffort = selectOpenAICompatibleReasoningEffort(model, state);
   const {
     client,
     model: configuredModel,
@@ -208,6 +211,11 @@ async function generateOpenAIAiMove(
       })
     },
     service_tier: serviceTier,
+    ...(isGeminiModel(model)
+      ? {
+          reasoning_effort: toGeminiThinkingEffort()
+        }
+      : {}),
     prompt_cache_key: PROMPT_CACHE_KEY,
     prompt_cache_retention: "24h",
     store: true,
@@ -640,8 +648,27 @@ function isClaudeModel(model: string) {
   return normalizeGameMasterModel(model).startsWith("claude-");
 }
 
+function isGeminiModel(model: string) {
+  return normalizeGameMasterModel(model).startsWith("gemini-");
+}
+
 function normalizeGameMasterModel(model: string) {
   return CLAUDE_MODEL_ALIASES.get(model) ?? model;
+}
+
+function selectOpenAICompatibleReasoningEffort(model: string, state: GameState) {
+  if (isGeminiModel(model)) {
+    return "medium";
+  }
+
+  return selectTurnReasoningEffort({
+    lateGameReasoningEffort: state.reasoningEffort,
+    questionCount: state.questionCount
+  });
+}
+
+function toGeminiThinkingEffort(): "medium" {
+  return "medium";
 }
 
 function toClaudeEffort(reasoningEffort: GameReasoningEffort, model: string) {
