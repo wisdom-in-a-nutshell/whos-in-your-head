@@ -480,9 +480,9 @@ export default function Home() {
     <main className={isStartScreen ? "game-shell" : "game-shell is-focused"}>
       {isStartScreen ? (
         <header className="game-header" aria-label="Game header">
-          <button className="wordmark" onClick={startGame} type="button">
+          <span className="wordmark wordmark-static">
             Who&apos;s In Your Head?
-          </button>
+          </span>
           <span className="round-count">{MAX_QUESTIONS} questions / 1 guess</span>
         </header>
       ) : null}
