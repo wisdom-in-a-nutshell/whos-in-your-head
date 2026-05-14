@@ -4,7 +4,12 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 const MAX_QUESTIONS = 21;
 const DEFAULT_GAME_MODEL = "gpt-chat-latest";
-const liveGameModelValues = ["gpt-chat-latest", "gpt-5.4-mini"] as const;
+const liveGameModelValues = [
+  "gpt-chat-latest",
+  "gpt-5.4-mini",
+  "claude-sonnet-4-6",
+  "claude-opus-4-6"
+] as const;
 const gameModelOptions = [
   {
     value: "gpt-chat-latest",
@@ -29,16 +34,14 @@ const gameModelOptions = [
     disabled: true
   },
   {
-    value: "claude-sonnet",
+    value: "claude-sonnet-4-6",
     label: "Claude Sonnet",
-    suffix: "coming soon",
-    disabled: true
+    disabled: false
   },
   {
-    value: "claude-opus",
+    value: "claude-opus-4-6",
     label: "Claude Opus",
-    suffix: "coming soon",
-    disabled: true
+    disabled: false
   }
 ] as const;
 
@@ -521,6 +524,8 @@ export default function Home() {
                   </optgroup>
                   <optgroup label="Available">
                     <option value="gpt-5.4-mini">GPT-5.4 Mini</option>
+                    <option value="claude-sonnet-4-6">Claude Sonnet</option>
+                    <option value="claude-opus-4-6">Claude Opus</option>
                   </optgroup>
                   <optgroup label="Coming soon">
                     {gameModelOptions
@@ -746,6 +751,14 @@ function readErrorMessage(error: unknown): string {
 function formatModelName(model: string): string {
   if (model === "gpt-chat-latest") {
     return "GPT Chat Latest";
+  }
+
+  if (model === "claude-sonnet-4-6") {
+    return "Claude Sonnet";
+  }
+
+  if (model === "claude-opus-4-6") {
+    return "Claude Opus";
   }
 
   return model

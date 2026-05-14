@@ -1,4 +1,6 @@
 import "server-only";
+import type { Message, Usage as AnthropicUsage } from "@anthropic-ai/sdk/resources/messages/messages";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type {
   Response,
   ResponseCreateParamsNonStreaming,
@@ -7,14 +9,20 @@ import type {
 import { zodTextFormat } from "openai/helpers/zod";
 import { aiMoveSchema, type AiMove, type PlayerAnswer } from "@/lib/game/ai-move";
 import { createSharedOpeningAnswerState } from "@/lib/game/opening";
-import { buildGameMasterContinuationInput, buildGameMasterInput } from "@/lib/game/prompt";
+import {
+  buildGameMasterContinuationInput,
+  buildGameMasterInput,
+  buildGameMasterStateInput,
+  GAME_MASTER_INSTRUCTIONS
+} from "@/lib/game/prompt";
 import {
   selectTurnReasoningEffort,
   type GameReasoningEffort
 } from "@/lib/game/reasoning";
 import { DEFAULT_GAME_MODEL, type GameModel, type GameState } from "@/lib/game/state";
+import { getAnthropicRequestConfig } from "./anthropic";
 import { describeError, logError, logInfo, logWarn } from "./logging";
-import { getOpenAIRequestConfig } from "./openai";
+import { getOpenAIRequestConfig, getOpenAIRuntimeStatus } from "./openai";
 
 const AI_MOVE_FORMAT_NAME = "who_in_your_head_ai_move";
 const PROMPT_CACHE_KEY = "whos-in-your-head-game-master-v1";
@@ -25,6 +33,13 @@ const OUTPUT_PREVIEW_CHARACTERS = 220;
 const DISABLE_LITELLM_RESPONSE_CACHE = true;
 const LATE_GAME_UPGRADE_START_AFTER_QUESTIONS = 12;
 const LATE_GAME_UPGRADE_MODEL = "gpt-5.5";
+const CLAUDE_MAX_OUTPUT_TOKENS = 8192;
+const CLAUDE_PROMPT_CACHE_TTL = "5m";
+
+const CLAUDE_MODEL_ALIASES = new Map<string, string>([
+  ["claude-4.6-opus", "claude-opus-4-6"],
+  ["claude-4.6-sonnet", "claude-sonnet-4-6"]
+]);
 
 const openingWarmups = new Map<string, Promise<GeneratedAiMove>>();
 const warmedOpenings = new Map<string, GeneratedAiMove>();
@@ -38,8 +53,20 @@ export type GeneratedAiMove = {
   actualServiceTier: string | null;
   promptCacheKey: string | null;
   responseId: string | null;
-  usage: ResponseUsage | null;
+  usage: GameMasterUsage | null;
   durationMs: number;
+};
+
+export type GameMasterUsage = {
+  input_tokens: number;
+  input_tokens_details: {
+    cached_tokens: number;
+  };
+  output_tokens: number;
+  output_tokens_details: {
+    reasoning_tokens: number;
+  };
+  total_tokens: number;
 };
 
 type LiteLLMCacheControls = {
@@ -94,6 +121,22 @@ export async function generateAiMove(
   retryAttempt = 1,
   modelOverride?: string
 ): Promise<GeneratedAiMove> {
+  const configuredModel = getOpenAIRuntimeStatus().model;
+  const model = selectGameMasterModel(state, configuredModel, modelOverride);
+
+  if (isClaudeModel(model)) {
+    return generateClaudeAiMove(state, requestId, retryAttempt, model);
+  }
+
+  return generateOpenAIAiMove(state, requestId, retryAttempt, model);
+}
+
+async function generateOpenAIAiMove(
+  state: GameState,
+  requestId: string | undefined,
+  retryAttempt: number,
+  model: string
+): Promise<GeneratedAiMove> {
   const reasoningEffort = selectTurnReasoningEffort({
     lateGameReasoningEffort: state.reasoningEffort,
     questionCount: state.questionCount
@@ -103,7 +146,6 @@ export async function generateAiMove(
     model: configuredModel,
     serviceTier
   } = getOpenAIRequestConfig(reasoningEffort);
-  const model = selectGameMasterModel(state, configuredModel, modelOverride);
 
   const rebuildFromFullState = retryAttempt > 1;
   const responseChainModelMatches = state.modelResponseModel === model;
@@ -120,7 +162,7 @@ export async function generateAiMove(
     configuredModel,
     storedResponseModel: state.modelResponseModel,
     responseChainModelMatches,
-    modelOverride: modelOverride ?? null,
+    modelOverride: null,
     gameReasoningEffort: state.reasoningEffort,
     reasoningEffort,
     requestedServiceTier: serviceTier,
@@ -179,7 +221,7 @@ export async function generateAiMove(
         configuredModel,
         storedResponseModel: state.modelResponseModel,
         responseChainModelMatches,
-        modelOverride: modelOverride ?? null,
+        modelOverride: null,
         gameReasoningEffort: state.reasoningEffort,
         reasoningEffort,
         requestedServiceTier: serviceTier,
@@ -219,7 +261,7 @@ export async function generateAiMove(
     moveAction: move.action,
     question: move.question,
     guess: move.guess,
-    usage: summarizeResponseUsage(response.usage ?? null)
+    usage: summarizeResponseUsage(normalizeOpenAIUsage(response.usage ?? null))
   });
 
   return {
@@ -231,7 +273,130 @@ export async function generateAiMove(
     actualServiceTier: response.service_tier ?? null,
     promptCacheKey: PROMPT_CACHE_KEY,
     responseId: response.id,
-    usage: response.usage ?? null,
+    usage: normalizeOpenAIUsage(response.usage ?? null),
+    durationMs: Date.now() - startedAt
+  };
+}
+
+async function generateClaudeAiMove(
+  state: GameState,
+  requestId: string | undefined,
+  retryAttempt: number,
+  model: string
+): Promise<GeneratedAiMove> {
+  const reasoningEffort = selectTurnReasoningEffort({
+    lateGameReasoningEffort: state.reasoningEffort,
+    questionCount: state.questionCount
+  });
+  const {
+    client,
+    model: configuredModel,
+    serviceTier
+  } = getAnthropicRequestConfig(model);
+  const startedAt = Date.now();
+
+  logInfo("game_master_claude_request_started", {
+    requestId,
+    gameId: state.gameId,
+    questionCount: state.questionCount,
+    transcriptLength: state.transcript.length,
+    model,
+    configuredModel,
+    gameReasoningEffort: state.reasoningEffort,
+    reasoningEffort,
+    requestedServiceTier: serviceTier,
+    retryAttempt,
+    latestAnswer: state.transcript.at(-1)?.answer ?? null
+  });
+
+  const response = await client.messages
+    .parse({
+      model: configuredModel,
+      max_tokens: CLAUDE_MAX_OUTPUT_TOKENS,
+      system: [
+        {
+          type: "text",
+          text: [
+            GAME_MASTER_INSTRUCTIONS,
+            "",
+            GAME_MASTER_REQUEST_INSTRUCTIONS
+          ].join("\n"),
+          cache_control: {
+            type: "ephemeral",
+            ttl: CLAUDE_PROMPT_CACHE_TTL
+          }
+        }
+      ],
+      messages: [
+        {
+          role: "user",
+          content: buildGameMasterStateInput(state, retryAttempt)
+        }
+      ],
+      thinking: {
+        type: "adaptive"
+      },
+      output_config: {
+        effort: toClaudeEffort(reasoningEffort, configuredModel),
+        format: zodOutputFormat(aiMoveSchema)
+      },
+      service_tier: serviceTier,
+      metadata: {
+        user_id: state.gameId
+      }
+    })
+    .catch((error: unknown) => {
+      logError("game_master_claude_request_failed", {
+        requestId,
+        gameId: state.gameId,
+        questionCount: state.questionCount,
+        transcriptLength: state.transcript.length,
+        model,
+        configuredModel,
+        gameReasoningEffort: state.reasoningEffort,
+        reasoningEffort,
+        requestedServiceTier: serviceTier,
+        retryAttempt,
+        durationMs: Date.now() - startedAt,
+        error: describeError(error)
+      });
+      throw error;
+    });
+
+  const move = parseClaudeGameMasterMove(response, {
+    requestId,
+    gameId: state.gameId,
+    durationMs: Date.now() - startedAt,
+    retryAttempt
+  });
+
+  logInfo("game_master_claude_request_succeeded", {
+    requestId,
+    gameId: state.gameId,
+    responseId: response.id,
+    durationMs: Date.now() - startedAt,
+    requestedModel: model,
+    actualModel: response.model ?? null,
+    reasoningEffort,
+    actualServiceTier: response.usage.service_tier ?? null,
+    retryAttempt,
+    stopReason: response.stop_reason,
+    moveAction: move.action,
+    question: move.question,
+    guess: move.guess,
+    usage: summarizeResponseUsage(normalizeAnthropicUsage(response.usage))
+  });
+
+  return {
+    move,
+    requestedModel: model,
+    actualModel: response.model ?? null,
+    reasoningEffort,
+    requestedServiceTier: serviceTier,
+    actualServiceTier: response.usage.service_tier ?? null,
+    promptCacheKey: "anthropic-cache-control",
+    responseId: response.id,
+    usage: normalizeAnthropicUsage(response.usage),
     durationMs: Date.now() - startedAt
   };
 }
@@ -242,10 +407,10 @@ function selectGameMasterModel(
   modelOverride?: string
 ) {
   if (modelOverride) {
-    return modelOverride;
+    return normalizeGameMasterModel(modelOverride);
   }
 
-  const selectedModel = state.model ?? configuredModel;
+  const selectedModel = normalizeGameMasterModel(state.model ?? configuredModel);
 
   if (
     selectedModel === "gpt-chat-latest" &&
@@ -321,6 +486,55 @@ function parseGameMasterMove(
   return parsedMove.data;
 }
 
+function parseClaudeGameMasterMove(
+  response: Message & { parsed_output?: AiMove | null },
+  context: {
+    requestId?: string;
+    gameId: string;
+    durationMs: number;
+    retryAttempt: number;
+  }
+): AiMove {
+  if (response.stop_reason === "refusal") {
+    logError("game_master_claude_refusal", {
+      ...context,
+      responseId: response.id,
+      responseModel: response.model,
+      stopDetails: response.stop_details ?? null,
+      outputPreview: previewOutput(extractClaudeOutputText(response)),
+      usage: summarizeResponseUsage(normalizeAnthropicUsage(response.usage))
+    });
+    throw new Error("Claude refused to produce a game-master move.");
+  }
+
+  if (response.stop_reason === "max_tokens") {
+    logError("game_master_claude_max_tokens", {
+      ...context,
+      responseId: response.id,
+      responseModel: response.model,
+      outputPreview: previewOutput(extractClaudeOutputText(response)),
+      usage: summarizeResponseUsage(normalizeAnthropicUsage(response.usage))
+    });
+    throw new Error("Claude stopped before finishing a game-master move.");
+  }
+
+  const parsed = response.parsed_output ?? null;
+
+  if (!parsed) {
+    logError("game_master_claude_parse_empty", {
+      ...context,
+      responseId: response.id,
+      responseModel: response.model,
+      stopReason: response.stop_reason,
+      outputPreview: previewOutput(extractClaudeOutputText(response)),
+      usage: summarizeResponseUsage(normalizeAnthropicUsage(response.usage))
+    });
+    throw new Error("Claude returned no parsed game-master move.");
+  }
+
+  return aiMoveSchema.parse(trimPrivateRationale(parsed));
+}
+
 function trimPrivateRationale(value: unknown) {
   if (!value || typeof value !== "object") {
     return value;
@@ -338,6 +552,70 @@ function trimPrivateRationale(value: unknown) {
   return {
     ...record,
     shortRationale: record.shortRationale.slice(0, 240)
+  };
+}
+
+function isClaudeModel(model: string) {
+  return normalizeGameMasterModel(model).startsWith("claude-");
+}
+
+function normalizeGameMasterModel(model: string) {
+  return CLAUDE_MODEL_ALIASES.get(model) ?? model;
+}
+
+function toClaudeEffort(reasoningEffort: GameReasoningEffort, model: string) {
+  if (
+    reasoningEffort === "none" ||
+    reasoningEffort === "minimal" ||
+    reasoningEffort === "low"
+  ) {
+    return "low";
+  }
+
+  if (reasoningEffort === "medium") {
+    return "medium";
+  }
+
+  if (reasoningEffort === "xhigh") {
+    return model.includes("opus") ? "xhigh" : "high";
+  }
+
+  return "high";
+}
+
+function normalizeOpenAIUsage(usage: ResponseUsage | null): GameMasterUsage | null {
+  if (!usage) {
+    return null;
+  }
+
+  return {
+    input_tokens: usage.input_tokens,
+    input_tokens_details: {
+      cached_tokens: usage.input_tokens_details.cached_tokens
+    },
+    output_tokens: usage.output_tokens,
+    output_tokens_details: {
+      reasoning_tokens: usage.output_tokens_details.reasoning_tokens
+    },
+    total_tokens: usage.total_tokens
+  };
+}
+
+function normalizeAnthropicUsage(usage: AnthropicUsage): GameMasterUsage {
+  const cachedTokens = usage.cache_read_input_tokens ?? 0;
+  const cacheCreationTokens = usage.cache_creation_input_tokens ?? 0;
+  const inputTokens = usage.input_tokens + cacheCreationTokens + cachedTokens;
+
+  return {
+    input_tokens: inputTokens,
+    input_tokens_details: {
+      cached_tokens: cachedTokens
+    },
+    output_tokens: usage.output_tokens,
+    output_tokens_details: {
+      reasoning_tokens: 0
+    },
+    total_tokens: inputTokens + usage.output_tokens
   };
 }
 
@@ -385,7 +663,7 @@ function warmupKey(answer: PlayerAnswer, reasoningEffort: GameReasoningEffort, m
   return `${model}:${reasoningEffort}:${answer}`;
 }
 
-function summarizeResponseUsage(usage: ResponseUsage | null) {
+function summarizeResponseUsage(usage: GameMasterUsage | null) {
   if (!usage) {
     return null;
   }
@@ -408,7 +686,7 @@ function summarizeResponse(response: Response) {
     incompleteDetails: response.incomplete_details ?? null,
     responseError: response.error ?? null,
     outputTypes: response.output?.map((item) => item.type) ?? [],
-    usage: summarizeResponseUsage(response.usage ?? null)
+    usage: summarizeResponseUsage(normalizeOpenAIUsage(response.usage ?? null))
   };
 }
 
@@ -444,6 +722,18 @@ function extractResponseOutputText(response: Response): string {
       ) {
         textParts.push(content.text);
       }
+    }
+  }
+
+  return textParts.join("\n");
+}
+
+function extractClaudeOutputText(response: Message): string {
+  const textParts: string[] = [];
+
+  for (const item of response.content) {
+    if (item.type === "text") {
+      textParts.push(item.text);
     }
   }
 

@@ -409,6 +409,14 @@ function formatModelName(model: string) {
     return "GPT Chat Latest";
   }
 
+  if (model === "claude-sonnet-4-6") {
+    return "Claude Sonnet";
+  }
+
+  if (model === "claude-opus-4-6") {
+    return "Claude Opus";
+  }
+
   return model
     .replace(/^gpt/i, "GPT")
     .replace("-mini", " Mini")

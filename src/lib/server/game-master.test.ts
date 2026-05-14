@@ -3,6 +3,7 @@ import { createSharedOpeningAnswerState } from "../game/opening";
 import type { GameModel } from "../game/state";
 
 const createMock = vi.fn();
+const claudeParseMock = vi.fn();
 
 vi.mock("server-only", () => ({}));
 
@@ -16,6 +17,15 @@ vi.mock("./logging", () => ({
 }));
 
 vi.mock("./openai", () => ({
+  getOpenAIRuntimeStatus: () => ({
+    configured: true,
+    baseUrlConfigured: true,
+    model: "gpt-5.5",
+    fallbackModels: [],
+    reasoningEffort: "high",
+    serviceTier: "priority",
+    configurationError: null
+  }),
   getOpenAIRequestConfig: () => ({
     client: {
       responses: {
@@ -28,9 +38,22 @@ vi.mock("./openai", () => ({
   })
 }));
 
+vi.mock("./anthropic", () => ({
+  getAnthropicRequestConfig: (model: string) => ({
+    client: {
+      messages: {
+        parse: claudeParseMock
+      }
+    },
+    model,
+    serviceTier: "auto"
+  })
+}));
+
 describe("generateAiMove", () => {
   beforeEach(() => {
     createMock.mockReset();
+    claudeParseMock.mockReset();
   });
 
   it("does not cap output tokens for structured moves", async () => {
@@ -345,14 +368,14 @@ describe("generateAiMove", () => {
       state,
       "fallback-request",
       2,
-      "claude-4.6-opus"
+      "gpt-5.4-mini"
     );
 
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
-    expect(generated.requestedModel).toBe("claude-4.6-opus");
+    expect(generated.requestedModel).toBe("gpt-5.4-mini");
     expect(request).toMatchObject({
-      model: "claude-4.6-opus",
+      model: "gpt-5.4-mini",
       cache: {
         "no-cache": true,
         "no-store": true
@@ -418,7 +441,7 @@ describe("generateAiMove", () => {
       createSharedOpeningAnswerState("no"),
       "chat-fallback-request",
       2,
-      "claude-4.6-opus"
+      "gpt-5.4-mini"
     );
 
     expect(generated.move).toEqual({
@@ -427,6 +450,72 @@ describe("generateAiMove", () => {
       guess: null,
       shortRationale: "Split the narrowed public-notoriety cluster geographically."
     });
+  });
+
+  it("uses Anthropic Messages natively for Claude-selected games", async () => {
+    claudeParseMock.mockResolvedValue(createClaudeMessage({
+      id: "msg-claude-native-test",
+      model: "claude-sonnet-4-6",
+      parsedOutput: {
+        action: "ask_question",
+        question: "Are they mainly known for entertainment?",
+        guess: null,
+        shortRationale: null
+      }
+    }));
+
+    const { generateAiMove } = await import("./game-master");
+    const state = createSharedOpeningAnswerState("yes", "high", "claude-sonnet-4-6");
+
+    const generated = await generateAiMove(state, "claude-native-request");
+    const request = claudeParseMock.mock.calls[0][0] as Record<string, unknown>;
+
+    expect(createMock).not.toHaveBeenCalled();
+    expect(generated.requestedModel).toBe("claude-sonnet-4-6");
+    expect(generated.responseId).toBe("msg-claude-native-test");
+    expect(request).toMatchObject({
+      model: "claude-sonnet-4-6",
+      max_tokens: 8192,
+      messages: [
+        expect.objectContaining({
+          role: "user"
+        })
+      ],
+      thinking: {
+        type: "adaptive"
+      },
+      service_tier: "auto"
+    });
+    expect(JSON.stringify(request.system)).toContain("cache_control");
+    expect(JSON.stringify(request.output_config)).toContain("json_schema");
+  });
+
+  it("maps the old Claude Opus fallback alias to the native Claude model id", async () => {
+    claudeParseMock.mockResolvedValue(createClaudeMessage({
+      id: "msg-claude-alias-test",
+      model: "claude-opus-4-6",
+      parsedOutput: {
+        action: "ask_question",
+        question: "Were they primarily active before 2000?",
+        guess: null,
+        shortRationale: null
+      }
+    }));
+
+    const { generateAiMove } = await import("./game-master");
+    const generated = await generateAiMove(
+      createSharedOpeningAnswerState("no"),
+      "claude-alias-request",
+      2,
+      "claude-4.6-opus"
+    );
+    const request = claudeParseMock.mock.calls[0][0] as Record<string, unknown>;
+
+    expect(generated.requestedModel).toBe("claude-opus-4-6");
+    expect(request).toMatchObject({
+      model: "claude-opus-4-6"
+    });
+    expect(request).not.toHaveProperty("previous_response_id");
   });
 
   it("trims an overlong private rationale instead of failing an otherwise valid move", async () => {
@@ -476,6 +565,45 @@ function createResponse({ id, outputText }: { id: string; outputText: string }) 
     incomplete_details: null,
     error: null,
     usage: null
+  };
+}
+
+function createClaudeMessage({
+  id,
+  model,
+  parsedOutput
+}: {
+  id: string;
+  model: string;
+  parsedOutput: unknown;
+}) {
+  return {
+    id,
+    type: "message",
+    role: "assistant",
+    model,
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify(parsedOutput),
+        parsed_output: parsedOutput
+      }
+    ],
+    parsed_output: parsedOutput,
+    stop_reason: "end_turn",
+    stop_sequence: null,
+    stop_details: null,
+    container: null,
+    usage: {
+      input_tokens: 100,
+      cache_creation_input_tokens: 20,
+      cache_read_input_tokens: 80,
+      output_tokens: 30,
+      cache_creation: null,
+      inference_geo: null,
+      server_tool_use: null,
+      service_tier: "standard"
+    }
   };
 }
 

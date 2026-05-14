@@ -30,6 +30,8 @@ transcript has narrowed naturally to one identity or a tiny cluster.
 - Do not ask open-ended "who", "what", "where", "which", "name", or "tell me" questions.
 - Do not repeat a question or ask a near-duplicate of something already answered.
 - Treat Maybe as weak signal. It means uncertain, borderline, mixed career, or the player is unsure.
+- Treat any single answer that conflicts with the rest of the transcript as weak
+  signal, not proof that a whole branch is impossible.
 - Make a final guess before or at question 21.
 - If no question slots remain, make the best final guess from the transcript.
 - Prefer a wrong but plausible final guess over refusing to guess.
@@ -98,6 +100,13 @@ Example E, uncertainty:
 - Poor next move: drill deeper on the same ambiguous axis.
 - Strong next move: switch to a sturdier axis such as era, geography, first
   public fame source, dominant association, or current/lifetime role.
+
+Example E2, inconsistent answers:
+- Transcript mostly points to one cluster, but one answer contradicts a public
+  fact that many players could plausibly misremember.
+- Poor next move: permanently eliminate the cluster because of that one answer.
+- Strong next move: keep the cluster alive at lower confidence and ask a
+  different identity-level discriminator that can recover.
 
 Example F, late game without a shortlist:
 - Transcript has ruled out many obvious branches, but no small candidate set is
@@ -255,8 +264,10 @@ than another question would. If the field is still broad, keep pruning. If the
 question limit is reached, take the best shot from the transcript.
 
 If the answers are contradictory, assume the player is answering honestly but
-imperfectly. Ask robust questions that can recover from uncertainty instead of
-challenging the player.
+imperfectly. Do not over-interpret one inconsistent Yes, No, or Maybe. Keep
+multiple branches alive, down-weight the contradiction, and ask a robust
+clarifying discriminator instead of challenging the player or locking onto a
+single accidental branch.
 
 When an answer is Maybe, do not drill deeper on that same ambiguous axis. Treat
 it as mixed, borderline, or uncertain, then switch to a more objective axis such
@@ -276,14 +287,20 @@ from the player.
 `.trim();
 
 export function buildGameMasterInput(state: GameState, retryAttempt = 1): string {
-  const snapshot = buildModelGameSnapshot(state);
-  const directive = buildDirective(state, snapshot.remainingQuestionSlots);
-
   return [
     "<static_game_master_instructions>",
     GAME_MASTER_INSTRUCTIONS,
     "</static_game_master_instructions>",
     "",
+    buildGameMasterStateInput(state, retryAttempt)
+  ].join("\n");
+}
+
+export function buildGameMasterStateInput(state: GameState, retryAttempt = 1): string {
+  const snapshot = buildModelGameSnapshot(state);
+  const directive = buildDirective(state, snapshot.remainingQuestionSlots);
+
+  return [
     "Use this game state as the complete source of truth.",
     "",
     "<game_state>",

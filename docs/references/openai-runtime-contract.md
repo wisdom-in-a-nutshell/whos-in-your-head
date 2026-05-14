@@ -45,12 +45,12 @@ Deployed Azure runtime should use
 depend on ambient global OpenAI provider routing.
 
 Players can choose the game model at the start of a round. The public picker is
-allowlisted to `gpt-chat-latest` and `gpt-5.4-mini`; `gpt-chat-latest` is the
-UI default and is labeled as recommended in the dropdown. Other model names may
-appear as disabled coming-soon options, but they must not be accepted by the
-game-turn schema until they are real choices. The selected model is stored on
-the explicit game state and reused for the normal model path, opening warmup,
-retries, and telemetry.
+allowlisted to `gpt-chat-latest`, `gpt-5.4-mini`, `claude-sonnet-4-6`, and
+`claude-opus-4-6`; `gpt-chat-latest` is the UI default and is labeled as
+recommended in the dropdown. Other model names may appear as disabled
+coming-soon options, but they must not be accepted by the game-turn schema until
+they are real choices. The selected model is stored on the explicit game state
+and reused for the normal model path, opening warmup, retries, and telemetry.
 
 `LLM_FALLBACK_MODELS` is a comma- or newline-separated model chain. It is used
 only when the primary Responses call returns `status: "incomplete"` with
@@ -77,15 +77,30 @@ the Azure deployment-level setting.
 
 ## Provider Architecture
 
-The game is OpenAI/Responses-primary. Keep the main game-master path on the
-Responses API with Structured Outputs, `previous_response_id`, and
-OpenAI-compatible prompt caching.
+The game has one app-owned turn API and provider-native model adapters behind
+it.
 
-Do not add a Claude-first or Anthropic-native gameplay adapter for prompt
-caching unless telemetry shows the OpenAI/Responses path cannot meet the game
-latency/reliability target. The current Claude model is a narrow fallback for
-provider content-filter incomplete responses only; it is not the primary game
-state architecture.
+- OpenAI-family models use the Responses API with Structured Outputs,
+  `previous_response_id`, `prompt_cache_key`, and `prompt_cache_retention`.
+- Claude-family models use the official Anthropic TypeScript SDK and the
+  Messages API directly. The Claude path uses `messages.parse()` with
+  `output_config.format`/Zod structured output, `thinking: { type:
+  "adaptive" }`, and an explicit cache breakpoint on the stable system prompt.
+  Claude Messages are stateless, so the app rebuilds from explicit game state
+  on every Claude turn and does not set `modelResponseId`.
+
+Native Claude runtime config is separate from OpenAI/LiteLLM config:
+
+- `ANTHROPIC_API_KEY` or `CLAUDE_API_KEY`
+- optional `ANTHROPIC_BASE_URL` or `CLAUDE_BASE_URL` for an
+  Anthropic-compatible pass-through/proxy endpoint
+- optional `ANTHROPIC_MODEL` or `CLAUDE_MODEL`
+- optional `ANTHROPIC_SERVICE_TIER` or `CLAUDE_SERVICE_TIER`, accepting `auto`
+  or `standard_only`
+
+Keep the provider adapters narrow. The app owns game state, retries, rule
+enforcement, telemetry, and result handling; providers only propose the next
+structured move.
 
 ## Scaffold Endpoints
 

@@ -11,6 +11,7 @@ import {
   type GameState
 } from "@/lib/game/state";
 import { isFirstOpeningAnswer, OPENING_MOVE } from "@/lib/game/opening";
+import { getAnthropicRuntimeStatus } from "@/lib/server/anthropic";
 import {
   getOpenAIModelFallbacks,
   getOpenAIRuntimeStatus
@@ -156,18 +157,19 @@ export async function POST(request: Request) {
       });
     }
 
-    const status = getOpenAIRuntimeStatus();
+    const status = getRuntimeStatusForGame(parsed.data.state.model);
 
     if (status.configurationError) {
-      logError("game_turn_openai_configuration_error", {
+      logError("game_turn_llm_configuration_error", {
         requestId,
+        provider: status.provider,
         error: status.configurationError
       });
       recordGameFailureTelemetry({
         requestId,
         action: parsed.data.action,
         state: parsed.data.state,
-        code: "openai_configuration_error",
+        code: "llm_configuration_error",
         error: new Error(status.configurationError),
         routeDurationMs: Date.now() - startedAt,
         body
@@ -176,24 +178,25 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          code: "openai_configuration_error",
+          code: "llm_configuration_error",
           error: status.configurationError,
-          openai: status
+          llm: status
         },
         { status: 503 }
       );
     }
 
     if (!status.configured) {
-      logError("game_turn_openai_not_configured", {
-        requestId
+      logError("game_turn_llm_not_configured", {
+        requestId,
+        provider: status.provider
       });
       recordGameFailureTelemetry({
         requestId,
         action: parsed.data.action,
         state: parsed.data.state,
-        code: "openai_not_configured",
-        error: new Error("OPENAI_API_KEY is not configured."),
+        code: "llm_not_configured",
+        error: new Error(status.missingConfigurationMessage),
         routeDurationMs: Date.now() - startedAt,
         body
       });
@@ -201,9 +204,9 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          code: "openai_not_configured",
-          error: "OPENAI_API_KEY is not configured.",
-          openai: status
+          code: "llm_not_configured",
+          error: status.missingConfigurationMessage,
+          llm: status
         },
         { status: 503 }
       );
@@ -490,6 +493,23 @@ function getReusableResponseId(generated: GeneratedAiMove) {
 
 function getReusableResponseModel(generated: GeneratedAiMove) {
   return getReusableResponseId(generated) === null ? null : generated.requestedModel;
+}
+
+function getRuntimeStatusForGame(model: string) {
+  if (model.startsWith("claude-")) {
+    return {
+      ...getAnthropicRuntimeStatus(model),
+      provider: "anthropic",
+      missingConfigurationMessage:
+        "ANTHROPIC_API_KEY or CLAUDE_API_KEY is not configured."
+    };
+  }
+
+  return {
+    ...getOpenAIRuntimeStatus(),
+    provider: "openai",
+    missingConfigurationMessage: "LLM_API_KEY or OPENAI_API_KEY is not configured."
+  };
 }
 
 function summarizeUsage(usage: GeneratedAiMove["usage"]) {
