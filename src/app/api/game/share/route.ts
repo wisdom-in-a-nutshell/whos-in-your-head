@@ -19,10 +19,31 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const parsed = gameShareRequestSchema.safeParse(body);
 
-  if (!parsed.success || parsed.data.state.phase !== "result") {
+  if (!parsed.success) {
     logWarn("game_share_invalid_request", {
       requestId,
-      issues: parsed.success ? null : parsed.error.flatten()
+      issues: parsed.error.flatten()
+    });
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Invalid share event."
+      },
+      { status: 400 }
+    );
+  }
+
+  const state = parsed.data.state;
+
+  if (
+    state.phase !== "result" ||
+    state.result === "unknown" ||
+    !state.finalGuess
+  ) {
+    logWarn("game_share_invalid_request", {
+      requestId,
+      issues: null
     });
 
     return NextResponse.json(
@@ -36,7 +57,7 @@ export async function POST(request: Request) {
 
   recordGameShareTelemetry({
     requestId,
-    state: parsed.data.state,
+    state,
     method: parsed.data.method,
     routeDurationMs: Date.now() - startedAt
   });
