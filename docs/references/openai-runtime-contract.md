@@ -71,9 +71,10 @@ deterministic per-turn reasoning schedule for telemetry and future product
 experiments: turns generated after questions 1-8 map to `low`, turns after
 questions 9-16 map to `medium`, and turns after question 17+ map to
 `LLM_REASONING_EFFORT`. Gemini Flash Lite is the exception: when selected, the
-OpenAI-compatible LiteLLM request sends `reasoning_effort: "medium"` for every
+OpenAI-compatible LiteLLM request sends `reasoning_effort: "high"` for every
 model move so the route prioritizes accuracy while early production stats are
-still small. Other OpenAI-compatible models do not receive explicit
+still small. LiteLLM maps that OpenAI-compatible field to Gemini 3 thinking
+level `high`. Other OpenAI-compatible models do not receive explicit
 request-level `reasoning.effort` or `text.verbosity`; strict structured output
 already keeps those responses compact, and provider defaults keep the selectable
 models on their native paths. The stable prompt prefix, `prompt_cache_key`, and

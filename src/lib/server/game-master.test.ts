@@ -176,14 +176,14 @@ describe("generateAiMove", () => {
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
     expect(generated.requestedModel).toBe("gemini-3.1-flash-lite");
-    expect(generated.reasoningEffort).toBe("medium");
+    expect(generated.reasoningEffort).toBe("high");
     expect(request).toMatchObject({
       model: "gemini-3.1-flash-lite",
-      reasoning_effort: "medium"
+      reasoning_effort: "high"
     });
   });
 
-  it("keeps Gemini Flash Lite on medium reasoning in late turns", async () => {
+  it("keeps Gemini Flash Lite on high reasoning in late turns", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-gemini-late-reasoning-test",
       outputText: JSON.stringify({
@@ -201,10 +201,10 @@ describe("generateAiMove", () => {
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
     expect(generated.requestedModel).toBe("gemini-3.1-flash-lite");
-    expect(generated.reasoningEffort).toBe("medium");
+    expect(generated.reasoningEffort).toBe("high");
     expect(request).toMatchObject({
       model: "gemini-3.1-flash-lite",
-      reasoning_effort: "medium"
+      reasoning_effort: "high"
     });
   });
 

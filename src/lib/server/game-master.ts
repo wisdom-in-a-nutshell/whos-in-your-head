@@ -83,7 +83,7 @@ type LiteLLMCacheControls = {
 };
 
 type LiteLLMReasoningControls = {
-  reasoning_effort?: "medium";
+  reasoning_effort?: "high";
 };
 
 type GameMasterResponseRequest = ResponseCreateParamsNonStreaming &
@@ -658,7 +658,7 @@ function normalizeGameMasterModel(model: string) {
 
 function selectOpenAICompatibleReasoningEffort(model: string, state: GameState) {
   if (isGeminiModel(model)) {
-    return "medium";
+    return "high";
   }
 
   return selectTurnReasoningEffort({
@@ -667,8 +667,8 @@ function selectOpenAICompatibleReasoningEffort(model: string, state: GameState) 
   });
 }
 
-function toGeminiThinkingEffort(): "medium" {
-  return "medium";
+function toGeminiThinkingEffort(): "high" {
+  return "high";
 }
 
 function toClaudeEffort(reasoningEffort: GameReasoningEffort, model: string) {
