@@ -143,6 +143,7 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - [x] Polish UI enough for a 30-second demo.
 - [x] Polish social sharing metadata with a dedicated X/Twitter 2:1 image.
 - [x] Add first-pass result sharing controls for friends, X, and Reddit.
+- [x] Simplify result sharing UI to one friend-share action and one replay action.
 - [ ] Update README with exact setup/run/deploy steps after implementation choices are real.
 - [x] Run validation and record exact results.
 - [ ] Review and finalize `docs/projects/whos-in-your-head/learnings/README.md` before archive if the project becomes long-running.
@@ -187,3 +188,4 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - 2026-05-14: [DONE] Took a final homepage/stats polish pass. The homepage model picker is now visually secondary under the question-limit meter, and `/stats` now leads with a compact operational scoreboard: completed rounds, correctness, average questions, average response time, secondary start/drop/miss/fallback counts, and a simplified model breakdown without token/reasoning clutter.
 - 2026-05-14: [DONE] Audited social preview metadata for launch sharing. Production already served a valid 1200x630 Open Graph PNG with absolute HTTPS tags; added a dedicated 1200x600 X/Twitter image route, pointed Twitter Card metadata at it, and added a canonical URL for cleaner shared-link identity.
 - 2026-05-14: [DONE] Added first-version result sharing on the end screen. Players can use native sharing, copy a compact result text, or open prefilled X and Reddit posts; this intentionally shares the homepage URL for v1 instead of exposing per-game public result pages.
+- 2026-05-14: [DONE] Simplified the result sharing UI after visual review. The end screen now presents one primary friend-share action, one replay action, and a single quiet stats/model line instead of separate X/Reddit/copy callouts and multiple footer links.

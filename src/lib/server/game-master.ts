@@ -126,42 +126,38 @@ export async function generateAiMove(
   });
 
   const responseRequest: GameMasterResponseRequest = {
-      model,
-      instructions: GAME_MASTER_REQUEST_INSTRUCTIONS,
-      ...(usesPreviousResponse
-        ? { previous_response_id: state.modelResponseId ?? undefined }
-        : {}),
-      input: [
-        {
-          role: "user",
-          content: usesPreviousResponse
-            ? buildGameMasterContinuationInput(state, retryAttempt)
-            : buildGameMasterInput(state, retryAttempt)
-        }
-      ],
-      reasoning: {
-        effort: reasoningEffort
-      },
-      text: {
-        verbosity: "low",
-        format: zodTextFormat(aiMoveSchema, AI_MOVE_FORMAT_NAME, {
-          description:
-            "The next game-master move: either one yes/no-compatible question or one final famous-person guess."
-        })
-      },
-      service_tier: serviceTier,
-      prompt_cache_key: PROMPT_CACHE_KEY,
-      prompt_cache_retention: "24h",
-      store: true,
-      ...(bypassResponseCache
-        ? {
-            cache: {
-              "no-cache": true,
-              "no-store": true
-            }
+    model,
+    instructions: GAME_MASTER_REQUEST_INSTRUCTIONS,
+    ...(usesPreviousResponse
+      ? { previous_response_id: state.modelResponseId ?? undefined }
+      : {}),
+    input: [
+      {
+        role: "user",
+        content: usesPreviousResponse
+          ? buildGameMasterContinuationInput(state, retryAttempt)
+          : buildGameMasterInput(state, retryAttempt)
+      }
+    ],
+    text: {
+      format: zodTextFormat(aiMoveSchema, AI_MOVE_FORMAT_NAME, {
+        description:
+          "The next game-master move: either one yes/no-compatible question or one final famous-person guess."
+      })
+    },
+    service_tier: serviceTier,
+    prompt_cache_key: PROMPT_CACHE_KEY,
+    prompt_cache_retention: "24h",
+    store: true,
+    ...(bypassResponseCache
+      ? {
+          cache: {
+            "no-cache": true,
+            "no-store": true
           }
-        : {})
-    };
+        }
+      : {})
+  };
 
   const response = await client.responses
     .create(responseRequest)

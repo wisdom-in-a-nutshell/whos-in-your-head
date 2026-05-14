@@ -232,8 +232,6 @@ export default function Home() {
   const modelName = formatModelName(activeModel);
   const shareText = game ? formatShareText(game) : "";
   const shareUrl = getShareUrl();
-  const xShareUrl = getXShareUrl(shareText, shareUrl);
-  const redditShareUrl = getRedditShareUrl(shareText, shareUrl);
 
   useEffect(() => {
     let active = true;
@@ -444,19 +442,6 @@ export default function Home() {
         return;
       }
 
-      setShareStatus("error");
-    }
-  }
-
-  async function copyResult() {
-    if (!game || game.phase !== "result") {
-      return;
-    }
-
-    try {
-      await copyShareText(shareText, shareUrl);
-      setShareStatus("copied");
-    } catch {
       setShareStatus("error");
     }
   }
@@ -691,60 +676,31 @@ export default function Home() {
             </form>
           ) : null}
           <div className="result-actions">
-            <button className="primary-action" onClick={startGame} type="button">
+            <button className="primary-action" onClick={shareResult} type="button">
+              Challenge a friend
+            </button>
+            <button className="secondary-action" onClick={startGame} type="button">
               Play again
             </button>
-            <button className="secondary-action" onClick={shareResult} type="button">
-              Share result
-            </button>
-          </div>
-          <div className="share-actions" aria-label="Share result links">
-            <button className="secondary-action" onClick={copyResult} type="button">
-              Copy text
-            </button>
-            <a
-              className="secondary-action"
-              href={xShareUrl}
-              rel="noreferrer"
-              target="_blank"
-            >
-              Post on X
-            </a>
-            <a
-              className="secondary-action"
-              href={redditShareUrl}
-              rel="noreferrer"
-              target="_blank"
-            >
-              Post on Reddit
-            </a>
           </div>
           {shareStatus !== "idle" ? (
             <p className="share-note">{formatShareStatus(shareStatus)}</p>
           ) : null}
           <div className="result-meta">
-            {publicStats && publicStats.totalGames > 0 ? (
-              <p>
-                Current scoreboard:{" "}
-                <span className="runtime-pill">
-                  {formatPercent(publicStats.correctRate)}
-                </span>{" "}
-                guessed.
-              </p>
-            ) : null}
             <p>
-              Powered by <span className="runtime-pill">{modelName}</span>. It starts
-              quick, then thinks harder near the end.
-            </p>
-            <p>
-              More models are coming soon. <a href="/stats">Live scoreboard</a>
-            </p>
-            <p>
-              Built by{" "}
-              <a href="https://www.adithyan.io/" rel="noreferrer" target="_blank">
-                Adithyan
-              </a>{" "}
-              with help from Codex.
+              {publicStats && publicStats.totalGames > 0 ? (
+                <>
+                  Scoreboard:{" "}
+                  <span className="runtime-pill">
+                    {formatPercent(publicStats.correctRate)}
+                  </span>{" "}
+                  guessed.
+                </>
+              ) : (
+                "Fresh round."
+              )}{" "}
+              Powered by <span className="runtime-pill">{modelName}</span>.{" "}
+              <a href="/stats">Stats</a>
             </p>
           </div>
         </section>
@@ -830,24 +786,6 @@ function getShareUrl() {
   }
 
   return window.location.origin;
-}
-
-function getXShareUrl(text: string, url: string) {
-  const params = new URLSearchParams({
-    text,
-    url
-  });
-
-  return `https://twitter.com/intent/tweet?${params.toString()}`;
-}
-
-function getRedditShareUrl(text: string, url: string) {
-  const params = new URLSearchParams({
-    url,
-    title: text
-  });
-
-  return `https://www.reddit.com/submit?${params.toString()}`;
 }
 
 async function copyShareText(text: string, url: string) {
