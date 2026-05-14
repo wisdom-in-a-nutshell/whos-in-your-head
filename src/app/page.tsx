@@ -716,6 +716,16 @@ export default function Home() {
           </div>
         </section>
       ) : null}
+
+      <footer className="site-credit" aria-label="Creator credit">
+        <a
+          href="https://www.adithyan.io"
+          rel="noreferrer"
+          target="_blank"
+        >
+          Built by adithyan.io
+        </a>
+      </footer>
     </main>
   );
 }

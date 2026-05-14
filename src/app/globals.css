@@ -42,13 +42,13 @@ button {
 
 .game-shell {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   min-height: 100vh;
   padding: 22px;
 }
 
 .game-shell.is-focused {
-  grid-template-rows: 1fr;
+  grid-template-rows: minmax(0, 1fr) auto;
 }
 
 .game-header,
@@ -101,19 +101,13 @@ button {
   align-content: center;
   justify-items: center;
   width: min(980px, 100%);
-  min-height: calc(100vh - 96px);
+  min-height: 0;
   margin: 0 auto;
   padding: 38px 0 64px;
 }
 
 .start-screen {
   gap: 50px;
-}
-
-.game-shell.is-focused .play-screen,
-.game-shell.is-focused .guess-screen,
-.game-shell.is-focused .result-screen {
-  min-height: calc(100vh - 44px);
 }
 
 .start-copy,
@@ -542,6 +536,34 @@ button {
   text-transform: uppercase;
 }
 
+.site-credit {
+  justify-self: center;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.site-credit a {
+  color: inherit;
+  text-decoration: none;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+.site-credit a:hover,
+.site-credit a:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.site-credit a:focus-visible {
+  outline: 3px solid var(--highlight);
+  outline-offset: 4px;
+}
+
 .stats-shell {
   min-height: 100vh;
   padding: 22px;
@@ -944,14 +966,8 @@ button {
   .play-screen,
   .guess-screen,
   .result-screen {
-    min-height: calc(100vh - 72px);
+    min-height: 0;
     padding: 26px 0 42px;
-  }
-
-  .game-shell.is-focused .play-screen,
-  .game-shell.is-focused .guess-screen,
-  .game-shell.is-focused .result-screen {
-    min-height: calc(100vh - 32px);
   }
 
   .start-screen {
@@ -1032,6 +1048,10 @@ button {
 
   .runtime-pill {
     font-size: 0.68rem;
+  }
+
+  .site-credit {
+    font-size: 0.66rem;
   }
 
   .stats-shell {
