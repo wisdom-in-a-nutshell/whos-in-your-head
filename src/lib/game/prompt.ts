@@ -205,6 +205,22 @@ music is confirmed, test the U.S./English-language versus Latin/Spanish-language
 or other regional sphere before asking country, rock, R&B, DJ, or instrument
 questions one by one.
 
+Long-tail creator clusters need audience and scene splits before nearby-name
+guesses. For platform-native creators, after the platform or game niche is
+known, ask primary language/region, audience, creator era, or signature format
+before guessing a famous English-language creator. For comics, cartooning, and
+illustration, separate superhero comics, humor/satire, magazine work, newspaper
+strips, manga, European comics, and editorial cartoons before defaulting to a
+superhero artist. For business executives in a narrowed industry, ask the
+specific company, current versus former role, founder versus hired executive,
+or region before guessing a nearby CEO.
+
+Music subgenres matter once the broad genre is known. If the transcript points
+to country or another large genre but the mainstream star is not uniquely
+supported, split mainstream radio fame from bluegrass, folk, Americana,
+instrumental virtuosity, songwriter-first fame, regional scenes, and award
+circuits before making a final guess.
+
 Narrowing questions should still separate clusters. Good narrowing axes include
 public role, first source of fame, dominant public association, signature
 medium, decade, region, sport type, industry, public office, internet fame, and
@@ -492,6 +508,38 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
     ].join(" ");
   }
 
+  if (isPlatformCreatorCluster(state, remainingQuestionSlots)) {
+    return [
+      "The transcript is in a long-tail platform-native creator cluster.",
+      "Do not default to a famous English-language creator from content type alone.",
+      "Ask one scene-level discriminator such as primary language or region, audience, creator era, or signature format before guessing."
+    ].join(" ");
+  }
+
+  if (isComicsIllustrationCluster(state, remainingQuestionSlots)) {
+    return [
+      "The transcript is in a comics, cartooning, or illustration cluster.",
+      "Do not default to a superhero-comics artist from broad illustration clues alone.",
+      "Ask one format or scene split such as superhero comics versus humor/satire, magazine work, newspaper strips, manga, European comics, editorial cartoons, publisher, or creator-owned work before guessing."
+    ].join(" ");
+  }
+
+  if (isCountryMusicCluster(state, remainingQuestionSlots)) {
+    return [
+      "The transcript is in a country or roots-music cluster.",
+      "Do not guess a mainstream country star from broad country, gender, and era clues alone.",
+      "Ask one subgenre split such as mainstream radio country versus bluegrass, folk, Americana, instrumental virtuosity, or songwriter-first fame."
+    ].join(" ");
+  }
+
+  if (isBusinessExecutiveCluster(state, remainingQuestionSlots)) {
+    return [
+      "The transcript is in a narrowed business-executive cluster.",
+      "Do not guess a nearby CEO from industry and role alone.",
+      "Ask one company, region, founder-versus-hired-executive, or current-versus-former role discriminator before guessing."
+    ].join(" ");
+  }
+
   if (isMaybeHeavy(state, remainingQuestionSlots)) {
     return [
       "The transcript has several Maybe answers, so confidence is unstable.",
@@ -539,4 +587,85 @@ function isMaybeHeavy(state: GameState, remainingQuestionSlots: number): boolean
     .filter((turn) => turn.answer === "maybe").length;
 
   return totalMaybes >= 4 || recentMaybes >= 3;
+}
+
+function isPlatformCreatorCluster(
+  state: GameState,
+  remainingQuestionSlots: number
+): boolean {
+  if (remainingQuestionSlots <= 0) {
+    return false;
+  }
+
+  const answeredYes = yesQuestions(state);
+  const asked = allQuestions(state);
+
+  return (
+    answeredYes.some((question) =>
+      /(online video|youtube|livestream|streaming|minecraft|platform-native)/.test(
+        question
+      )
+    ) &&
+    !asked.some((question) =>
+      /(language|region|country|french|spanish|english-language|non-english|united states|british|european)/.test(
+        question
+      )
+    )
+  );
+}
+
+function isComicsIllustrationCluster(
+  state: GameState,
+  remainingQuestionSlots: number
+): boolean {
+  if (remainingQuestionSlots <= 0) {
+    return false;
+  }
+
+  const answeredYes = yesQuestions(state);
+
+  return answeredYes.some((question) =>
+    /(comics|cartoons|illustration|superhero comic)/.test(question)
+  );
+}
+
+function isCountryMusicCluster(
+  state: GameState,
+  remainingQuestionSlots: number
+): boolean {
+  if (remainingQuestionSlots <= 0) {
+    return false;
+  }
+
+  const answeredYes = yesQuestions(state);
+
+  return answeredYes.some((question) => /country music/.test(question));
+}
+
+function isBusinessExecutiveCluster(
+  state: GameState,
+  remainingQuestionSlots: number
+): boolean {
+  if (remainingQuestionSlots <= 0) {
+    return false;
+  }
+
+  const answeredYes = yesQuestions(state);
+
+  return (
+    answeredYes.some((question) =>
+      /(pharmaceutical|biotechnology|healthcare|medical services)/.test(question)
+    ) &&
+    answeredYes.some((question) => /(ceo|company|business|industry)/.test(question))
+  );
+}
+
+function yesQuestions(state: GameState) {
+  return state.transcript
+    .filter((turn) => turn.answer === "yes")
+    .map((turn) => turn.question.toLowerCase());
+}
+
+function allQuestions(state: GameState) {
+  return state.transcript.map((turn) => turn.question.toLowerCase());
 }

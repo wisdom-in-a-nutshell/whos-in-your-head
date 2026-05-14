@@ -64,6 +64,74 @@ describe("GAME_MASTER_INSTRUCTIONS", () => {
     expect(input).toContain("Ask one objective discriminator");
   });
 
+  it("asks for scene splits in long-tail platform creator clusters", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "yes"],
+      ["Is this person primarily known for entertainment or media?", "yes"],
+      ["Is this person best known as a performer rather than a creator?", "no"],
+      ["Is this person primarily known for online video platforms?", "yes"],
+      ["Is this person primarily associated with YouTube rather than Twitch?", "yes"],
+      ["Is this person primarily associated with Minecraft content?", "yes"],
+      ["Is this person known for challenge videos?", "yes"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain("long-tail platform-native creator cluster");
+    expect(input).toContain("primary language or region");
+    expect(input).toContain("signature format");
+  });
+
+  it("asks for format splits in comics and illustration clusters", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "yes"],
+      ["Is this person primarily known for entertainment or media?", "yes"],
+      ["Is this person best known as a performer?", "no"],
+      ["Is this person primarily known for visual art or design?", "yes"],
+      ["Is this person primarily known for comics, cartoons, or illustration?", "yes"],
+      ["Is this person primarily associated with Japanese manga?", "no"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain("comics, cartooning, or illustration cluster");
+    expect(input).toContain("superhero comics versus humor/satire");
+    expect(input).toContain("magazine work");
+  });
+
+  it("asks for subgenre splits in country and roots music clusters", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "yes"],
+      ["Is this person primarily known for entertainment or media?", "yes"],
+      ["Is this person best known as a performer?", "yes"],
+      ["Is this person primarily known for music?", "yes"],
+      ["Is this person primarily associated with country music?", "yes"],
+      ["Is this person female?", "yes"],
+      ["Did this person break through in the 2020s?", "yes"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain("country or roots-music cluster");
+    expect(input).toContain("mainstream radio country versus bluegrass");
+    expect(input).toContain("songwriter-first fame");
+  });
+
+  it("asks for company or role splits in business-executive clusters", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "yes"],
+      ["Is this person primarily known for business or technology?", "yes"],
+      ["Is this person primarily associated with healthcare or pharmaceuticals?", "yes"],
+      ["Is this person mainly associated with pharmaceuticals or biotechnology?", "yes"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain("narrowed business-executive cluster");
+    expect(input).toContain("company, region");
+    expect(input).toContain("current-versus-former role");
+  });
+
   it("allows person-like cultural figures without opening all fictional characters", () => {
     expect(GAME_MASTER_INSTRUCTIONS).toMatch(
       /widely recognized\s+person-like cultural figures are allowed/
