@@ -17,7 +17,7 @@ const RESULTS_COLLECTION = "whiyh_game_results";
 const EVENTS_COLLECTION = "whiyh_game_events";
 const FAILURES_COLLECTION = "whiyh_game_failures";
 const CONNECTION_TIMEOUT_MS = 2500;
-const DEFAULT_ABANDON_AFTER_MINUTES = 20;
+const DEFAULT_ABANDON_AFTER_MINUTES = 5;
 const TREND_BUCKET_MINUTES = 10;
 const TREND_BUCKET_COUNT = 12;
 const PUBLIC_STATS_CACHE_TTL_MS = 15000;
@@ -70,6 +70,8 @@ export type PublicTrendStats = {
   reportedMisses: number;
   droppedGames: number;
   correctRate: number | null;
+  missRate: number | null;
+  dropRate: number | null;
 };
 
 export type PublicModelStats = {
@@ -838,13 +840,14 @@ async function getPublicTrendStats(db: Db): Promise<PublicTrendStats[]> {
     incorrectGames: 0,
     reportedMisses: 0,
     droppedGames: 0,
-    correctRate: null as number | null
+    correctRate: null as number | null,
+    missRate: null as number | null,
+    dropRate: null as number | null
   }));
 
   const [
     startedEvents,
     completedResults,
-    reportedMissEvents,
     completedGameIds,
     latestGameEvents
   ] = await Promise.all([
@@ -858,6 +861,7 @@ async function getPublicTrendStats(db: Db): Promise<PublicTrendStats[]> {
         },
         {
           projection: {
+            gameId: 1,
             createdAt: 1
           }
         }
@@ -872,23 +876,10 @@ async function getPublicTrendStats(db: Db): Promise<PublicTrendStats[]> {
         },
         {
           projection: {
+            gameId: 1,
             completedAt: 1,
-            correct: 1
-          }
-        }
-      )
-      .toArray(),
-    eventsCollection(db)
-      .find(
-        {
-          eventType: "actual_answer_reported",
-          createdAt: {
-            $gte: startDate
-          }
-        },
-        {
-          projection: {
-            createdAt: 1
+            correct: 1,
+            actualAnswer: 1
           }
         }
       )
@@ -932,8 +923,25 @@ async function getPublicTrendStats(db: Db): Promise<PublicTrendStats[]> {
     incrementBucket(buckets, event.createdAt, startMs, bucketMs, "startedGames");
   }
 
+  const gameStartBucketMap = new Map<string, PublicTrendStats>();
+
+  for (const event of startedEvents) {
+    if (typeof event.gameId !== "string") {
+      continue;
+    }
+
+    const bucket = getTrendBucket(buckets, event.createdAt, startMs, bucketMs);
+
+    if (bucket) {
+      gameStartBucketMap.set(event.gameId, bucket);
+    }
+  }
+
   for (const result of completedResults) {
-    const bucket = getTrendBucket(buckets, result.completedAt, startMs, bucketMs);
+    const bucket =
+      typeof result.gameId === "string"
+        ? gameStartBucketMap.get(result.gameId)
+        : getTrendBucket(buckets, result.completedAt, startMs, bucketMs);
 
     if (!bucket) {
       continue;
@@ -946,10 +954,10 @@ async function getPublicTrendStats(db: Db): Promise<PublicTrendStats[]> {
     } else {
       bucket.incorrectGames += 1;
     }
-  }
 
-  for (const event of reportedMissEvents) {
-    incrementBucket(buckets, event.createdAt, startMs, bucketMs, "reportedMisses");
+    if (typeof result.actualAnswer === "string" && result.actualAnswer.trim()) {
+      bucket.reportedMisses += 1;
+    }
   }
 
   const completedGameIdSet = new Set(completedGameIds);
@@ -963,15 +971,23 @@ async function getPublicTrendStats(db: Db): Promise<PublicTrendStats[]> {
       continue;
     }
 
-    incrementBucket(buckets, game.lastEventAt, startMs, bucketMs, "droppedGames");
+    const bucket = gameStartBucketMap.get(game.gameId);
+
+    if (bucket) {
+      bucket.droppedGames += 1;
+    }
   }
 
   return buckets.map((bucket) => ({
     ...bucket,
     correctRate:
-      bucket.completedGames > 0
-        ? round(bucket.correctGames / bucket.completedGames, 4)
-        : null
+      bucket.startedGames > 0 ? round(bucket.correctGames / bucket.startedGames, 4) : null,
+    missRate:
+      bucket.startedGames > 0
+        ? round(bucket.reportedMisses / bucket.startedGames, 4)
+        : null,
+    dropRate:
+      bucket.startedGames > 0 ? round(bucket.droppedGames / bucket.startedGames, 4) : null
   }));
 }
 

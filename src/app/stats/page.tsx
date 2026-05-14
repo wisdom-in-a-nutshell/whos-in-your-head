@@ -417,10 +417,6 @@ function formatModelName(model: string) {
     return "Claude Opus";
   }
 
-  if (model === "claude-haiku-4-5") {
-    return "Claude Haiku";
-  }
-
   return model
     .replace(/^gpt/i, "GPT")
     .replace("-mini", " Mini")

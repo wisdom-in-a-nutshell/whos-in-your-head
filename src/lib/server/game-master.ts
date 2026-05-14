@@ -7,12 +7,7 @@ import type {
   ResponseUsage
 } from "openai/resources/responses/responses";
 import { zodTextFormat } from "openai/helpers/zod";
-import {
-  aiMoveProviderOutputSchema,
-  aiMoveSchema,
-  type AiMove,
-  type PlayerAnswer
-} from "@/lib/game/ai-move";
+import { aiMoveSchema, type AiMove, type PlayerAnswer } from "@/lib/game/ai-move";
 import { createSharedOpeningAnswerState } from "@/lib/game/opening";
 import {
   buildGameMasterContinuationInput,
@@ -207,7 +202,7 @@ async function generateOpenAIAiMove(
       }
     ],
     text: {
-        format: zodTextFormat(aiMoveProviderOutputSchema, AI_MOVE_FORMAT_NAME, {
+        format: zodTextFormat(aiMoveSchema, AI_MOVE_FORMAT_NAME, {
         description:
           "The next game-master move: either one yes/no-compatible question or one final famous-person guess."
       })
@@ -354,19 +349,13 @@ async function generateClaudeAiMove(
           content: buildGameMasterStateInput(state, retryAttempt)
         }
       ],
-      output_config: {
-        format: zodOutputFormat(aiMoveProviderOutputSchema),
-        ...(supportsClaudeAdaptiveThinking(configuredModel)
-          ? { effort: toClaudeEffort(reasoningEffort, configuredModel) }
-          : {})
+      thinking: {
+        type: "adaptive"
       },
-      ...(supportsClaudeAdaptiveThinking(configuredModel)
-        ? {
-            thinking: {
-              type: "adaptive" as const
-            }
-          }
-        : {}),
+      output_config: {
+        effort: toClaudeEffort(reasoningEffort, configuredModel),
+        format: zodOutputFormat(aiMoveSchema)
+      },
       service_tier: serviceTier,
       metadata: {
         user_id: state.gameId
@@ -673,10 +662,6 @@ function toClaudeEffort(reasoningEffort: GameReasoningEffort, model: string) {
   }
 
   return "high";
-}
-
-function supportsClaudeAdaptiveThinking(model: string) {
-  return model.includes("sonnet") || model.includes("opus");
 }
 
 function normalizeOpenAIUsage(usage: ResponseUsage | null): GameMasterUsage | null {
