@@ -83,7 +83,7 @@ type LiteLLMCacheControls = {
 };
 
 type LiteLLMReasoningControls = {
-  reasoning_effort?: "high";
+  reasoning_effort?: "medium" | "high";
 };
 
 type GameMasterResponseRequest = ResponseCreateParamsNonStreaming &
@@ -213,7 +213,7 @@ async function generateOpenAIAiMove(
     service_tier: serviceTier,
     ...(isGeminiModel(model)
       ? {
-          reasoning_effort: toGeminiThinkingEffort()
+          reasoning_effort: toGeminiThinkingEffort(state)
         }
       : {}),
     prompt_cache_key: PROMPT_CACHE_KEY,
@@ -658,7 +658,7 @@ function normalizeGameMasterModel(model: string) {
 
 function selectOpenAICompatibleReasoningEffort(model: string, state: GameState) {
   if (isGeminiModel(model)) {
-    return "high";
+    return selectGeminiThinkingEffort(state);
   }
 
   return selectTurnReasoningEffort({
@@ -667,8 +667,12 @@ function selectOpenAICompatibleReasoningEffort(model: string, state: GameState) 
   });
 }
 
-function toGeminiThinkingEffort(): "high" {
-  return "high";
+function toGeminiThinkingEffort(state: GameState): "medium" | "high" {
+  return selectGeminiThinkingEffort(state);
+}
+
+function selectGeminiThinkingEffort(state: GameState): "medium" | "high" {
+  return state.questionCount >= 12 ? "high" : "medium";
 }
 
 function toClaudeEffort(reasoningEffort: GameReasoningEffort, model: string) {

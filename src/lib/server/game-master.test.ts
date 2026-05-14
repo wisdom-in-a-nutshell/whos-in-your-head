@@ -176,14 +176,14 @@ describe("generateAiMove", () => {
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
     expect(generated.requestedModel).toBe("gemini-3.1-flash-lite");
-    expect(generated.reasoningEffort).toBe("high");
+    expect(generated.reasoningEffort).toBe("medium");
     expect(request).toMatchObject({
       model: "gemini-3.1-flash-lite",
-      reasoning_effort: "high"
+      reasoning_effort: "medium"
     });
   });
 
-  it("keeps Gemini Flash Lite on high reasoning in late turns", async () => {
+  it("raises Gemini Flash Lite to high reasoning after question 12", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-gemini-late-reasoning-test",
       outputText: JSON.stringify({
@@ -195,7 +195,7 @@ describe("generateAiMove", () => {
     }));
 
     const { generateAiMove } = await import("./game-master");
-    const state = createAnsweredState(18, "gemini-3.1-flash-lite");
+    const state = createAnsweredState(12, "gemini-3.1-flash-lite");
 
     const generated = await generateAiMove(state, "gemini-late-reasoning-request");
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
