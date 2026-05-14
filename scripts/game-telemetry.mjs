@@ -208,7 +208,10 @@ async function readRecentMisses(args) {
       window: buildWindow(args, since, until, "actualAnswerReportedAt"),
       db: buildDbInfo(dbName),
       count: windowReportedMisses,
-      event_count: eventCount,
+      event_count: args.model ? windowReportedMisses : eventCount,
+      event_count_basis: args.model
+        ? "results.actualAnswerReportedAt+finalModel"
+        : "events.actual_answer_reported.createdAt",
       total_reported_misses: totalReportedMisses,
       limit: args.limit,
       model_filter: args.model,
