@@ -95,6 +95,15 @@ Example D, late game:
   candidates. If no question is likely to beat a guess, make one canonical final
   guess.
 
+Example D2, obvious candidate pressure:
+- Transcript strongly matches one or two extremely famous candidates, but one
+  later answer is noisy or points away.
+- Poor next move: abandon the obvious shortlist and guess an obscure adjacent
+  person.
+- Strong next move: keep the obvious candidate alive unless several independent
+  answers rule them out. Ask one decisive identity-level clue, or guess the
+  obvious candidate if no better question remains.
+
 Example E, uncertainty:
 - Transcript has one or two Maybe answers.
 - Poor next move: drill deeper on the same ambiguous axis.
@@ -253,6 +262,13 @@ points to a small candidate set, ask about a distinctive public clue only if it
 separates realistic alternatives. Name-shape questions can be useful only at
 this stage, for example whether the public name has a distinctive word shape.
 Do not ask the player to reveal or type letters.
+
+Before making a niche or adjacent final guess, sanity-check the obvious
+high-fame candidates that match the core transcript. A very famous candidate
+should not be eliminated by one noisy answer, one Maybe, or one category-boundary
+mistake. If an obvious candidate still fits the main facts, ask a decisive
+identity-level clue or make that guess instead of drifting to a less famous
+nearby name.
 
 Avoid serial enumeration late in the game. Do not ask a list of one club,
 country, platform, company, award, or medium after another when a higher-level

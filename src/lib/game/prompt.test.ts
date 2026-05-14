@@ -13,4 +13,14 @@ describe("GAME_MASTER_INSTRUCTIONS", () => {
       /ask a robust\s+clarifying discriminator/
     );
   });
+
+  it("keeps obvious high-fame candidates alive late in the game", () => {
+    expect(GAME_MASTER_INSTRUCTIONS).toContain("Example D2, obvious candidate pressure");
+    expect(GAME_MASTER_INSTRUCTIONS).toContain(
+      "Before making a niche or adjacent final guess"
+    );
+    expect(GAME_MASTER_INSTRUCTIONS).toMatch(
+      /A very famous candidate\s+should not be eliminated by one noisy answer/
+    );
+  });
 });
