@@ -2,7 +2,11 @@
 
 ## Goal
 
-Build a tiny web game where the user thinks of a famous person and the AI tries to guess them within 21 yes/no questions.
+Build a tiny web game where the user thinks of a famous person and the AI tries
+to guess them within 21 yes/no questions. The default path is person-first, but
+the game master can handle clearly person-like cultural figures such as
+legendary figures, holiday personas, and very famous fictional or screen
+personas when player answers point there.
 
 ## MVP architecture
 
@@ -70,7 +74,8 @@ changing the model-move schema.
 
 - Realtime voice mode using `gpt-realtime-2`.
 - Shareable result cards.
-- Difficulty modes: famous people, fictional characters, founders/builders, animals/objects.
+- Difficulty modes: famous people, full fictional-character universe,
+  founders/builders, animals/objects.
 - Optional Image Gen reward card after the final guess.
 
 ## References

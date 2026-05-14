@@ -4,9 +4,9 @@ export const GAME_MASTER_INSTRUCTIONS = `
 # Identity
 
 You are the game master for "Who's In Your Head?", a fast silent party game.
-The player has silently chosen one famous real person. They never type or say
-the name. You get up to 21 yes/no/maybe answers, then you guess who is in their
-head.
+The player has silently chosen one famous real person or person-like cultural
+figure. They never type or say the name. You get up to 21 yes/no/maybe answers,
+then you guess who is in their head.
 
 # Outcome
 
@@ -40,11 +40,17 @@ transcript has narrowed naturally to one identity or a tiny cluster.
   the best remaining discriminator or make the most plausible guess.
 - The player is usually thinking of a famous real person, but widely recognized
   person-like cultural figures are allowed too: saints, religious figures,
-  legendary or folkloric figures, and holiday personas such as Santa Claus or
-  Sinterklaas. Do not treat these as brands, animals, objects, or places.
-- Do not open the full fictional-character universe by default. A purely
-  invented book, movie, game, or comic character is still out of scope unless
-  future game copy says otherwise.
+  legendary or folkloric figures, holiday personas such as Santa Claus or
+  Sinterklaas, and very famous fictional or screen-persona figures when the
+  transcript clearly points there. Do not treat these as brands, animals,
+  objects, or places.
+- Do not open the full fictional-character universe by default. Test the
+  real-person versus character/persona boundary only when entertainment,
+  screen, comedy, animation, comics, games, folklore, or inconsistent alive/dead
+  answers make it plausible.
+- If the player may be thinking of a character, role, or screen persona, do not
+  silently convert that answer into the actor, voice actor, creator, or performer
+  behind it. Ask one boundary question first, then continue in the right space.
 - Prefer public career, era, geography, and fame-source questions over private or sensitive identity traits.
 - A final guess should be one canonical public name, not a list of alternatives
   or an explanation.
@@ -234,6 +240,13 @@ comedy, hosting/presenting, writing, directing/producing, game or interactive
 media creation, visual/design work, platform-native creation, and other media
 authorship. If acting, music, comedy, and hosting are weak, test creator/designer
 or behind-the-scenes public fame before drifting into obscure performer guesses.
+
+Entertainment answers can refer to a real performer or to a famous character,
+role, or screen persona. In TV, film, comedy, animation, comics, and game
+branches, ask a real-person versus fictional/persona boundary question before
+using actor-specific clues when both interpretations are plausible. If that
+boundary is Yes, narrow by medium, era, genre, country/language, and signature
+work instead of guessing the actor or performer.
 
 For modern media personalities, identify original fame mechanism before asking
 specific platform names. If answers rule out mainstream acting, music, sports,
@@ -548,6 +561,14 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
     ].join(" ");
   }
 
+  if (isFictionalPersonaAmbiguityCluster(state, remainingQuestionSlots)) {
+    return [
+      "The transcript may be mixing a real performer with a famous character or screen persona.",
+      "Do not silently convert the target into the actor, voice actor, creator, or performer behind it.",
+      "Ask one boundary question such as whether this is a fictional character or screen persona rather than a real person, then narrow by medium, era, genre, country/language, or signature work."
+    ].join(" ");
+  }
+
   return [
     "Ask one strong yes/no-compatible question that prunes the remaining possibility space.",
     "Do not ask a confirmation question about one suspected person, company, brand, product, spouse, award, or exact work unless the transcript has already narrowed to a tiny cluster.",
@@ -587,6 +608,45 @@ function isMaybeHeavy(state: GameState, remainingQuestionSlots: number): boolean
     .filter((turn) => turn.answer === "maybe").length;
 
   return totalMaybes >= 4 || recentMaybes >= 3;
+}
+
+function isFictionalPersonaAmbiguityCluster(
+  state: GameState,
+  remainingQuestionSlots: number
+): boolean {
+  if (remainingQuestionSlots <= 0 || state.transcript.length < 4) {
+    return false;
+  }
+
+  const answeredYes = yesQuestions(state);
+  const asked = allQuestions(state);
+
+  const alreadyTestedBoundary = asked.some((question) =>
+    /(fictional|character|persona|real person|real-life|played by|portrayed by|voice actor|actor behind|creator behind)/.test(
+      question
+    )
+  );
+  if (alreadyTestedBoundary) {
+    return false;
+  }
+
+  const entertainmentBranch = answeredYes.some((question) =>
+    /(entertainment|arts|media|screen acting|acting|television|film|comedy|sitcom|cartoon|animation|comics|video game)/.test(
+      question
+    )
+  );
+  const personaProneMedium = asked.some((question) =>
+    /(screen acting|acting|television|film|comedy|sitcom|series|cartoon|animation|comics|superhero|masked crime-fighter|video game|fictional world)/.test(
+      question
+    )
+  );
+  const performerOrRoleBranch = answeredYes.some((question) =>
+    /(performer|acting|screen acting|television|film|comedy|sitcom|iconic.*series)/.test(
+      question
+    )
+  );
+
+  return entertainmentBranch && personaProneMedium && performerOrRoleBranch;
 }
 
 function isPlatformCreatorCluster(

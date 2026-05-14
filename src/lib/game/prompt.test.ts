@@ -139,8 +139,36 @@ describe("GAME_MASTER_INSTRUCTIONS", () => {
     expect(GAME_MASTER_INSTRUCTIONS).toContain("Santa Claus");
     expect(GAME_MASTER_INSTRUCTIONS).toContain("Sinterklaas");
     expect(GAME_MASTER_INSTRUCTIONS).toContain(
+      "very famous fictional or screen-persona figures"
+    );
+    expect(GAME_MASTER_INSTRUCTIONS).toContain(
       "Do not open the full fictional-character universe by default."
     );
+    expect(GAME_MASTER_INSTRUCTIONS).toContain(
+      "silently convert that answer into the actor"
+    );
+  });
+
+  it("asks a real-person versus persona boundary in screen-comedy clusters", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "yes"],
+      ["Is this person primarily known for entertainment or media?", "yes"],
+      ["Is this person best known as a performer rather than a creator?", "yes"],
+      ["Is this person primarily known for acting?", "yes"],
+      ["Is this person primarily known for television rather than films?", "yes"],
+      ["Is this person primarily associated with comedy rather than drama?", "yes"],
+      ["Is this person best known for a scripted sitcom rather than sketch comedy?", "yes"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain(
+      "mixing a real performer with a famous character or screen persona"
+    );
+    expect(input).toContain(
+      "Do not silently convert the target into the actor"
+    );
+    expect(input).toContain("fictional character or screen persona");
   });
 });
 
