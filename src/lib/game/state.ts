@@ -16,6 +16,7 @@ export const gameModelValues = [
   "claude-sonnet-4-6"
 ] as const;
 export const DEFAULT_GAME_MODEL = "gemini-3.1-flash-lite";
+export const FORCED_GAME_MODEL = "gemini-3.1-flash-lite";
 
 export const gamePhaseSchema = z.enum(["asking", "guessing", "result"]);
 export const gameResultSchema = z.enum(["unknown", "correct", "incorrect"]);
@@ -95,6 +96,25 @@ export function createInitialGameState(
     result: "unknown",
     model,
     reasoningEffort,
+    modelResponseId: null,
+    modelResponseModel: null
+  };
+}
+
+export function forceGameModel(state: GameState): GameState {
+  const parsedState = gameStateSchema.parse(state);
+
+  if (
+    parsedState.model === FORCED_GAME_MODEL &&
+    (parsedState.modelResponseModel === null ||
+      parsedState.modelResponseModel === FORCED_GAME_MODEL)
+  ) {
+    return parsedState;
+  }
+
+  return {
+    ...parsedState,
+    model: FORCED_GAME_MODEL,
     modelResponseId: null,
     modelResponseModel: null
   };

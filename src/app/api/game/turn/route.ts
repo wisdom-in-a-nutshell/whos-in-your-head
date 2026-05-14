@@ -4,6 +4,7 @@ import {
   attachModelResponseId,
   createInitialGameState,
   finalizeGuess,
+  forceGameModel,
   GameRuleError,
   gameStateSchema,
   gameTurnRequestSchema,
@@ -76,7 +77,7 @@ export async function POST(request: Request) {
 
   try {
     if (parsed.data.action === "report_actual_answer") {
-      const state = parsed.data.state;
+      const state = forceGameModel(parsed.data.state);
 
       if (state.phase !== "result" || state.result !== "incorrect") {
         throw new GameRuleError("Only missed guesses can report the real answer.");
@@ -103,17 +104,18 @@ export async function POST(request: Request) {
     }
 
     if (parsed.data.action === "judge_guess") {
-      const resultGame = finalizeGuess(parsed.data.state, parsed.data.correct);
+      const state = forceGameModel(parsed.data.state);
+      const resultGame = finalizeGuess(state, parsed.data.correct);
       logInfo("game_turn_judge_guess", {
         requestId,
-        gameId: parsed.data.state.gameId,
+        gameId: state.gameId,
         correct: parsed.data.correct,
-        questionCount: parsed.data.state.questionCount,
+        questionCount: state.questionCount,
         routeDurationMs: Date.now() - startedAt
       });
       recordGameResultTelemetry({
         requestId,
-        state: parsed.data.state,
+        state,
         correct: parsed.data.correct,
         resultGame,
         routeDurationMs: Date.now() - startedAt
@@ -128,7 +130,7 @@ export async function POST(request: Request) {
     if (parsed.data.action === "start") {
       const status = getOpenAIRuntimeStatus();
       const nextGame = applyAiMove(
-        createInitialGameState(status.reasoningEffort, parsed.data.model),
+        createInitialGameState(status.reasoningEffort),
         OPENING_MOVE
       );
       warmOpeningMoveResponsesForReasoning(nextGame.reasoningEffort, nextGame.model);
@@ -157,7 +159,8 @@ export async function POST(request: Request) {
       });
     }
 
-    const status = getRuntimeStatusForGame(parsed.data.state.model);
+    const forcedState = forceGameModel(parsed.data.state);
+    const status = getRuntimeStatusForGame(forcedState.model);
 
     if (status.configurationError) {
       logError("game_turn_llm_configuration_error", {
@@ -168,7 +171,7 @@ export async function POST(request: Request) {
       recordGameFailureTelemetry({
         requestId,
         action: parsed.data.action,
-        state: parsed.data.state,
+        state: forcedState,
         code: "llm_configuration_error",
         error: new Error(status.configurationError),
         routeDurationMs: Date.now() - startedAt,
@@ -194,7 +197,7 @@ export async function POST(request: Request) {
       recordGameFailureTelemetry({
         requestId,
         action: parsed.data.action,
-        state: parsed.data.state,
+        state: forcedState,
         code: "llm_not_configured",
         error: new Error(status.missingConfigurationMessage),
         routeDurationMs: Date.now() - startedAt,
@@ -212,7 +215,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const game = recordPlayerAnswer(parsed.data.state, parsed.data.answer);
+    const game = recordPlayerAnswer(forcedState, parsed.data.answer);
     const { generated, nextGame, source } = await generateNextGameState(game, requestId);
     const move = generated.move;
     logAnsweredTurn({
