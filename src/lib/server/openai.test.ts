@@ -25,9 +25,10 @@ describe("OpenAI runtime defaults", () => {
 
   it("reads a deduped fallback model chain without repeating the primary model", () => {
     process.env.LLM_MODEL = "gpt-5.5";
-    process.env.LLM_FALLBACK_MODELS = "gpt-5.5, claude-4.6-opus, claude-4.6-opus";
+    process.env.LLM_FALLBACK_MODELS =
+      "gpt-5.5, claude-sonnet-4-6, claude-sonnet-4-6";
 
-    expect(getOpenAIRuntimeStatus().fallbackModels).toEqual(["claude-4.6-opus"]);
+    expect(getOpenAIRuntimeStatus().fallbackModels).toEqual(["claude-sonnet-4-6"]);
   });
 
   it("does not expose retired random reasoning mix state", () => {

@@ -39,5 +39,5 @@ The user thinks of a famous person. The app/AI asks one yes/no-style question at
 
 ## Project tracking
 
-Use `docs/projects/whos-in-your-head/tasks.md` as the canonical active project tracker.
-Update it before ending a meaningful work session.
+The original MVP tracker is archived at `docs/projects/archive/whos-in-your-head/tasks.md`.
+Create a new focused tracker only when a future change becomes multi-session project work.

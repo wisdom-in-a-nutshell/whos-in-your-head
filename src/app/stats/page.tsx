@@ -409,11 +409,11 @@ function formatModelName(model: string) {
     return "GPT Chat Latest";
   }
 
-  if (model === "claude-sonnet-4-6") {
+  if (model === "claude-sonnet-4-6" || model === "claude-4.6-sonnet") {
     return "Claude Sonnet";
   }
 
-  if (model === "claude-opus-4-6") {
+  if (model === "claude-opus-4-6" || model === "claude-4.6-opus") {
     return "Claude Opus";
   }
 

@@ -45,12 +45,13 @@ Deployed Azure runtime should use
 depend on ambient global OpenAI provider routing.
 
 Players can choose the game model at the start of a round. The public picker is
-allowlisted to `gpt-chat-latest`, `gpt-5.4-mini`, `claude-sonnet-4-6`, and
-`claude-opus-4-6`; `gpt-chat-latest` is the UI default and is labeled as
-recommended in the dropdown. Other model names may appear as disabled
-coming-soon options, but they must not be accepted by the game-turn schema until
-they are real choices. The selected model is stored on the explicit game state
-and reused for the normal model path, opening warmup, retries, and telemetry.
+allowlisted to `gpt-chat-latest`, `gpt-5.4-mini`, and
+`claude-sonnet-4-6`; `gpt-chat-latest` is the UI default and is labeled as
+recommended in the dropdown. Other model names, including Claude Opus, may
+appear as disabled coming-soon options, but they must not be accepted by the
+game-turn schema until they are real choices. The selected model is stored on
+the explicit game state and reused for the normal model path, opening warmup,
+retries, and telemetry.
 
 `LLM_FALLBACK_MODELS` is a comma- or newline-separated model chain. It is used
 only when the primary Responses call returns `status: "incomplete"` with
@@ -89,14 +90,16 @@ it.
   Claude Messages are stateless, so the app rebuilds from explicit game state
   on every Claude turn and does not set `modelResponseId`.
 
-Native Claude runtime config is separate from OpenAI/LiteLLM config:
+Claude runtime config intentionally uses the same LiteLLM proxy settings as the
+OpenAI-family path:
 
-- `ANTHROPIC_API_KEY` or `CLAUDE_API_KEY`
-- optional `ANTHROPIC_BASE_URL` or `CLAUDE_BASE_URL` for an
-  Anthropic-compatible pass-through/proxy endpoint
-- optional `ANTHROPIC_MODEL` or `CLAUDE_MODEL`
-- optional `ANTHROPIC_SERVICE_TIER` or `CLAUDE_SERVICE_TIER`, accepting `auto`
-  or `standard_only`
+- `LLM_API_KEY`
+- `LLM_API_ENDPOINT`
+
+The Anthropic SDK receives `LLM_API_ENDPOINT` with a trailing `/v1` stripped so
+it can call LiteLLM's Anthropic-compatible `/v1/messages` passthrough. Do not
+add separate app-level provider-specific env names unless the project
+intentionally decides to bypass LiteLLM later.
 
 Keep the provider adapters narrow. The app owns game state, retries, rule
 enforcement, telemetry, and result handling; providers only propose the next
@@ -323,6 +326,10 @@ average response duration, average model duration, average reasoning/cache
 tokens, fallback counts, started/completed/abandoned counts, and per-model turn
 and guess aggregates. It may return the aggregate count of reported misses, but
 never returns actual answers or raw transcripts.
+
+Public stats use a short in-process fresh cache and a longer stale window. Once
+stats have been computed, stale aggregates can be returned immediately while a
+single background refresh recomputes Mongo/Cosmos aggregates.
 
 `GET /stats` renders those public aggregates as a shareable scoreboard page.
 The page is intentionally aggregate-only: it can show how often the game wins,

@@ -73,10 +73,11 @@ real OpenAI-compatible calls. The first question is deterministic for speed;
 later turns use structured model moves. The backend owns game rules, validates
 model output, and keeps the OpenAI API key server-side.
 
-## Project tracker
+## Project History
 
-Durable project instructions live at:
+The original MVP tracker is archived at:
 
-- `docs/projects/whos-in-your-head/tasks.md`
+- `docs/projects/archive/whos-in-your-head/tasks.md`
 
-Start there when resuming work.
+Use the architecture and reference docs for current implementation facts. Create a
+new focused tracker only for future multi-session project work.

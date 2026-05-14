@@ -4,9 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 const DEFAULT_MODEL = "claude-sonnet-4-6";
 const DEFAULT_SERVICE_TIER: AnthropicServiceTier = "auto";
 
-const SERVICE_TIERS = ["auto", "standard_only"] as const;
-
-export type AnthropicServiceTier = (typeof SERVICE_TIERS)[number];
+export type AnthropicServiceTier = "auto";
 
 type AnthropicConfig = {
   apiKey?: string;
@@ -24,22 +22,15 @@ export type AnthropicRuntimeStatus = {
 };
 
 function readAnthropicConfig(modelOverride?: string): AnthropicConfig {
-  const apiKey =
-    process.env.ANTHROPIC_API_KEY?.trim() || process.env.CLAUDE_API_KEY?.trim();
-  const baseURL =
-    process.env.ANTHROPIC_BASE_URL?.trim() || process.env.CLAUDE_BASE_URL?.trim();
-  const model =
-    modelOverride ||
-    process.env.ANTHROPIC_MODEL?.trim() ||
-    process.env.CLAUDE_MODEL?.trim() ||
-    DEFAULT_MODEL;
-  const serviceTier = readServiceTier();
+  const apiKey = process.env.LLM_API_KEY?.trim();
+  const baseURL = normalizeBaseURL(process.env.LLM_API_ENDPOINT?.trim());
+  const model = modelOverride || DEFAULT_MODEL;
 
   return {
     apiKey: apiKey || undefined,
     baseURL: baseURL || undefined,
     model,
-    serviceTier
+    serviceTier: DEFAULT_SERVICE_TIER
   };
 }
 
@@ -55,10 +46,8 @@ export function getAnthropicRuntimeStatus(modelOverride?: string): AnthropicRunt
       configurationError: null
     };
   } catch (error) {
-    const apiKey =
-      process.env.ANTHROPIC_API_KEY?.trim() || process.env.CLAUDE_API_KEY?.trim();
-    const baseURL =
-      process.env.ANTHROPIC_BASE_URL?.trim() || process.env.CLAUDE_BASE_URL?.trim();
+    const apiKey = process.env.LLM_API_KEY?.trim();
+    const baseURL = normalizeBaseURL(process.env.LLM_API_ENDPOINT?.trim());
 
     return {
       configured: Boolean(apiKey),
@@ -77,7 +66,7 @@ export function getAnthropicClient(): Anthropic {
   const config = readAnthropicConfig();
 
   if (!config.apiKey) {
-    throw new Error("ANTHROPIC_API_KEY or CLAUDE_API_KEY is not configured.");
+    throw new Error("LLM_API_KEY is not configured.");
   }
 
   return new Anthropic({
@@ -96,20 +85,10 @@ export function getAnthropicRequestConfig(modelOverride?: string) {
   };
 }
 
-function readServiceTier(): AnthropicServiceTier {
-  const raw =
-    process.env.ANTHROPIC_SERVICE_TIER?.trim() ||
-    process.env.CLAUDE_SERVICE_TIER?.trim();
-
-  if (!raw) {
-    return DEFAULT_SERVICE_TIER;
+function normalizeBaseURL(baseURL: string | undefined) {
+  if (!baseURL) {
+    return undefined;
   }
 
-  if (SERVICE_TIERS.includes(raw as AnthropicServiceTier)) {
-    return raw as AnthropicServiceTier;
-  }
-
-  throw new Error(
-    `ANTHROPIC_SERVICE_TIER or CLAUDE_SERVICE_TIER must be one of: ${SERVICE_TIERS.join(", ")}.`
-  );
+  return baseURL.replace(/\/+$/, "").replace(/\/v1$/, "");
 }

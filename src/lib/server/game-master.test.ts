@@ -490,10 +490,10 @@ describe("generateAiMove", () => {
     expect(JSON.stringify(request.output_config)).toContain("json_schema");
   });
 
-  it("maps the old Claude Opus fallback alias to the native Claude model id", async () => {
+  it("maps old Claude aliases to the supported native Claude model id", async () => {
     claudeParseMock.mockResolvedValue(createClaudeMessage({
       id: "msg-claude-alias-test",
-      model: "claude-opus-4-6",
+      model: "claude-sonnet-4-6",
       parsedOutput: {
         action: "ask_question",
         question: "Were they primarily active before 2000?",
@@ -511,9 +511,9 @@ describe("generateAiMove", () => {
     );
     const request = claudeParseMock.mock.calls[0][0] as Record<string, unknown>;
 
-    expect(generated.requestedModel).toBe("claude-opus-4-6");
+    expect(generated.requestedModel).toBe("claude-sonnet-4-6");
     expect(request).toMatchObject({
-      model: "claude-opus-4-6"
+      model: "claude-sonnet-4-6"
     });
     expect(request).not.toHaveProperty("previous_response_id");
   });

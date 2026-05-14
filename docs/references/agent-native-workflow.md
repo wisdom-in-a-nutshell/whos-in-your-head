@@ -9,7 +9,7 @@ Durable context belongs in the repo:
 - Root guidance: `AGENTS.md`
 - System shape: `docs/architecture/`
 - Exact implementation facts: `docs/references/`
-- Active execution state: `docs/projects/whos-in-your-head/tasks.md`
+- Archived MVP execution history: `docs/projects/archive/whos-in-your-head/tasks.md`
 
 ## Fast Checks
 
@@ -47,4 +47,4 @@ When implementation changes durable behavior, update docs in the same change:
 
 - Architecture or module boundaries: `docs/architecture/`
 - Environment variables, API contracts, schemas, commands: `docs/references/`
-- Active plan/progress/blockers: `docs/projects/whos-in-your-head/tasks.md`
+- Active plan/progress/blockers: create a focused tracker under `docs/projects/` only for multi-session project work

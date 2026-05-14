@@ -20,7 +20,8 @@ const CONNECTION_TIMEOUT_MS = 2500;
 const DEFAULT_ABANDON_AFTER_MINUTES = 20;
 const TREND_BUCKET_MINUTES = 10;
 const TREND_BUCKET_COUNT = 12;
-const PUBLIC_STATS_CACHE_TTL_MS = 5000;
+const PUBLIC_STATS_CACHE_TTL_MS = 15000;
+const PUBLIC_STATS_STALE_TTL_MS = 5 * 60 * 1000;
 
 type RuntimeSnapshot = {
   source: string;
@@ -91,6 +92,7 @@ let indexesPromise: Promise<void> | null = null;
 let publicStatsCache:
   | {
       expiresAt: number;
+      staleAt: number;
       value: PublicGameStats | null;
     }
   | null = null;
@@ -382,16 +384,34 @@ export async function getPublicGameStats(): Promise<PublicGameStats | null> {
     return publicStatsCache.value;
   }
 
+  if (publicStatsCache && publicStatsCache.staleAt > now) {
+    void refreshPublicStatsCache().catch((error) => {
+      logWarn("game_stats_background_refresh_failed", {
+        error: describeError(error)
+      });
+    });
+
+    return publicStatsCache.value;
+  }
+
+  return refreshPublicStatsCache();
+}
+
+function refreshPublicStatsCache(): Promise<PublicGameStats | null> {
   if (publicStatsPromise) {
     return publicStatsPromise;
   }
 
   publicStatsPromise = readPublicGameStats()
     .then((value) => {
+      const now = Date.now();
+
       publicStatsCache = {
         value,
-        expiresAt: Date.now() + PUBLIC_STATS_CACHE_TTL_MS
+        expiresAt: now + PUBLIC_STATS_CACHE_TTL_MS,
+        staleAt: now + PUBLIC_STATS_STALE_TTL_MS
       };
+
       return value;
     })
     .finally(() => {

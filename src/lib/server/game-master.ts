@@ -37,7 +37,8 @@ const CLAUDE_MAX_OUTPUT_TOKENS = 8192;
 const CLAUDE_PROMPT_CACHE_TTL = "5m";
 
 const CLAUDE_MODEL_ALIASES = new Map<string, string>([
-  ["claude-4.6-opus", "claude-opus-4-6"],
+  ["claude-opus-4-6", "claude-sonnet-4-6"],
+  ["claude-4.6-opus", "claude-sonnet-4-6"],
   ["claude-4.6-sonnet", "claude-sonnet-4-6"]
 ]);
 

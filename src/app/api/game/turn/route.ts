@@ -500,8 +500,7 @@ function getRuntimeStatusForGame(model: string) {
     return {
       ...getAnthropicRuntimeStatus(model),
       provider: "anthropic",
-      missingConfigurationMessage:
-        "ANTHROPIC_API_KEY or CLAUDE_API_KEY is not configured."
+      missingConfigurationMessage: "LLM_API_KEY is not configured."
     };
   }
 

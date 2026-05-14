@@ -63,9 +63,9 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 
 - [x] Milestone 1 — Scaffold the web app. Acceptance: Next.js/TS app or equivalent exists, starts locally, has basic landing page. Validate: `npm run dev` and `npm run build`.
 - [x] Milestone 2 — Implement local game state and UI without OpenAI. Acceptance: start/reset, question counter, answer buttons, transcript, and result screen work with mocked AI turns. Validate: manual browser smoke plus build.
-- [ ] Milestone 3 — Add Responses API server integration. Acceptance: server route calls OpenAI with API key server-side, returns structured next action, and handles errors gracefully. Validate: one local game reaches final guess with real model. Implementation is in place; real-model smoke is blocked until credentials/base URL are provided.
-- [ ] Milestone 4 — Tighten game prompt/rules. Acceptance: AI asks one yes/no-compatible question per turn, respects max 21, makes a final guess, and handles `maybe/not sure`. Validate: 3 manual test games with different famous people. Prompt/rule scaffold is in place; real-model evaluation is blocked until credentials/base URL are provided.
-- [ ] Milestone 5 — Polish demo/readme. Acceptance: UI copy is clear, repo has setup/run docs, and app is ready for local demo/deploy. Validate: fresh setup path works from README.
+- [x] Milestone 3 — Add Responses API server integration. Acceptance: server route calls OpenAI with API key server-side, returns structured next action, and handles errors gracefully. Validated through local and production model turns.
+- [x] Milestone 4 — Tighten game prompt/rules. Acceptance: AI asks one yes/no-compatible question per turn, respects max 21, makes a final guess, and handles `maybe/not sure`. Validated through production rounds, reported-miss review, replay, and prompt hardening passes.
+- [x] Milestone 5 — Polish demo/readme. Acceptance: UI copy is clear, repo has setup/run docs, and app is ready for local demo/deploy. Validated by public deployment, social preview/share polish, and launch posts.
 
 ## Execution Rules
 
@@ -102,9 +102,9 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - 2026-05-13 — Use `mindreader.adithyan.io` as the public demo hostname. Cloudflare owns the proxied CNAME; Azure owns the verified hostname binding and SNI binding to the existing `cf-origin-adithyan-io` wildcard origin certificate.
 - 2026-05-13 — Keep the opening question deterministic as `Is this person alive?` so starting a round feels instant; use the model for answered turns after the opener.
 - 2026-05-13 — Runtime model calls use request-level `priority` service tier and a deterministic reasoning schedule: low for early turns, medium for middle turns, and configured high reasoning for the final stretch. OpenAI's GPT-5.5 docs call `medium` the model default and recommend using Structured Outputs plus prompt caching for this shape of workload.
-- 2026-05-14 — The public model picker defaults new rounds to recommended `gpt-chat-latest`, while still allowing `gpt-5.4-mini`, `claude-sonnet-4-6`, and `claude-opus-4-6`. `gpt-5.4` and `gpt-5.5` remain shown as coming soon.
+- 2026-05-14 — The public model picker defaults new rounds to recommended `gpt-chat-latest`, while still allowing `gpt-5.4-mini` and `claude-sonnet-4-6`. Claude Opus, `gpt-5.4`, and `gpt-5.5` remain shown as coming soon.
 - 2026-05-14 — Default `gpt-chat-latest` games upgrade to `gpt-5.5` from question 13 onward. The app rebuilds from explicit game state at the model boundary instead of reusing a `previous_response_id` from the earlier model.
-- 2026-05-14 — Claude models now use a native Anthropic Messages adapter through `@anthropic-ai/sdk`, not the OpenAI-compatible Responses shim. The adapter uses `messages.parse()` with Zod structured output, adaptive thinking, and a Claude prompt-cache breakpoint on the stable game-master system prompt.
+- 2026-05-14 — Claude Sonnet now uses a native Anthropic Messages adapter through `@anthropic-ai/sdk`, not the OpenAI-compatible Responses shim. The adapter uses `messages.parse()` with Zod structured output, adaptive thinking, and a Claude prompt-cache breakpoint on the stable game-master system prompt. It still routes through the existing LiteLLM `LLM_API_ENDPOINT`/`LLM_API_KEY` passthrough so runtime secrets stay in one place.
 
 ## Open Questions / Blockers
 
@@ -123,7 +123,7 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 | done | Implement backend game-state, structured output, and server-side Responses API turn route. | parent | `src/app/api/game/turn/route.ts`, `src/lib/game/state.ts`, `src/lib/server/game-master.ts` |
 | done | Add Azure Web App deployment target, Dockerfile, GitHub Actions workflow, and Key Vault-backed runtime config. | parent | `.github/workflows/deploy.yml`, `Dockerfile`, `docs/references/deployment.md` |
 | done | Wire the mocked frontend flow to the server-side Responses API route when the parallel frontend work is ready. | parent | `docs/references/openai-runtime-contract.md` |
-| in_progress | Smoke and harden real model games after frontend wiring is complete. | parent | `README.md`, `src/lib/game/prompt.ts` |
+| done | Smoke and harden real model games after frontend wiring is complete. | parent | `README.md`, `src/lib/game/prompt.ts` |
 
 ## Backlog / Remaining Work
 
@@ -146,10 +146,10 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - [x] Polish social sharing metadata with a dedicated X/Twitter 2:1 image.
 - [x] Add first-pass result sharing controls for friends, X, and Reddit.
 - [x] Simplify result sharing UI to one friend-share action and one replay action.
-- [ ] Update README with exact setup/run/deploy steps after implementation choices are real.
+- [x] Update README with exact setup/run/deploy steps after implementation choices are real.
 - [x] Run validation and record exact results.
-- [ ] Review and finalize `docs/projects/whos-in-your-head/learnings/README.md` before archive if the project becomes long-running.
-- [ ] Close/archive tracker when scoped work is actually done.
+- [x] Review and finalize `docs/projects/whos-in-your-head/learnings/README.md` before archive if the project becomes long-running.
+- [x] Close/archive tracker when scoped work is actually done.
 
 ## Validation / Test Plan
 
@@ -212,3 +212,5 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - 2026-05-14: [DONE] Posted a prompt-engineering self-post to r/PromptEngineering. Submission: https://reddit.com/r/PromptEngineering/comments/1tcvlst/i_built_a_gpt_20_questions_game_the_prompt/
 - 2026-05-14: [DONE] Posted the public link to r/OpenAIDev with source-link comment. Submission: https://reddit.com/r/OpenAIDev/comments/1tcvltn/i_built_an_opensource_gpt_mindreader_game_with/ ; first comment: https://reddit.com/r/OpenAIDev/comments/1tcvltn/i_built_an_opensource_gpt_mindreader_game_with/olqruj3/
 - 2026-05-14: [DONE] Posted the public link to r/AiChatGPT with source-link comment. Submission: https://reddit.com/r/AiChatGPT/comments/1tcvlud/i_built_a_gpt_mindreader_game_where_it_gets_21/ ; first comment: https://reddit.com/r/AiChatGPT/comments/1tcvlud/i_built_a_gpt_mindreader_game_where_it_gets_21/olqrupu/
+- 2026-05-14: [DONE] Investigated slow `/stats`/status perception in production. `/api/openai/status` is lightweight unless `?check=1` is used; `/api/stats` was the slower path after the short cache expired. Public stats now keep a 15s fresh cache plus a 5m stale window, returning stale aggregate data immediately while one background refresh recomputes Mongo/Cosmos aggregates.
+- 2026-05-14: [DONE] Closed the MVP project tracker. The product is playable, deployed, documented, and publicly launched; future changes should use focused issues/tasks instead of keeping this long-running tracker active.
