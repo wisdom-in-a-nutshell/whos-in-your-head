@@ -66,7 +66,7 @@ describe("generateAiMove", () => {
     expect(request.store).toBe(true);
   });
 
-  it("sends low reasoning controls for mini early turns", async () => {
+  it("tracks low reasoning for early turns without sending request controls", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-low-test",
       outputText: JSON.stringify({
@@ -84,7 +84,7 @@ describe("generateAiMove", () => {
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
     expect(generated.reasoningEffort).toBe("low");
-    expect(request.reasoning).toEqual({ effort: "low" });
+    expect(request).not.toHaveProperty("reasoning");
     expect(request.text).toEqual(
       expect.objectContaining({
         format: expect.any(Object)
@@ -131,7 +131,7 @@ describe("generateAiMove", () => {
     );
   });
 
-  it("sends medium reasoning controls for mini middle turns", async () => {
+  it("tracks medium reasoning for middle turns without sending request controls", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-medium-test",
       outputText: JSON.stringify({
@@ -149,10 +149,10 @@ describe("generateAiMove", () => {
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
     expect(generated.reasoningEffort).toBe("medium");
-    expect(request.reasoning).toEqual({ effort: "medium" });
+    expect(request).not.toHaveProperty("reasoning");
   });
 
-  it("sends the configured late-game reasoning controls for mini", async () => {
+  it("tracks the configured late-game reasoning effort without sending request controls", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-high-test",
       outputText: JSON.stringify({
@@ -170,7 +170,7 @@ describe("generateAiMove", () => {
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
     expect(generated.reasoningEffort).toBe("high");
-    expect(request.reasoning).toEqual({ effort: "high" });
+    expect(request).not.toHaveProperty("reasoning");
   });
 
   it("bypasses LiteLLM response caching only on retry attempts", async () => {
