@@ -46,7 +46,7 @@ depend on ambient global OpenAI provider routing.
 
 Players can choose the game model at the start of a round. The public picker is
 allowlisted to `gpt-chat-latest`, `gpt-5.4-mini`, `gemini-3.1-flash-lite`, and
-`claude-sonnet-4-6`; `gpt-chat-latest` is the UI default and is labeled as
+`claude-sonnet-4-6`; `gemini-3.1-flash-lite` is the UI default and is labeled as
 recommended in the dropdown. Other model names, including Claude Opus and
 Claude Haiku, may appear as disabled coming-soon options, but they must not be
 accepted by the game-turn schema until they are real choices. The selected
