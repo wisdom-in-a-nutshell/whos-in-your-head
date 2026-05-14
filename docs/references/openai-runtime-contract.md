@@ -44,20 +44,19 @@ Deployed Azure runtime should use
 `LLM_API_*` app settings backed by Key Vault references so the repo does not
 depend on ambient global OpenAI provider routing.
 
-Players can choose the game model at the start of a round. The public picker is
-allowlisted to `gpt-chat-latest`, `gpt-5.4-mini`, `gemini-3.1-flash-lite`, and
-`claude-sonnet-4-6`; `gemini-3.1-flash-lite` is the UI default and is labeled as
-recommended in the dropdown. Other model names, including Claude Opus and
-Claude Haiku, may appear as disabled coming-soon options, but they must not be
-accepted by the game-turn schema until they are real choices. The selected
-model is stored on the explicit game state and reused for the normal model
-path, opening warmup, retries, and telemetry. Gemini routes are treated as
-OpenAI-compatible LiteLLM routes, but their response ids are not reused for
-future `previous_response_id` continuation.
+The public game is temporarily running a Gemini-only experiment. The picker
+shows `gemini-3.1-flash-lite` as the only selectable model; previously available
+models may remain visible as disabled `busy - back soon` options. The route also
+coerces submitted game state to `gemini-3.1-flash-lite` and clears any stored
+non-Gemini response chain, so old browser tabs and stale share links cannot
+route a live round to another model during the experiment. Gemini routes are
+treated as OpenAI-compatible LiteLLM routes, but their response ids are not
+reused for future `previous_response_id` continuation.
 
 The home page accepts a `model` query parameter to preselect the model before a
-round starts. Only exact live model ids are accepted. Empty, unknown, shorthand,
-or disabled model values fall back to `gemini-3.1-flash-lite`.
+round starts. While the forced Gemini experiment is active, only
+`gemini-3.1-flash-lite` is selectable. Empty, unknown, shorthand, or disabled
+model values fall back to `gemini-3.1-flash-lite`.
 
 `LLM_FALLBACK_MODELS` is a comma- or newline-separated model chain. It is used
 only when the primary Responses call returns `status: "incomplete"` with

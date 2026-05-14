@@ -48,14 +48,14 @@ fallback names.
 For deployed Azure runtime, prefer `LLM_API_*` app settings backed by Key Vault
 references.
 
-The start screen lets players choose `gpt-chat-latest`, `gpt-5.4-mini`,
-`gemini-3.1-flash-lite`, or `claude-sonnet-4-6` for that round. The UI defaults
-to `gemini-3.1-flash-lite`; other model names can appear as disabled coming-soon
-options.
+The public game is temporarily running a Gemini-only experiment. The start
+screen shows `gemini-3.1-flash-lite` as the selectable model; other model names
+may remain visible as disabled `busy - back soon` or coming-soon options. The
+server also forces submitted game state back to Gemini so old tabs and stale
+share links cannot route a live round to another model during the experiment.
 
-Share links can preselect the start-screen model with `?model=`. Use an exact
-live model id such as `?model=gpt-chat-latest`, `?model=gpt-5.4-mini`,
-`?model=gemini-3.1-flash-lite`, or `?model=claude-sonnet-4-6`.
+Share links can include `?model=gemini-3.1-flash-lite`, but other model query
+values fall back to Gemini while the forced experiment is active.
 
 Local validation:
 

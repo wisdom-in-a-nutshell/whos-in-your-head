@@ -22,6 +22,11 @@ export const gamePhaseSchema = z.enum(["asking", "guessing", "result"]);
 export const gameResultSchema = z.enum(["unknown", "correct", "incorrect"]);
 export const actualAnswerSchema = z.string().trim().min(1).max(160);
 export const gameModelSchema = z.enum(gameModelValues);
+const tolerantGameModelSchema = z.preprocess((value) => {
+  const parsed = gameModelSchema.safeParse(value);
+
+  return parsed.success ? parsed.data : DEFAULT_GAME_MODEL;
+}, gameModelSchema);
 
 export const answeredTurnSchema = z.object({
   question: z.string().trim().min(1).max(180),
@@ -38,7 +43,7 @@ export const gameStateSchema = z
     latestQuestion: z.string().trim().min(1).max(180).nullable(),
     finalGuess: z.string().trim().min(1).max(120).nullable(),
     result: gameResultSchema,
-    model: gameModelSchema.default(DEFAULT_GAME_MODEL),
+    model: tolerantGameModelSchema.default(DEFAULT_GAME_MODEL),
     reasoningEffort: gameReasoningEffortSchema.default(DEFAULT_GAME_REASONING_EFFORT),
     modelResponseId: z.string().trim().min(1).nullable(),
     modelResponseModel: z.string().trim().min(1).nullable().default(null)
@@ -48,7 +53,7 @@ export const gameStateSchema = z
 export const gameTurnRequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("start"),
-    model: gameModelSchema.default(DEFAULT_GAME_MODEL)
+    model: tolerantGameModelSchema.default(DEFAULT_GAME_MODEL)
   }),
   z.object({
     action: z.literal("answer"),

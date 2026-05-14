@@ -5,6 +5,7 @@ import {
   createInitialGameState,
   finalizeGuess,
   forceGameModel,
+  FORCED_GAME_MODEL,
   GameRuleError,
   gameStateSchema,
   gameTurnRequestSchema,
@@ -343,6 +344,16 @@ async function tryContentFilterFallbacks(
   requestId: string,
   retryAttempt: number
 ): Promise<{ generated: GeneratedAiMove; nextGame: GameState; source: string } | null> {
+  if (game.model === FORCED_GAME_MODEL) {
+    logWarn("game_turn_content_filter_fallback_skipped_for_forced_model", {
+      requestId,
+      gameId: game.gameId,
+      questionCount: game.questionCount,
+      forcedModel: FORCED_GAME_MODEL
+    });
+    return null;
+  }
+
   const fallbackModels = getOpenAIModelFallbacks();
 
   if (fallbackModels.length === 0) {
