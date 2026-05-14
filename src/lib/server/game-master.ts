@@ -7,7 +7,12 @@ import type {
   ResponseUsage
 } from "openai/resources/responses/responses";
 import { zodTextFormat } from "openai/helpers/zod";
-import { aiMoveSchema, type AiMove, type PlayerAnswer } from "@/lib/game/ai-move";
+import {
+  aiMoveProviderOutputSchema,
+  aiMoveSchema,
+  type AiMove,
+  type PlayerAnswer
+} from "@/lib/game/ai-move";
 import { createSharedOpeningAnswerState } from "@/lib/game/opening";
 import {
   buildGameMasterContinuationInput,
@@ -202,7 +207,7 @@ async function generateOpenAIAiMove(
       }
     ],
     text: {
-      format: zodTextFormat(aiMoveSchema, AI_MOVE_FORMAT_NAME, {
+        format: zodTextFormat(aiMoveProviderOutputSchema, AI_MOVE_FORMAT_NAME, {
         description:
           "The next game-master move: either one yes/no-compatible question or one final famous-person guess."
       })
@@ -349,13 +354,19 @@ async function generateClaudeAiMove(
           content: buildGameMasterStateInput(state, retryAttempt)
         }
       ],
-      thinking: {
-        type: "adaptive"
-      },
       output_config: {
-        effort: toClaudeEffort(reasoningEffort, configuredModel),
-        format: zodOutputFormat(aiMoveSchema)
+        format: zodOutputFormat(aiMoveProviderOutputSchema),
+        ...(supportsClaudeAdaptiveThinking(configuredModel)
+          ? { effort: toClaudeEffort(reasoningEffort, configuredModel) }
+          : {})
       },
+      ...(supportsClaudeAdaptiveThinking(configuredModel)
+        ? {
+            thinking: {
+              type: "adaptive" as const
+            }
+          }
+        : {}),
       service_tier: serviceTier,
       metadata: {
         user_id: state.gameId
@@ -662,6 +673,10 @@ function toClaudeEffort(reasoningEffort: GameReasoningEffort, model: string) {
   }
 
   return "high";
+}
+
+function supportsClaudeAdaptiveThinking(model: string) {
+  return model.includes("sonnet") || model.includes("opus");
 }
 
 function normalizeOpenAIUsage(usage: ResponseUsage | null): GameMasterUsage | null {

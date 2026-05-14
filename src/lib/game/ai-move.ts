@@ -2,8 +2,8 @@ import { z } from "zod";
 
 export const playerAnswerSchema = z.enum(["yes", "no", "maybe"]);
 
-export const aiMoveSchema = z
-  .object({
+function createAiMoveSchema(shortRationaleMaxLength: number) {
+  return z.object({
     action: z
       .enum(["ask_question", "make_guess"])
       .describe("Whether the game master is asking one question or making a final guess."),
@@ -24,7 +24,7 @@ export const aiMoveSchema = z
     shortRationale: z
       .string()
       .trim()
-      .max(240)
+      .max(shortRationaleMaxLength)
       .nullable()
       .describe("A short private debug note about why this move was chosen, or null.")
   })
@@ -66,6 +66,10 @@ export const aiMoveSchema = z
       }
     }
   });
+}
+
+export const aiMoveSchema = createAiMoveSchema(240);
+export const aiMoveProviderOutputSchema = createAiMoveSchema(2000);
 
 export type PlayerAnswer = z.infer<typeof playerAnswerSchema>;
 export type AiMove = z.infer<typeof aiMoveSchema>;

@@ -7,7 +7,8 @@ const DEFAULT_GAME_MODEL = "gpt-chat-latest";
 const liveGameModelValues = [
   "gpt-chat-latest",
   "gpt-5.4-mini",
-  "claude-sonnet-4-6"
+  "claude-sonnet-4-6",
+  "claude-haiku-4-5"
 ] as const;
 const gameModelOptions = [
   {
@@ -35,6 +36,11 @@ const gameModelOptions = [
   {
     value: "claude-sonnet-4-6",
     label: "Claude Sonnet",
+    disabled: false
+  },
+  {
+    value: "claude-haiku-4-5",
+    label: "Claude Haiku",
     disabled: false
   },
   {
@@ -525,6 +531,7 @@ export default function Home() {
                   <optgroup label="Available">
                     <option value="gpt-5.4-mini">GPT-5.4 Mini</option>
                     <option value="claude-sonnet-4-6">Claude Sonnet</option>
+                    <option value="claude-haiku-4-5">Claude Haiku</option>
                   </optgroup>
                   <optgroup label="Coming soon">
                     {gameModelOptions
@@ -758,6 +765,10 @@ function formatModelName(model: string): string {
 
   if (model === "claude-4.6-opus" || model === "claude-opus-4-6") {
     return "Claude Opus";
+  }
+
+  if (model === "claude-haiku-4-5") {
+    return "Claude Haiku";
   }
 
   return model

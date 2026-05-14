@@ -12,7 +12,8 @@ export const DEFAULT_GAME_REASONING_EFFORT: GameReasoningEffort = "high";
 export const gameModelValues = [
   "gpt-chat-latest",
   "gpt-5.4-mini",
-  "claude-sonnet-4-6"
+  "claude-sonnet-4-6",
+  "claude-haiku-4-5"
 ] as const;
 export const DEFAULT_GAME_MODEL = "gpt-chat-latest";
 

@@ -45,8 +45,8 @@ Deployed Azure runtime should use
 depend on ambient global OpenAI provider routing.
 
 Players can choose the game model at the start of a round. The public picker is
-allowlisted to `gpt-chat-latest`, `gpt-5.4-mini`, and
-`claude-sonnet-4-6`; `gpt-chat-latest` is the UI default and is labeled as
+allowlisted to `gpt-chat-latest`, `gpt-5.4-mini`, `claude-sonnet-4-6`, and
+`claude-haiku-4-5`; `gpt-chat-latest` is the UI default and is labeled as
 recommended in the dropdown. Other model names, including Claude Opus, may
 appear as disabled coming-soon options, but they must not be accepted by the
 game-turn schema until they are real choices. The selected model is stored on
