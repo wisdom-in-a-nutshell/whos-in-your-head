@@ -50,17 +50,6 @@ const gameModelOptions = [
     disabled: true
   }
 ] as const;
-const modelUrlAliases: Record<string, GameModel> = {
-  chat: "gpt-chat-latest",
-  gpt: "gpt-chat-latest",
-  gpt54mini: "gpt-5.4-mini",
-  mini: "gpt-5.4-mini",
-  gemini: "gemini-3.1-flash-lite",
-  flash: "gemini-3.1-flash-lite",
-  claude: "claude-sonnet-4-6",
-  sonnet: "claude-sonnet-4-6"
-};
-
 const questionPrompts = [
   "Don’t overthink it",
   "Tiny clue, please",
@@ -806,11 +795,7 @@ function readModelFromUrl(search: string): GameModel | null {
     return null;
   }
 
-  if (isLiveGameModel(rawModel)) {
-    return rawModel;
-  }
-
-  return modelUrlAliases[rawModel] ?? null;
+  return isLiveGameModel(rawModel) ? rawModel : null;
 }
 
 function formatPercent(value: number | null): string {
