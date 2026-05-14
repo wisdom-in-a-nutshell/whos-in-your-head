@@ -140,7 +140,7 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - [x] Add backend error states for invalid request, missing OpenAI config, rule violations, and invalid model moves.
 - [x] Add deployment workflow and Azure Web App runtime wiring.
 - [x] Add frontend loading/error states when wiring the UI to the backend.
-- [ ] Polish UI enough for a 30-second demo.
+- [x] Polish UI enough for a 30-second demo.
 - [ ] Update README with exact setup/run/deploy steps after implementation choices are real.
 - [x] Run validation and record exact results.
 - [ ] Review and finalize `docs/projects/whos-in-your-head/learnings/README.md` before archive if the project becomes long-running.
@@ -182,3 +182,4 @@ This is a crisp, shareable AI game demo with a clear interaction loop. It avoids
 - 2026-05-13: [DONE] Tested `minimal` reasoning locally on a separate production-mode server. The selector now respects explicitly cheap game profiles (`minimal` stays minimal, `low` stays low), but the smoke showed minimal was not a good default for hard targets: it still had several 6-13s turns through the current LiteLLM route, lost strategy quality on Gregor Mendel, and hit a provider-state retry case. The route now preserves only `resp_` ids for future `previous_response_id` use, so LiteLLM internal fallback `chatcmpl-...` ids cannot poison the next turn.
 - 2026-05-13: [DONE] Replaced the random per-game reasoning mix with a deterministic snappy schedule: turns after questions 1-8 use `low`, turns after questions 9-16 use `medium`, and turns after question 17+ use the configured `LLM_REASONING_EFFORT` (`high` in production). The prompt/cache key and Responses state chain stay unchanged, while telemetry continues to record the actual per-turn reasoning effort.
 - 2026-05-14: [DONE] Added a start-screen model picker with allowlisted LiteLLM routes: `gpt-chat-latest` and `gpt-5.4-mini`. New rounds default to recommended `gpt-chat-latest`; future model names are disabled as coming soon, and the selected model is stored on game state so model turns, warmups, retries, and telemetry follow the player choice.
+- 2026-05-14: [DONE] Took a final homepage/stats polish pass. The homepage model picker is now visually secondary under the question-limit meter, and `/stats` now leads with a compact operational scoreboard: completed rounds, correctness, average questions, average response time, secondary start/drop/miss/fallback counts, and a simplified model breakdown without token/reasoning clutter.
