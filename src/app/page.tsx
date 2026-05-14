@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 const MAX_QUESTIONS = 21;
-const DEFAULT_GAME_MODEL = "gpt-chat-latest";
+const DEFAULT_GAME_MODEL = "gemini-3.1-flash-lite";
 const liveGameModelValues = [
   "gpt-chat-latest",
   "gpt-5.4-mini",
@@ -525,11 +525,11 @@ export default function Home() {
                   value={selectedModel}
                 >
                   <optgroup label="Recommended">
-                    <option value="gpt-chat-latest">GPT Chat Latest</option>
+                    <option value="gemini-3.1-flash-lite">Gemini Flash Lite</option>
                   </optgroup>
                   <optgroup label="Available">
+                    <option value="gpt-chat-latest">GPT Chat Latest</option>
                     <option value="gpt-5.4-mini">GPT-5.4 Mini</option>
-                    <option value="gemini-3.1-flash-lite">Gemini Flash Lite</option>
                     <option value="claude-sonnet-4-6">Claude Sonnet</option>
                   </optgroup>
                   <optgroup label="Coming soon">

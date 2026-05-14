@@ -19,7 +19,7 @@ describe("game state transitions", () => {
     expect(state.latestQuestion).toBeNull();
     expect(state.finalGuess).toBeNull();
     expect(state.result).toBe("unknown");
-    expect(state.model).toBe("gpt-chat-latest");
+    expect(state.model).toBe("gemini-3.1-flash-lite");
     expect(state.reasoningEffort).toBe("high");
     expect(state.modelResponseId).toBeNull();
     expect(state.modelResponseModel).toBeNull();
@@ -43,6 +43,19 @@ describe("game state transitions", () => {
     const parsed = gameTurnRequestSchema.parse({
       action: "start",
       model: "gemini-3.1-flash-lite"
+    });
+
+    expect(parsed.action).toBe("start");
+    if (parsed.action !== "start") {
+      throw new Error("Expected a start action.");
+    }
+
+    expect(parsed.model).toBe("gemini-3.1-flash-lite");
+  });
+
+  it("defaults start requests to Gemini Flash Lite", () => {
+    const parsed = gameTurnRequestSchema.parse({
+      action: "start"
     });
 
     expect(parsed.action).toBe("start");

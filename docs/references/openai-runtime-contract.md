@@ -46,7 +46,7 @@ depend on ambient global OpenAI provider routing.
 
 Players can choose the game model at the start of a round. The public picker is
 allowlisted to `gpt-chat-latest`, `gpt-5.4-mini`, `gemini-3.1-flash-lite`, and
-`claude-sonnet-4-6`; `gpt-chat-latest` is the UI default and is labeled as
+`claude-sonnet-4-6`; `gemini-3.1-flash-lite` is the UI default and is labeled as
 recommended in the dropdown. Other model names, including Claude Opus and
 Claude Haiku, may appear as disabled coming-soon options, but they must not be
 accepted by the game-turn schema until they are real choices. The selected
@@ -57,7 +57,7 @@ future `previous_response_id` continuation.
 
 The home page accepts a `model` query parameter to preselect the model before a
 round starts. Only exact live model ids are accepted. Empty, unknown, shorthand,
-or disabled model values fall back to `gpt-chat-latest`.
+or disabled model values fall back to `gemini-3.1-flash-lite`.
 
 `LLM_FALLBACK_MODELS` is a comma- or newline-separated model chain. It is used
 only when the primary Responses call returns `status: "incomplete"` with
