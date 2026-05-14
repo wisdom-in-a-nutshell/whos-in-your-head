@@ -44,19 +44,17 @@ Deployed Azure runtime should use
 `LLM_API_*` app settings backed by Key Vault references so the repo does not
 depend on ambient global OpenAI provider routing.
 
-The public game is temporarily running a Gemini-only experiment. The picker
-shows `gemini-3.1-flash-lite` as the only selectable model; previously available
-models may remain visible as disabled `busy - back soon` options. The route also
-coerces submitted game state to `gemini-3.1-flash-lite` and clears any stored
-non-Gemini response chain, so old browser tabs and stale share links cannot
-route a live round to another model during the experiment. Gemini routes are
-treated as OpenAI-compatible LiteLLM routes, but their response ids are not
-reused for future `previous_response_id` continuation.
+The public game defaults to `gpt-chat-latest`. The picker exposes only the live
+model allowlist for playable rounds and keeps unavailable models disabled in the
+UI. Empty, unknown, shorthand, stale, or otherwise invalid model values fall
+back to `gpt-chat-latest` instead of failing a public game request.
 
-The home page accepts a `model` query parameter to preselect the model before a
-round starts. While the forced Gemini experiment is active, only
-`gemini-3.1-flash-lite` is selectable. Empty, unknown, shorthand, or disabled
-model values fall back to `gemini-3.1-flash-lite`.
+The home page accepts a `model` query parameter to preselect a live model before
+a round starts. The selected model is stored in game state and reused for later
+turns unless the submitted value is invalid and the schema falls back to the
+default. Gemini routes are treated as OpenAI-compatible LiteLLM routes, but
+their response ids are not reused for future `previous_response_id`
+continuation.
 
 `LLM_FALLBACK_MODELS` is a comma- or newline-separated model chain. It is used
 only when the primary Responses call returns `status: "incomplete"` with

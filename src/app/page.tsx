@@ -3,31 +3,27 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 const MAX_QUESTIONS = 21;
-type GameModel =
-  | "gpt-chat-latest"
-  | "gpt-5.4-mini"
-  | "gemini-3.1-flash-lite"
-  | "claude-sonnet-4-6";
-
-const DEFAULT_GAME_MODEL: GameModel = "gemini-3.1-flash-lite";
-const selectableGameModelValues = ["gemini-3.1-flash-lite"] as const;
+const liveGameModelValues = [
+  "gpt-chat-latest",
+  "gpt-5.4-mini",
+  "gemini-3.1-flash-lite",
+  "claude-sonnet-4-6"
+] as const;
+const DEFAULT_GAME_MODEL = "gpt-chat-latest";
 const gameModelOptions = [
   {
     value: "gpt-chat-latest",
     label: "GPT Chat Latest",
-    suffix: "busy - back soon",
-    disabled: true
+    disabled: false
   },
   {
     value: "gpt-5.4-mini",
     label: "GPT-5.4 Mini",
-    suffix: "busy - back soon",
-    disabled: true
+    disabled: false
   },
   {
     value: "gemini-3.1-flash-lite",
     label: "Gemini Flash Lite",
-    suffix: null,
     disabled: false
   },
   {
@@ -45,8 +41,7 @@ const gameModelOptions = [
   {
     value: "claude-sonnet-4-6",
     label: "Claude Sonnet",
-    suffix: "busy - back soon",
-    disabled: true
+    disabled: false
   },
   {
     value: "claude-opus-4-6",
@@ -153,6 +148,7 @@ function ThinkingDots() {
 
 type Phase = "start" | "asking" | "thinking" | "guessing" | "result";
 type Answer = "yes" | "no" | "maybe";
+type GameModel = (typeof liveGameModelValues)[number];
 
 type Turn = {
   question: string;
@@ -522,38 +518,30 @@ export default function Home() {
                   onChange={(event) => {
                     const nextModel = event.target.value;
 
-                    if (isSelectableGameModel(nextModel)) {
+                    if (isLiveGameModel(nextModel)) {
                       setSelectedModel(nextModel);
                     }
                   }}
                   value={selectedModel}
                 >
                   <optgroup label="Recommended">
-                    <option value="gemini-3.1-flash-lite">Gemini Flash Lite</option>
+                    <option value="gpt-chat-latest">GPT Chat Latest</option>
                   </optgroup>
-                  <optgroup label="Busy - back soon">
-                    {gameModelOptions
-                      .filter((option) => option.suffix === "busy - back soon")
-                      .map((option) => (
-                        <option
-                          disabled
-                          key={option.value}
-                          value={option.value}
-                        >
-                          {option.label} ({option.suffix})
-                        </option>
-                      ))}
+                  <optgroup label="Available">
+                    <option value="gpt-5.4-mini">GPT-5.4 Mini</option>
+                    <option value="gemini-3.1-flash-lite">Gemini Flash Lite</option>
+                    <option value="claude-sonnet-4-6">Claude Sonnet</option>
                   </optgroup>
                   <optgroup label="Coming soon">
                     {gameModelOptions
-                      .filter((option) => option.suffix === "coming soon")
+                      .filter((option) => option.disabled)
                       .map((option) => (
                         <option
                           disabled
                           key={option.value}
                           value={option.value}
                         >
-                          {option.label} ({option.suffix})
+                          {option.label}
                         </option>
                       ))}
                   </optgroup>
@@ -788,8 +776,8 @@ function formatModelName(model: string): string {
     .replace("-nano", " Nano");
 }
 
-function isSelectableGameModel(model: string): model is GameModel {
-  return (selectableGameModelValues as readonly string[]).includes(model);
+function isLiveGameModel(model: string): model is GameModel {
+  return (liveGameModelValues as readonly string[]).includes(model);
 }
 
 function getInitialSelectedModel(): GameModel {
@@ -807,7 +795,7 @@ function readModelFromUrl(search: string): GameModel | null {
     return null;
   }
 
-  return isSelectableGameModel(rawModel) ? rawModel : null;
+  return isLiveGameModel(rawModel) ? rawModel : null;
 }
 
 function formatPercent(value: number | null): string {

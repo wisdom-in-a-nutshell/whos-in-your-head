@@ -3,7 +3,6 @@ import {
   applyAiMove,
   createInitialGameState,
   finalizeGuess,
-  forceGameModel,
   GameRuleError,
   gameTurnRequestSchema,
   recordPlayerAnswer
@@ -20,7 +19,7 @@ describe("game state transitions", () => {
     expect(state.latestQuestion).toBeNull();
     expect(state.finalGuess).toBeNull();
     expect(state.result).toBe("unknown");
-    expect(state.model).toBe("gemini-3.1-flash-lite");
+    expect(state.model).toBe("gpt-chat-latest");
     expect(state.reasoningEffort).toBe("high");
     expect(state.modelResponseId).toBeNull();
     expect(state.modelResponseModel).toBeNull();
@@ -40,20 +39,6 @@ describe("game state transitions", () => {
     ).toBe("gpt-5.4-mini");
   });
 
-  it("can force existing state back to Gemini and clear the old response chain", () => {
-    const state = {
-      ...createInitialGameState("high", "gpt-chat-latest"),
-      modelResponseId: "resp_old",
-      modelResponseModel: "gpt-chat-latest"
-    };
-
-    const forced = forceGameModel(state);
-
-    expect(forced.model).toBe("gemini-3.1-flash-lite");
-    expect(forced.modelResponseId).toBeNull();
-    expect(forced.modelResponseModel).toBeNull();
-  });
-
   it("accepts the Gemini Flash Lite game model", () => {
     const parsed = gameTurnRequestSchema.parse({
       action: "start",
@@ -68,7 +53,7 @@ describe("game state transitions", () => {
     expect(parsed.model).toBe("gemini-3.1-flash-lite");
   });
 
-  it("defaults start requests to Gemini Flash Lite", () => {
+  it("defaults start requests to GPT Chat Latest", () => {
     const parsed = gameTurnRequestSchema.parse({
       action: "start"
     });
@@ -78,10 +63,10 @@ describe("game state transitions", () => {
       throw new Error("Expected a start action.");
     }
 
-    expect(parsed.model).toBe("gemini-3.1-flash-lite");
+    expect(parsed.model).toBe("gpt-chat-latest");
   });
 
-  it("silently falls unknown start models back to Gemini Flash Lite", () => {
+  it("silently falls unknown start models back to GPT Chat Latest", () => {
     const parsed = gameTurnRequestSchema.parse({
       action: "start",
       model: "chat"
@@ -92,10 +77,10 @@ describe("game state transitions", () => {
       throw new Error("Expected a start action.");
     }
 
-    expect(parsed.model).toBe("gemini-3.1-flash-lite");
+    expect(parsed.model).toBe("gpt-chat-latest");
   });
 
-  it("silently falls unknown state models back to Gemini Flash Lite", () => {
+  it("silently falls unknown state models back to GPT Chat Latest", () => {
     const parsed = gameTurnRequestSchema.parse({
       action: "answer",
       state: {
@@ -112,7 +97,7 @@ describe("game state transitions", () => {
       throw new Error("Expected an answer action.");
     }
 
-    expect(parsed.state.model).toBe("gemini-3.1-flash-lite");
+    expect(parsed.state.model).toBe("gpt-chat-latest");
   });
 
   it("keeps the assigned reasoning effort on the game state", () => {
