@@ -770,11 +770,11 @@ function formatShareText(game: GameState): string {
     game.questionCount === 1 ? "1 question" : `${game.questionCount} questions`;
 
   if (game.result === "correct" && game.finalGuess) {
-    return `The AI guessed ${game.finalGuess} in ${questionLabel}. Think of someone famous and see if it can read your mind.`;
+    return `The AI guessed who I had in mind (${game.finalGuess}) in ${questionLabel}. See if it can read your mind.`;
   }
 
   if (game.result === "incorrect") {
-    return `I beat the AI in Who's In Your Head. It had ${questionLabel} and still missed.`;
+    return `I beat the AI in Who's In Your Head. It had ${questionLabel} and still missed. See if it can read your mind.`;
   }
 
   return "Think of someone famous. The AI has 21 questions and one guess.";
