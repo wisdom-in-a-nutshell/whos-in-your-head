@@ -8,6 +8,7 @@ const DEFAULT_DB_NAME = "content_production";
 const RESULTS_COLLECTION = "whiyh_game_results";
 const EVENTS_COLLECTION = "whiyh_game_events";
 const DEFAULT_LIMIT = 50;
+const DEFAULT_ABANDON_AFTER_MINUTES = 5;
 
 const EXIT_GENERIC = 1;
 const EXIT_USAGE = 2;
@@ -17,12 +18,16 @@ const EXIT_TIMEOUT = 5;
 
 const startedAt = Date.now();
 const requestId = randomUUID();
+let activeArgs = { output: "json", command: "unknown" };
+let activeCommand = "unknown";
 
 try {
   loadLocalEnv();
 
   const args = parseArgs(process.argv.slice(2));
+  activeArgs = args;
   const command = args.command ?? "misses";
+  activeCommand = command;
   let data;
 
   if (command === "misses") {
@@ -35,6 +40,8 @@ try {
     data = await readTokenStats(args);
   } else if (command === "summary") {
     data = await readSummary(args);
+  } else if (command === "dropoffs") {
+    data = await readDropoffs(args);
   } else {
     throw usageError(`Unknown command: ${command}`);
   }
@@ -47,8 +54,8 @@ try {
   });
 } catch (error) {
   const cliError = normalizeError(error);
-  emit(cliError.args ?? { output: "json" }, {
-    command: "game-telemetry.misses",
+  emit(cliError.args ?? activeArgs, {
+    command: `game-telemetry.${activeCommand}`,
     status: "error",
     data: null,
     error: {
@@ -568,6 +575,135 @@ async function readSummary(args) {
   });
 }
 
+async function readDropoffs(args) {
+  return withTelemetryDb(args, async ({ db, dbName, since, until }) => {
+    const results = db.collection(RESULTS_COLLECTION);
+    const events = db.collection(EVENTS_COLLECTION);
+    const startQuery = {
+      eventType: "game_started",
+      gameId: {
+        $ne: null
+      },
+      createdAt: {
+        $gte: since,
+        $lte: until
+      }
+    };
+    const starts = await events
+      .find(startQuery, {
+        projection: {
+          _id: 0,
+          gameId: 1,
+          createdAt: 1,
+          model: 1,
+          reasoningEffort: 1,
+          questionCount: 1
+        }
+      })
+      .toArray();
+    const gameIds = starts
+      .map((start) => start.gameId)
+      .filter((gameId) => typeof gameId === "string");
+    const [completedResults, rawEvents] =
+      gameIds.length > 0
+        ? await Promise.all([
+            results
+              .find(
+                {
+                  gameId: {
+                    $in: gameIds
+                  }
+                },
+                {
+                  projection: resultProjection()
+                }
+              )
+              .toArray(),
+            events
+              .find(
+                {
+                  gameId: {
+                    $in: gameIds
+                  }
+                },
+                {
+                  projection: {
+                    _id: 0,
+                    eventType: 1,
+                    gameId: 1,
+                    createdAt: 1,
+                    model: 1,
+                    questionCount: 1,
+                    answeredQuestionCount: 1,
+                    latestQuestion: 1,
+                    move: 1,
+                    runtime: 1,
+                    answerPath: 1,
+                    routeDurationMs: 1
+                  }
+                }
+              )
+              .toArray()
+          ])
+        : [[], []];
+
+    const resultMap = new Map(
+      completedResults
+        .filter((result) => typeof result.gameId === "string")
+        .map((result) => [result.gameId, result])
+    );
+    const latestEventMap = new Map(
+      latestEventsByGame(rawEvents).map((event) => [event.gameId, event])
+    );
+    const abandonCutoff = new Date(
+      until.getTime() - DEFAULT_ABANDON_AFTER_MINUTES * 60 * 1000
+    );
+    const games = starts
+      .map((start) =>
+        classifyStartedGame({
+          start,
+          latest: latestEventMap.get(start.gameId) ?? start,
+          result: resultMap.get(start.gameId) ?? null,
+          abandonCutoff
+        })
+      )
+      .filter((game) => modelMatches(game.model, args.model));
+    const completedGames = games.filter((game) => game.status === "completed");
+    const abandonedGames = games.filter((game) => game.status === "abandoned");
+    const activeGames = games.filter((game) => game.status === "active");
+
+    return {
+      window: buildWindow(args, since, until, "game_started.createdAt"),
+      db: buildDbInfo(dbName),
+      model_filter: args.model,
+      limit: args.limit,
+      abandon_after_minutes: DEFAULT_ABANDON_AFTER_MINUTES,
+      started_count: games.length,
+      completed_count: completedGames.length,
+      abandoned_count: abandonedGames.length,
+      active_count: activeGames.length,
+      completion_rate: ratio(completedGames.length, games.length, 4),
+      abandoned_rate: ratio(abandonedGames.length, games.length, 4),
+      active_rate: ratio(activeGames.length, games.length, 4),
+      by_depth: summarizeDropoffGroups(games, (game) =>
+        String(game.question_count ?? "unknown")
+      ),
+      by_model: summarizeDropoffGroups(games, (game) => game.model ?? "unknown"),
+      by_last_action: summarizeDropoffGroups(games, (game) =>
+        game.last_action ?? "unknown"
+      ),
+      recent_abandoned: abandonedGames
+        .sort((left, right) => compareDatesDesc(left.last_event_at, right.last_event_at))
+        .slice(0, args.limit)
+        .map(formatDropoffGame),
+      recent_active: activeGames
+        .sort((left, right) => compareDatesDesc(left.last_event_at, right.last_event_at))
+        .slice(0, args.limit)
+        .map(formatDropoffGame)
+    };
+  });
+}
+
 async function withTelemetryDb(args, reader) {
   const mongoUri = process.env.MONGODB_URI?.trim();
   if (!mongoUri) {
@@ -894,6 +1030,174 @@ function tokenStatsProjectStage() {
     },
     latest_turn_at: 1
   };
+}
+
+function classifyStartedGame({ start, latest, result, abandonCutoff }) {
+  const status = result
+    ? "completed"
+    : latest.createdAt < abandonCutoff
+      ? "abandoned"
+      : "active";
+  const model =
+    (result ? result.finalModel : null) ??
+    modelFromEvent(latest) ??
+    start.model ??
+    "unknown";
+  const lastAction =
+    result ? "completed" : latest.move?.action ?? latest.eventType ?? "unknown";
+  const questionCount =
+    result?.questionCount ??
+    latest.questionCount ??
+    latest.answeredQuestionCount ??
+    start.questionCount ??
+    null;
+
+  return {
+    game_id: start.gameId,
+    status,
+    started_at: start.createdAt,
+    last_event_at: result?.completedAt ?? latest.createdAt ?? start.createdAt,
+    model,
+    start_model: start.model ?? null,
+    last_event_type: result ? "game_result" : latest.eventType ?? null,
+    last_action: lastAction,
+    question_count: questionCount,
+    answered_question_count: latest.answeredQuestionCount ?? null,
+    last_question:
+      result
+        ? null
+        : latest.move?.question ?? latest.latestQuestion ?? null,
+    answer_path: result?.answerPath ?? latest.answerPath ?? null,
+    route_duration_ms: latest.routeDurationMs ?? null,
+    model_duration_ms: latest.runtime?.modelDurationMs ?? null
+  };
+}
+
+function modelFromEvent(event) {
+  return (
+    event?.runtime?.actualModel ??
+    event?.runtime?.requestedModel ??
+    event?.model ??
+    null
+  );
+}
+
+function latestEventsByGame(events) {
+  const latestByGame = new Map();
+
+  for (const event of events) {
+    if (typeof event.gameId !== "string") {
+      continue;
+    }
+
+    const existing = latestByGame.get(event.gameId);
+    if (!existing || compareDatesDesc(event.createdAt, existing.createdAt) < 0) {
+      latestByGame.set(event.gameId, event);
+    }
+  }
+
+  return Array.from(latestByGame.values());
+}
+
+function modelMatches(model, filter) {
+  if (!filter) {
+    return true;
+  }
+
+  return String(model ?? "")
+    .toLowerCase()
+    .includes(filter.toLowerCase());
+}
+
+function summarizeDropoffGroups(games, keyFn) {
+  const groups = new Map();
+
+  for (const game of games) {
+    const key = keyFn(game) || "unknown";
+    const group =
+      groups.get(key) ??
+      {
+        key,
+        started_count: 0,
+        completed_count: 0,
+        abandoned_count: 0,
+        active_count: 0,
+        latest_abandoned_at: null
+      };
+
+    group.started_count += 1;
+    if (game.status === "completed") {
+      group.completed_count += 1;
+    } else if (game.status === "abandoned") {
+      group.abandoned_count += 1;
+      if (compareDatesDesc(game.last_event_at, group.latest_abandoned_at) < 0) {
+        group.latest_abandoned_at = game.last_event_at;
+      }
+    } else if (game.status === "active") {
+      group.active_count += 1;
+    }
+
+    groups.set(key, group);
+  }
+
+  return Array.from(groups.values())
+    .map((group) => ({
+      ...group,
+      completion_rate: ratio(group.completed_count, group.started_count, 4),
+      abandoned_rate: ratio(group.abandoned_count, group.started_count, 4),
+      active_rate: ratio(group.active_count, group.started_count, 4),
+      latest_abandoned_at: toIsoOrNull(group.latest_abandoned_at)
+    }))
+    .sort((left, right) => {
+      const numericLeft = Number(left.key);
+      const numericRight = Number(right.key);
+
+      if (Number.isFinite(numericLeft) && Number.isFinite(numericRight)) {
+        return numericLeft - numericRight;
+      }
+
+      return (
+        right.abandoned_count - left.abandoned_count ||
+        right.active_count - left.active_count ||
+        right.started_count - left.started_count ||
+        left.key.localeCompare(right.key)
+      );
+    });
+}
+
+function formatDropoffGame(game) {
+  return {
+    game_id: game.game_id,
+    status: game.status,
+    started_at_utc: toIsoOrNull(game.started_at),
+    last_event_at_utc: toIsoOrNull(game.last_event_at),
+    model: game.model,
+    start_model: game.start_model,
+    last_event_type: game.last_event_type,
+    last_action: game.last_action,
+    question_count: game.question_count,
+    answered_question_count: game.answered_question_count,
+    last_question: game.last_question,
+    answer_path: game.answer_path,
+    route_duration_ms: game.route_duration_ms,
+    model_duration_ms: game.model_duration_ms
+  };
+}
+
+function compareDatesDesc(left, right) {
+  const leftMs = left instanceof Date ? left.getTime() : 0;
+  const rightMs = right instanceof Date ? right.getTime() : 0;
+
+  return rightMs - leftMs;
+}
+
+function ratio(numerator, denominator, places) {
+  if (denominator <= 0) {
+    return null;
+  }
+
+  const scale = 10 ** places;
+  return Math.round((numerator / denominator) * scale) / scale;
 }
 
 function modelStatsGroupStage() {
@@ -1395,6 +1699,28 @@ function emitPlain(result) {
     for (const game of result.data.recent_results) {
       console.log(
         `${game.completed_at_utc ?? "-"} correct=${game.correct} guessed=${game.final_guess ?? "-"} reported_answer=${game.reported_answer ?? "-"} questions=${game.question_count ?? "-"} model=${game.final_model ?? "-"}`
+      );
+    }
+    return;
+  }
+
+  if (result.command === "game-telemetry.dropoffs") {
+    console.log(
+      `started=${result.data.started_count} completed=${result.data.completed_count} abandoned=${result.data.abandoned_count} active=${result.data.active_count} completion_rate=${result.data.completion_rate ?? "-"} abandoned_rate=${result.data.abandoned_rate ?? "-"} active_rate=${result.data.active_rate ?? "-"} abandon_after=${result.data.abandon_after_minutes}m since=${result.data.window.since_utc}`
+    );
+    for (const group of result.data.by_depth) {
+      console.log(
+        `depth=${group.key} started=${group.started_count} completed=${group.completed_count} abandoned=${group.abandoned_count} active=${group.active_count} abandoned_rate=${group.abandoned_rate ?? "-"}`
+      );
+    }
+    for (const group of result.data.by_model) {
+      console.log(
+        `model=${group.key} started=${group.started_count} completed=${group.completed_count} abandoned=${group.abandoned_count} active=${group.active_count} abandoned_rate=${group.abandoned_rate ?? "-"}`
+      );
+    }
+    for (const game of result.data.recent_abandoned) {
+      console.log(
+        `${game.last_event_at_utc ?? "-"} abandoned game=${game.game_id ?? "-"} q=${game.question_count ?? "-"} action=${game.last_action ?? "-"} model=${game.model ?? "-"} last_question=${game.last_question ?? "-"}`
       );
     }
     return;

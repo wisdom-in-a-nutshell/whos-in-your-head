@@ -89,6 +89,7 @@ Useful commands:
 ```bash
 npm run telemetry -- summary --plain --minutes 30 --limit 10
 npm run telemetry -- summary --plain --minutes 60 --limit 10
+npm run telemetry -- dropoffs --plain --minutes 60 --limit 10
 npm run telemetry -- token-stats --plain --model gpt --minutes 60 --limit 10
 npm run telemetry -- model-results --json --model gpt --minutes 60 --limit 12 --include-transcript
 npm run telemetry -- misses --json --minutes 60 --model gpt --limit 8 --include-transcript
@@ -127,6 +128,8 @@ The agent may change whatever is needed on the branch, including:
 - Public aggregate stats if they remain safe and transcript-free.
 - Private/operator telemetry commands that expose transcripts behind explicit
   flags.
+- Private/operator drop-off telemetry that groups incomplete games by last
+  question depth, model, and last action.
 - Tests and docs that make the loop repeatable.
 
 Constraints:

@@ -312,6 +312,7 @@ npm run telemetry -- model-results --json --model gemini --minutes 60 --limit 12
 npm run telemetry -- model-results --json --model gpt --minutes 60 --limit 8 --include-transcript
 npm run telemetry -- token-stats --json --minutes 60
 npm run telemetry -- token-stats --plain --model gemini --minutes 30 --limit 8
+npm run telemetry -- dropoffs --plain --minutes 60 --limit 10
 npm run telemetry -- summary --plain --minutes 30 --limit 8
 ```
 
@@ -331,7 +332,11 @@ operator diagnosis of prompt/mechanics failures; keep the default compact for
 regular automation and public-safe summaries. `token-stats` aggregates
 turn-level runtime telemetry from `whiyh_game_events`, including input, cached,
 output, reasoning, and total tokens, cache read rate, model duration, route
-duration, guesses, fallback turns, and recent sanitized turn samples. `summary`
+duration, guesses, fallback turns, and recent sanitized turn samples.
+`dropoffs` groups games started in the queried window into completed, active,
+and abandoned buckets using the same 5-minute abandonment rule as public stats.
+It reports abandonment by last question depth, model, and last action, plus
+recent abandoned games without transcripts. `summary`
 combines the common operational snapshot into one call: completed-game
 aggregate, active-game count, per-model result stats, reported miss groups,
 token/cache stats, share counts, and recent completed games.

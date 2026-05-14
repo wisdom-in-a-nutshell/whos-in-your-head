@@ -38,6 +38,9 @@ The user thinks of a famous person. The app/AI asks one yes/no-style question at
 - For exploratory or multi-step implementation work, create a short-lived
   branch before editing so unfinished work is not swept into `main` by the
   machine-wide Stop hook.
+- After a short-lived agent branch has been merged and pushed, delete the
+  merged local branch and any merged remote branch so stale branches do not
+  accumulate.
 - Run `scripts/check-fast.sh` before ending meaningful implementation work.
 
 ## Project tracking

@@ -48,11 +48,14 @@ Use short-lived branches for exploratory or multi-step agent work.
 Default pattern:
 
 1. Start from `main`.
-2. Create a branch named `agent/<short-task-name>` before editing.
+2. Create a branch named `codex/<short-task-name>` before editing, unless the
+   user asks for another branch prefix.
 3. Make changes, inspect telemetry, and iterate on that branch.
 4. Run `scripts/check-fast.sh` when the change is ready.
 5. Merge back to `main` only when the user or repo automation is ready for the
    Stop hook to commit, push, and trigger any normal deploy path.
+6. After the merge has been pushed, delete the merged local branch and any
+   merged remote branch so stale agent branches do not accumulate.
 
 Reasoning:
 
