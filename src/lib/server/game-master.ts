@@ -22,6 +22,7 @@ const GAME_MASTER_REQUEST_INSTRUCTIONS =
   "Follow the static game-master instructions in the input. Return only the structured move.";
 const OPENING_WARMUP_ANSWERS: PlayerAnswer[] = ["yes", "no"];
 const OUTPUT_PREVIEW_CHARACTERS = 220;
+const MODELS_WITH_REASONING_CONTROLS = new Set<string>(["gpt-5.4-mini"]);
 
 const openingWarmups = new Map<string, Promise<GeneratedAiMove>>();
 const warmedOpenings = new Map<string, GeneratedAiMove>();
@@ -101,6 +102,7 @@ export async function generateAiMove(
     serviceTier
   } = getOpenAIRequestConfig(reasoningEffort);
   const model = modelOverride ?? state.model ?? configuredModel;
+  const useReasoningControls = MODELS_WITH_REASONING_CONTROLS.has(model);
 
   const bypassResponseCache = retryAttempt > 1;
   const usesPreviousResponse = state.modelResponseId !== null && !bypassResponseCache;
@@ -116,6 +118,7 @@ export async function generateAiMove(
     modelOverride: modelOverride ?? null,
     gameReasoningEffort: state.reasoningEffort,
     reasoningEffort,
+    useReasoningControls,
     requestedServiceTier: serviceTier,
     promptCacheKey: PROMPT_CACHE_KEY,
     retryAttempt,
@@ -139,7 +142,15 @@ export async function generateAiMove(
           : buildGameMasterInput(state, retryAttempt)
       }
     ],
+    ...(useReasoningControls
+      ? {
+          reasoning: {
+            effort: reasoningEffort
+          }
+        }
+      : {}),
     text: {
+      ...(useReasoningControls ? { verbosity: "low" as const } : {}),
       format: zodTextFormat(aiMoveSchema, AI_MOVE_FORMAT_NAME, {
         description:
           "The next game-master move: either one yes/no-compatible question or one final famous-person guess."
@@ -172,6 +183,7 @@ export async function generateAiMove(
         modelOverride: modelOverride ?? null,
         gameReasoningEffort: state.reasoningEffort,
         reasoningEffort,
+        useReasoningControls,
         requestedServiceTier: serviceTier,
         retryAttempt,
         bypassResponseCache,
@@ -198,6 +210,7 @@ export async function generateAiMove(
     requestedModel: model,
     actualModel: response.model ?? null,
     reasoningEffort,
+    useReasoningControls,
     actualServiceTier: response.service_tier ?? null,
     retryAttempt,
     bypassResponseCache,

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createSharedOpeningAnswerState } from "../game/opening";
+import type { GameModel } from "../game/state";
 
 const createMock = vi.fn();
 
@@ -65,7 +66,7 @@ describe("generateAiMove", () => {
     expect(request.store).toBe(true);
   });
 
-  it("tracks low reasoning for early turns without sending request controls", async () => {
+  it("sends low reasoning controls for mini early turns", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-low-test",
       outputText: JSON.stringify({
@@ -77,13 +78,19 @@ describe("generateAiMove", () => {
     }));
 
     const { generateAiMove } = await import("./game-master");
-    const state = createSharedOpeningAnswerState("yes", "low");
+    const state = createSharedOpeningAnswerState("yes", "low", "gpt-5.4-mini");
 
     const generated = await generateAiMove(state, "low-request");
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
     expect(generated.reasoningEffort).toBe("low");
-    expect(request).not.toHaveProperty("reasoning");
+    expect(request.reasoning).toEqual({ effort: "low" });
+    expect(request.text).toEqual(
+      expect.objectContaining({
+        verbosity: "low",
+        format: expect.any(Object)
+      })
+    );
   });
 
   it("uses the selected game model for normal model moves", async () => {
@@ -120,7 +127,7 @@ describe("generateAiMove", () => {
     );
   });
 
-  it("tracks medium reasoning for middle turns without sending request controls", async () => {
+  it("sends medium reasoning controls for mini middle turns", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-medium-test",
       outputText: JSON.stringify({
@@ -132,16 +139,16 @@ describe("generateAiMove", () => {
     }));
 
     const { generateAiMove } = await import("./game-master");
-    const state = createAnsweredState(9);
+    const state = createAnsweredState(9, "gpt-5.4-mini");
 
     const generated = await generateAiMove(state, "medium-request");
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
     expect(generated.reasoningEffort).toBe("medium");
-    expect(request).not.toHaveProperty("reasoning");
+    expect(request.reasoning).toEqual({ effort: "medium" });
   });
 
-  it("tracks the configured late-game reasoning effort without sending request controls", async () => {
+  it("sends the configured late-game reasoning controls for mini", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-high-test",
       outputText: JSON.stringify({
@@ -153,13 +160,13 @@ describe("generateAiMove", () => {
     }));
 
     const { generateAiMove } = await import("./game-master");
-    const state = createAnsweredState(17);
+    const state = createAnsweredState(17, "gpt-5.4-mini");
 
     const generated = await generateAiMove(state, "high-request");
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
     expect(generated.reasoningEffort).toBe("high");
-    expect(request).not.toHaveProperty("reasoning");
+    expect(request.reasoning).toEqual({ effort: "high" });
   });
 
   it("bypasses LiteLLM response caching only on retry attempts", async () => {
@@ -365,9 +372,9 @@ function createResponse({ id, outputText }: { id: string; outputText: string }) 
   };
 }
 
-function createAnsweredState(questionCount: number) {
+function createAnsweredState(questionCount: number, model: GameModel = "gpt-chat-latest") {
   return {
-    ...createSharedOpeningAnswerState("yes"),
+    ...createSharedOpeningAnswerState("yes", "high", model),
     questionCount,
     transcript: Array.from({ length: questionCount }, (_, index) => ({
       question: `Was clue ${index + 1} true?`,
