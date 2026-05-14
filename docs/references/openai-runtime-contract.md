@@ -59,12 +59,15 @@ as a successful LiteLLM `/responses` call instead of a router
 `ContentPolicyViolationError`, so the app owns this narrow fallback case.
 
 `LLM_REASONING_EFFORT` accepts `none`, `minimal`, `low`, `medium`, `high`, or
-`xhigh`; the code default is `high` for this game. The runtime uses a
-deterministic per-turn reasoning schedule for snappier play: turns generated
-after questions 1-8 use `low`, turns after questions 9-16 use `medium`, and
-turns after question 17+ use `LLM_REASONING_EFFORT`. This changes only the
-request-level `reasoning.effort`; the stable prompt prefix, `prompt_cache_key`,
-and Responses state chain stay the same.
+`xhigh`; the code default is `high` for this game. The runtime still computes a
+deterministic per-turn reasoning schedule for telemetry and future product
+experiments: turns generated after questions 1-8 map to `low`, turns after
+questions 9-16 map to `medium`, and turns after question 17+ map to
+`LLM_REASONING_EFFORT`. The live game-master request does not currently send
+request-level `reasoning.effort` or `text.verbosity`; this keeps the selected
+model on its native fast path and avoids provider-specific LiteLLM fallback
+surprises. The stable prompt prefix, `prompt_cache_key`, and Responses state
+chain stay the same.
 
 `LLM_SERVICE_TIER` accepts `auto`, `default`, or `priority`; the default is
 `priority`. The value is sent as the Responses API request-level `service_tier`,
@@ -74,8 +77,8 @@ the Azure deployment-level setting.
 ## Provider Architecture
 
 The game is OpenAI/Responses-primary. Keep the main game-master path on the
-Responses API with Structured Outputs, `previous_response_id`, reasoning
-controls, and OpenAI-compatible prompt caching.
+Responses API with Structured Outputs, `previous_response_id`, and
+OpenAI-compatible prompt caching.
 
 Do not add a Claude-first or Anthropic-native gameplay adapter for prompt
 caching unless telemetry shows the OpenAI/Responses path cannot meet the game
@@ -184,14 +187,13 @@ chat-completions-shaped provider and returns a `chatcmpl-...` id, the move is
 still accepted after schema validation, but the next turn rebuilds from the
 explicit transcript instead of sending that chat id to the Responses API.
 
-OpenAI's GPT-5.5 guidance says to use the Responses API, reasoning controls,
-Structured Outputs, conversation state, prompt caching, and static prompt
-prefixes for this style of reasoning workload. The game-master call follows
-that shape: stable instructions first, dynamic state last, `previous_response_id`
-for continued turns, `zodTextFormat` for the move schema,
-the low/medium/high reasoning schedule, `service_tier=priority`, and a stable
+OpenAI's GPT-5.5 guidance says to use the Responses API, Structured Outputs,
+conversation state, prompt caching, and static prompt prefixes for this style
+of workload. The game-master call follows that shape: stable instructions
+first, dynamic state last, `previous_response_id` for continued turns,
+`zodTextFormat` for the move schema, `service_tier=priority`, and a stable
 `prompt_cache_key`. It also requests `prompt_cache_retention=24h` for
-GPT-5.5-compatible extended prompt caching.
+compatible extended prompt caching.
 
 Do not set a small `max_output_tokens` limit on this call. Reasoning tokens
 count against the output budget, and a high-reasoning request can otherwise
