@@ -773,6 +773,28 @@ function formatResult(result) {
   };
 }
 
+function formatTurn(turn) {
+  const runtime = turn.runtime && typeof turn.runtime === "object" ? turn.runtime : {};
+  const usage = runtime.usage && typeof runtime.usage === "object" ? runtime.usage : {};
+
+  return {
+    game_id: turn.gameId ?? null,
+    created_at_utc: toIsoOrNull(turn.createdAt),
+    question_count: turn.questionCount ?? null,
+    action: turn.move?.action ?? null,
+    source: runtime.source ?? null,
+    requested_model: runtime.requestedModel ?? null,
+    actual_model: runtime.actualModel ?? null,
+    route_duration_ms: turn.routeDurationMs ?? null,
+    model_duration_ms: runtime.modelDurationMs ?? null,
+    input_tokens: usage.inputTokens ?? null,
+    cached_tokens: usage.cachedTokens ?? null,
+    output_tokens: usage.outputTokens ?? null,
+    reasoning_tokens: usage.reasoningTokens ?? null,
+    total_tokens: usage.totalTokens ?? null
+  };
+}
+
 function buildWindow(args, since, until, basis) {
   return {
     minutes: args.minutes,
@@ -947,6 +969,23 @@ function emitPlain(result) {
     for (const game of result.data.recent_results) {
       console.log(
         `${game.completed_at_utc ?? "-"} correct=${game.correct} guessed=${game.final_guess ?? "-"} reported_answer=${game.reported_answer ?? "-"} questions=${game.question_count ?? "-"} model=${game.final_model ?? "-"}`
+      );
+    }
+    return;
+  }
+
+  if (result.command === "game-telemetry.token-stats") {
+    console.log(
+      `model_filter=${result.data.model_filter ?? "-"} model_count=${result.data.models.length} since=${result.data.window.since_utc}`
+    );
+    for (const model of result.data.models) {
+      console.log(
+        `model=${model.model ?? "-"} turns=${model.turns} avg_total=${model.average_total_tokens ?? "-"} avg_input=${model.average_input_tokens ?? "-"} avg_cached=${model.average_cached_tokens ?? "-"} cache_rate=${model.cache_read_rate ?? "-"} avg_ms=${model.average_model_duration_ms ?? "-"}`
+      );
+    }
+    for (const turn of result.data.recent_turns) {
+      console.log(
+        `${turn.created_at_utc ?? "-"} model=${turn.actual_model ?? turn.requested_model ?? "-"} action=${turn.action ?? "-"} input=${turn.input_tokens ?? "-"} cached=${turn.cached_tokens ?? "-"} output=${turn.output_tokens ?? "-"} reasoning=${turn.reasoning_tokens ?? "-"} total=${turn.total_tokens ?? "-"} model_ms=${turn.model_duration_ms ?? "-"}`
       );
     }
     return;

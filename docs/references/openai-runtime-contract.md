@@ -310,6 +310,8 @@ npm run telemetry -- misses --plain --minutes 30
 npm run telemetry -- misses --json --minutes 60 --group-by model
 npm run telemetry -- model-stats --json --minutes 60
 npm run telemetry -- model-results --json --model gemini --minutes 60 --limit 12
+npm run telemetry -- token-stats --json --minutes 60
+npm run telemetry -- token-stats --plain --model gemini --minutes 30 --limit 8
 ```
 
 `misses` counts player-reported missed guesses by `actualAnswerReportedAt`.
@@ -321,7 +323,11 @@ and `--group-by model` answers which final model has the most reported misses
 inside the window. `model-stats` summarizes completed rounds by final model, and
 `model-results --model <substring>` returns recent completed rounds plus an
 aggregate for models whose `finalModel` contains that substring. These commands
-intentionally do not include full transcripts by default.
+intentionally do not include full transcripts by default. `token-stats`
+aggregates turn-level runtime telemetry from `whiyh_game_events`, including
+input, cached, output, reasoning, and total tokens, cache read rate, model
+duration, route duration, guesses, fallback turns, and recent sanitized turn
+samples.
 
 ## Game Telemetry
 
