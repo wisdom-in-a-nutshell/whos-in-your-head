@@ -110,6 +110,5 @@ Only after the local game feels good, wire the model.
 
 Start from:
 
-- `/Users/dobby/GitHub/whos-in-your-head/docs/projects/archive/whos-in-your-head/tasks.md`
 - `/Users/dobby/GitHub/whos-in-your-head/AGENTS.md`
 - `/Users/dobby/GitHub/whos-in-your-head/README.md`

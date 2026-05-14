@@ -39,5 +39,5 @@ The user thinks of a famous person. The app/AI asks one yes/no-style question at
 
 ## Project tracking
 
-The original MVP tracker is archived at `docs/projects/archive/whos-in-your-head/tasks.md`.
+The original MVP tracker has been deleted after the MVP finished.
 Create a new focused tracker only when a future change becomes multi-session project work.

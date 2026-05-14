@@ -9,7 +9,7 @@ Durable context belongs in the repo:
 - Root guidance: `AGENTS.md`
 - System shape: `docs/architecture/`
 - Exact implementation facts: `docs/references/`
-- Archived MVP execution history: `docs/projects/archive/whos-in-your-head/tasks.md`
+- Multi-session project trackers only when active work needs durable execution state.
 
 ## Fast Checks
 

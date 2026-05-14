@@ -80,9 +80,6 @@ model output, and keeps the OpenAI API key server-side.
 
 ## Project History
 
-The original MVP tracker is archived at:
-
-- `docs/projects/archive/whos-in-your-head/tasks.md`
-
-Use the architecture and reference docs for current implementation facts. Create a
-new focused tracker only for future multi-session project work.
+Use the architecture and reference docs for current implementation facts. The
+original MVP tracker has been deleted after the MVP finished. Create a new
+focused tracker only for future multi-session project work.

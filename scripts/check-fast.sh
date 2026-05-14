@@ -8,7 +8,6 @@ echo "check-fast: repo contract"
 test -f AGENTS.md
 test -f README.md
 test -f docs/architecture/overview.md
-test -f docs/projects/archive/whos-in-your-head/tasks.md
 test -d tmp
 
 echo "check-fast: secret scan"
