@@ -301,6 +301,28 @@ The default output is a stable JSON envelope with `schema_version`, `status`,
 `data`, `error`, and `meta` fields so agents can consume it without scraping
 operator prose.
 
+Use the telemetry client for Mongo-backed operational questions that need
+structured game records rather than log lines:
+
+```bash
+npm run telemetry -- misses --json --minutes 30
+npm run telemetry -- misses --plain --minutes 30
+npm run telemetry -- misses --json --minutes 60 --group-by model
+npm run telemetry -- model-stats --json --minutes 60
+npm run telemetry -- model-results --json --model gemini --minutes 60 --limit 12
+```
+
+`misses` counts player-reported missed guesses by `actualAnswerReportedAt`.
+The JSON contract returns `data.count`, `data.event_count`,
+`data.total_reported_misses`, the queried UTC window, and a sanitized `misses`
+array with reported answer, final guess, question count, final model, and answer
+path. `--group-by reported-answer` answers which reported targets recur most,
+and `--group-by model` answers which final model has the most reported misses
+inside the window. `model-stats` summarizes completed rounds by final model, and
+`model-results --model <substring>` returns recent completed rounds plus an
+aggregate for models whose `finalModel` contains that substring. These commands
+intentionally do not include full transcripts by default.
+
 ## Game Telemetry
 
 Completed game stats and debugging telemetry are stored in the shared

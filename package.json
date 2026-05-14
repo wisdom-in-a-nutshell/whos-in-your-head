@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "play:api": "node scripts/play-game-api.mjs",
-    "logs:prod": "node scripts/prod-logs.mjs events"
+    "logs:prod": "node scripts/prod-logs.mjs events",
+    "telemetry": "node scripts/game-telemetry.mjs"
   },
   "overrides": {
     "postcss": "^8.5.14"
