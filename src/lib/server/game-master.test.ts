@@ -177,6 +177,84 @@ describe("generateAiMove", () => {
     });
   });
 
+  it("upgrades gpt-chat-latest early when the path has repeated uncertainty", async () => {
+    createMock.mockResolvedValue(createResponse({
+      id: "resp-uncertain-upgrade-test",
+      outputText: JSON.stringify({
+        action: "ask_question",
+        question: "Are they mainly known for one iconic work?",
+        guess: null,
+        shortRationale: null
+      })
+    }));
+
+    const { generateAiMove } = await import("./game-master");
+    const state = createAnsweredStateWithAnswers(
+      ["yes", "yes", "no", "maybe", "yes", "no", "maybe", "yes"],
+      "gpt-chat-latest"
+    );
+
+    const generated = await generateAiMove(state, "uncertain-upgrade-request");
+    const request = createMock.mock.calls[0][0] as Record<string, unknown>;
+
+    expect(generated.requestedModel).toBe("gpt-5.5");
+    expect(request).toMatchObject({
+      model: "gpt-5.5"
+    });
+  });
+
+  it("upgrades gpt-chat-latest early when broad branches look exhausted", async () => {
+    createMock.mockResolvedValue(createResponse({
+      id: "resp-exhausted-upgrade-test",
+      outputText: JSON.stringify({
+        action: "ask_question",
+        question: "Is their fame tied to one unusual public event?",
+        guess: null,
+        shortRationale: null
+      })
+    }));
+
+    const { generateAiMove } = await import("./game-master");
+    const state = createAnsweredStateWithAnswers(
+      ["yes", "no", "no", "no", "no", "no", "no", "no", "no", "yes"],
+      "gpt-chat-latest"
+    );
+
+    const generated = await generateAiMove(state, "exhausted-upgrade-request");
+    const request = createMock.mock.calls[0][0] as Record<string, unknown>;
+
+    expect(generated.requestedModel).toBe("gpt-5.5");
+    expect(request).toMatchObject({
+      model: "gpt-5.5"
+    });
+  });
+
+  it("keeps clean gpt-chat-latest paths on the fast model before question 13", async () => {
+    createMock.mockResolvedValue(createResponse({
+      id: "resp-clean-fast-test",
+      outputText: JSON.stringify({
+        action: "ask_question",
+        question: "Are they primarily known outside the United States?",
+        guess: null,
+        shortRationale: null
+      })
+    }));
+
+    const { generateAiMove } = await import("./game-master");
+    const state = createAnsweredStateWithAnswers(
+      ["yes", "yes", "yes", "no", "yes", "no", "yes", "yes", "no", "yes"],
+      "gpt-chat-latest"
+    );
+
+    const generated = await generateAiMove(state, "clean-fast-request");
+    const request = createMock.mock.calls[0][0] as Record<string, unknown>;
+
+    expect(generated.requestedModel).toBe("gpt-chat-latest");
+    expect(request).toMatchObject({
+      model: "gpt-chat-latest"
+    });
+  });
+
   it("does not continue a stored response chain across the late-game model switch", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-late-switch-rebuild-test",
@@ -614,6 +692,20 @@ function createAnsweredState(questionCount: number, model: GameModel = "gpt-chat
     transcript: Array.from({ length: questionCount }, (_, index) => ({
       question: `Was clue ${index + 1} true?`,
       answer: index % 2 === 0 ? "yes" : "no"
+    }))
+  } as ReturnType<typeof createSharedOpeningAnswerState>;
+}
+
+function createAnsweredStateWithAnswers(
+  answers: Array<"yes" | "no" | "maybe">,
+  model: GameModel = "gpt-chat-latest"
+) {
+  return {
+    ...createSharedOpeningAnswerState(answers[0] ?? "yes", "high", model),
+    questionCount: answers.length,
+    transcript: answers.map((answer, index) => ({
+      question: `Was clue ${index + 1} true?`,
+      answer
     }))
   } as ReturnType<typeof createSharedOpeningAnswerState>;
 }

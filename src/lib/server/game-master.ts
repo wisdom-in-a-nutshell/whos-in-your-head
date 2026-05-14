@@ -33,6 +33,11 @@ const OUTPUT_PREVIEW_CHARACTERS = 220;
 const DISABLE_LITELLM_RESPONSE_CACHE = true;
 const LATE_GAME_UPGRADE_START_AFTER_QUESTIONS = 12;
 const LATE_GAME_UPGRADE_MODEL = "gpt-5.5";
+const EARLY_UPGRADE_MIN_QUESTIONS_FOR_UNCERTAINTY = 8;
+const EARLY_UPGRADE_MIN_QUESTIONS_FOR_EXHAUSTION = 10;
+const EARLY_UPGRADE_MAYBE_COUNT = 2;
+const EARLY_UPGRADE_NO_COUNT = 8;
+const EARLY_UPGRADE_NO_STREAK = 6;
 const CLAUDE_MAX_OUTPUT_TOKENS = 8192;
 const CLAUDE_PROMPT_CACHE_TTL = "5m";
 
@@ -123,20 +128,25 @@ export async function generateAiMove(
   modelOverride?: string
 ): Promise<GeneratedAiMove> {
   const configuredModel = getOpenAIRuntimeStatus().model;
-  const model = selectGameMasterModel(state, configuredModel, modelOverride);
+  const { model, escalationReason } = selectGameMasterModel(
+    state,
+    configuredModel,
+    modelOverride
+  );
 
   if (isClaudeModel(model)) {
-    return generateClaudeAiMove(state, requestId, retryAttempt, model);
+    return generateClaudeAiMove(state, requestId, retryAttempt, model, escalationReason);
   }
 
-  return generateOpenAIAiMove(state, requestId, retryAttempt, model);
+  return generateOpenAIAiMove(state, requestId, retryAttempt, model, escalationReason);
 }
 
 async function generateOpenAIAiMove(
   state: GameState,
   requestId: string | undefined,
   retryAttempt: number,
-  model: string
+  model: string,
+  escalationReason: string | null
 ): Promise<GeneratedAiMove> {
   const reasoningEffort = selectTurnReasoningEffort({
     lateGameReasoningEffort: state.reasoningEffort,
@@ -161,6 +171,7 @@ async function generateOpenAIAiMove(
     transcriptLength: state.transcript.length,
     model,
     configuredModel,
+    escalationReason,
     storedResponseModel: state.modelResponseModel,
     responseChainModelMatches,
     modelOverride: null,
@@ -220,6 +231,7 @@ async function generateOpenAIAiMove(
         transcriptLength: state.transcript.length,
         model,
         configuredModel,
+        escalationReason,
         storedResponseModel: state.modelResponseModel,
         responseChainModelMatches,
         modelOverride: null,
@@ -252,6 +264,7 @@ async function generateOpenAIAiMove(
     durationMs: Date.now() - startedAt,
     requestedModel: model,
     actualModel: response.model ?? null,
+    escalationReason,
     storedResponseModel: state.modelResponseModel,
     responseChainModelMatches,
     reasoningEffort,
@@ -283,7 +296,8 @@ async function generateClaudeAiMove(
   state: GameState,
   requestId: string | undefined,
   retryAttempt: number,
-  model: string
+  model: string,
+  escalationReason: string | null
 ): Promise<GeneratedAiMove> {
   const reasoningEffort = selectTurnReasoningEffort({
     lateGameReasoningEffort: state.reasoningEffort,
@@ -303,6 +317,7 @@ async function generateClaudeAiMove(
     transcriptLength: state.transcript.length,
     model,
     configuredModel,
+    escalationReason,
     gameReasoningEffort: state.reasoningEffort,
     reasoningEffort,
     requestedServiceTier: serviceTier,
@@ -354,6 +369,7 @@ async function generateClaudeAiMove(
         transcriptLength: state.transcript.length,
         model,
         configuredModel,
+        escalationReason,
         gameReasoningEffort: state.reasoningEffort,
         reasoningEffort,
         requestedServiceTier: serviceTier,
@@ -378,6 +394,7 @@ async function generateClaudeAiMove(
     durationMs: Date.now() - startedAt,
     requestedModel: model,
     actualModel: response.model ?? null,
+    escalationReason,
     reasoningEffort,
     actualServiceTier: response.usage.service_tier ?? null,
     retryAttempt,
@@ -408,19 +425,82 @@ function selectGameMasterModel(
   modelOverride?: string
 ) {
   if (modelOverride) {
-    return normalizeGameMasterModel(modelOverride);
+    return {
+      model: normalizeGameMasterModel(modelOverride),
+      escalationReason: null
+    };
   }
 
   const selectedModel = normalizeGameMasterModel(state.model ?? configuredModel);
 
-  if (
-    selectedModel === "gpt-chat-latest" &&
-    state.questionCount >= LATE_GAME_UPGRADE_START_AFTER_QUESTIONS
-  ) {
-    return LATE_GAME_UPGRADE_MODEL;
+  if (selectedModel !== "gpt-chat-latest") {
+    return {
+      model: selectedModel,
+      escalationReason: null
+    };
   }
 
-  return selectedModel;
+  const escalationReason = getRecommendedProfileEscalationReason(state);
+
+  if (escalationReason !== null) {
+    return {
+      model: LATE_GAME_UPGRADE_MODEL,
+      escalationReason
+    };
+  }
+
+  return {
+    model: selectedModel,
+    escalationReason: null
+  };
+}
+
+function getRecommendedProfileEscalationReason(state: GameState): string | null {
+  if (state.questionCount >= LATE_GAME_UPGRADE_START_AFTER_QUESTIONS) {
+    return "late_game";
+  }
+
+  const answers = state.transcript.map((turn) => turn.answer);
+  const maybeCount = answers.filter((answer) => answer === "maybe").length;
+  const noCount = answers.filter((answer) => answer === "no").length;
+  const trailingNoCount = countTrailingAnswers(answers, "no");
+
+  if (
+    state.questionCount >= EARLY_UPGRADE_MIN_QUESTIONS_FOR_UNCERTAINTY &&
+    maybeCount >= EARLY_UPGRADE_MAYBE_COUNT
+  ) {
+    return "uncertain_path";
+  }
+
+  if (
+    state.questionCount >= EARLY_UPGRADE_MIN_QUESTIONS_FOR_EXHAUSTION &&
+    noCount >= EARLY_UPGRADE_NO_COUNT
+  ) {
+    return "branch_exhaustion";
+  }
+
+  if (
+    state.questionCount >= EARLY_UPGRADE_MIN_QUESTIONS_FOR_EXHAUSTION &&
+    trailingNoCount >= EARLY_UPGRADE_NO_STREAK
+  ) {
+    return "no_streak";
+  }
+
+  return null;
+}
+
+function countTrailingAnswers(answers: PlayerAnswer[], target: PlayerAnswer) {
+  let count = 0;
+
+  for (let index = answers.length - 1; index >= 0; index -= 1) {
+    if (answers[index] !== target) {
+      break;
+    }
+
+    count += 1;
+  }
+
+  return count;
 }
 
 function parseGameMasterMove(
