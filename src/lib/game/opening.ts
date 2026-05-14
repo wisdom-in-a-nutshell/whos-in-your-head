@@ -1,6 +1,7 @@
 import type { AiMove, PlayerAnswer } from "./ai-move";
 import type { GameReasoningEffort } from "./reasoning";
-import { DEFAULT_GAME_REASONING_EFFORT } from "./state";
+import { DEFAULT_GAME_MODEL, DEFAULT_GAME_REASONING_EFFORT } from "./state";
+import type { GameModel } from "./state";
 import type { GameState } from "./state";
 
 export const OPENING_QUESTION = "Is this person alive?";
@@ -27,10 +28,11 @@ export function isFirstOpeningAnswer(state: GameState): state is GameState & {
 
 export function createSharedOpeningAnswerState(
   answer: PlayerAnswer,
-  reasoningEffort: GameReasoningEffort = DEFAULT_GAME_REASONING_EFFORT
+  reasoningEffort: GameReasoningEffort = DEFAULT_GAME_REASONING_EFFORT,
+  model: GameModel = DEFAULT_GAME_MODEL
 ): GameState {
   return {
-    gameId: `shared-opening-${reasoningEffort}-${answer}`,
+    gameId: `shared-opening-${model}-${reasoningEffort}-${answer}`,
     phase: "asking",
     questionCount: 1,
     maxQuestions: 21,
@@ -43,6 +45,7 @@ export function createSharedOpeningAnswerState(
     latestQuestion: null,
     finalGuess: null,
     result: "unknown",
+    model,
     reasoningEffort,
     modelResponseId: null
   };

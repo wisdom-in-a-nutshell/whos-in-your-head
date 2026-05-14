@@ -82,6 +82,29 @@ describe("generateAiMove", () => {
     expect(request.reasoning).toEqual({ effort: "low" });
   });
 
+  it("uses the selected game model for normal model moves", async () => {
+    createMock.mockResolvedValue(createResponse({
+      id: "resp-model-test",
+      outputText: JSON.stringify({
+        action: "ask_question",
+        question: "Are they mainly known for entertainment?",
+        guess: null,
+        shortRationale: null
+      })
+    }));
+
+    const { generateAiMove } = await import("./game-master");
+    const state = createSharedOpeningAnswerState("yes", "low", "gpt-5.5");
+
+    const generated = await generateAiMove(state, "model-request");
+    const request = createMock.mock.calls[0][0] as Record<string, unknown>;
+
+    expect(generated.requestedModel).toBe("gpt-5.5");
+    expect(request).toMatchObject({
+      model: "gpt-5.5"
+    });
+  });
+
   it("uses medium reasoning for middle turns", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-medium-test",

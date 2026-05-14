@@ -96,6 +96,7 @@ export function recordGameStartedTelemetry({
       requestId,
       gameId: game.gameId,
       createdAt: new Date(),
+      model: game.model,
       reasoningEffort: game.reasoningEffort,
       questionCount: game.questionCount,
       routeDurationMs

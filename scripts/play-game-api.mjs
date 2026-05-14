@@ -41,7 +41,10 @@ try {
 }
 
 async function startGame() {
-  const data = await postTurn({ action: "start" });
+  const data = await postTurn({
+    action: "start",
+    ...(args.model ? { model: args.model } : {})
+  });
   await saveState(data.game);
   printTurn(data, "started");
 }
@@ -158,6 +161,7 @@ function summarizeGame(game) {
     gameId: game.gameId,
     phase: game.phase,
     questionCount: game.questionCount,
+    model: game.model,
     reasoningEffort: game.reasoningEffort,
     transcriptLength: game.transcript.length,
     latestQuestion: game.latestQuestion,
@@ -179,6 +183,9 @@ function parseArgs(rawArgs) {
       index += 1;
     } else if (arg === "--state-file") {
       parsed.stateFile = rawArgs[index + 1];
+      index += 1;
+    } else if (arg === "--model") {
+      parsed.model = rawArgs[index + 1];
       index += 1;
     } else {
       parsed._.push(arg);

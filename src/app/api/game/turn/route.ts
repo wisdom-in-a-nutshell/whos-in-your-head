@@ -127,13 +127,14 @@ export async function POST(request: Request) {
     if (parsed.data.action === "start") {
       const status = getOpenAIRuntimeStatus();
       const nextGame = applyAiMove(
-        createInitialGameState(status.reasoningEffort),
+        createInitialGameState(status.reasoningEffort, parsed.data.model),
         OPENING_MOVE
       );
-      warmOpeningMoveResponsesForReasoning(nextGame.reasoningEffort);
+      warmOpeningMoveResponsesForReasoning(nextGame.reasoningEffort, nextGame.model);
       logInfo("game_turn_started", {
         requestId,
         gameId: nextGame.gameId,
+        model: nextGame.model,
         reasoningEffort: nextGame.reasoningEffort,
         reasoningSchedule: "low:1-8,medium:9-16,late:17+",
         question: nextGame.latestQuestion,
@@ -403,7 +404,8 @@ function readWarmedOpeningGameState(
 
   const generated = readWarmedOpeningMove(
     game.transcript[0].answer,
-    game.reasoningEffort
+    game.reasoningEffort,
+    game.model
   );
 
   if (!generated || generated.move.action !== "ask_question") {
@@ -444,6 +446,7 @@ function logAnsweredTurn({
   logInfo("game_turn_answered", {
     requestId,
     gameId: game.gameId,
+    model: game.model,
     answeredQuestionCount: game.transcript.length,
     latestQuestion: game.transcript.at(-1)?.question ?? null,
     latestAnswer: answer,

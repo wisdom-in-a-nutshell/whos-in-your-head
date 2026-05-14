@@ -3,6 +3,25 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 const MAX_QUESTIONS = 21;
+const DEFAULT_GAME_MODEL = "gpt-5.4-mini";
+const gameModelOptions = [
+  {
+    value: "gpt-5.4-mini",
+    label: "GPT-5.4 Mini"
+  },
+  {
+    value: "gpt-5.4",
+    label: "GPT-5.4"
+  },
+  {
+    value: "gpt-5.5",
+    label: "GPT-5.5"
+  },
+  {
+    value: "gpt-chat-latest",
+    label: "GPT Chat Latest"
+  }
+] as const;
 
 const questionPrompts = [
   "Don’t overthink it",
@@ -102,6 +121,7 @@ function ThinkingDots() {
 
 type Phase = "start" | "asking" | "thinking" | "guessing" | "result";
 type Answer = "yes" | "no" | "maybe";
+type GameModel = (typeof gameModelOptions)[number]["value"];
 
 type Turn = {
   question: string;
@@ -117,6 +137,7 @@ type GameState = {
   latestQuestion: string | null;
   finalGuess: string | null;
   result: "unknown" | "correct" | "incorrect";
+  model: GameModel;
   reasoningEffort: string;
   modelResponseId: string | null;
 };
@@ -164,6 +185,7 @@ export default function Home() {
   const [phase, setPhase] = useState<Phase>("start");
   const [game, setGame] = useState<GameState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<GameModel>(DEFAULT_GAME_MODEL);
   const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus | null>(null);
   const [publicStats, setPublicStats] = useState<PublicStats | null>(null);
@@ -185,7 +207,8 @@ export default function Home() {
     questionPrompts[Math.max(0, questionNumber - 1) % questionPrompts.length];
   const thinkingPrompt = thinkingPrompts[answeredCount % thinkingPrompts.length];
   const currentPrompt = phase === "thinking" ? thinkingPrompt : questionPrompt;
-  const modelName = runtimeStatus ? formatModelName(runtimeStatus.model) : "the house model";
+  const activeModel = game?.model ?? selectedModel ?? runtimeStatus?.model ?? DEFAULT_GAME_MODEL;
+  const modelName = formatModelName(activeModel);
 
   useEffect(() => {
     let active = true;
@@ -268,7 +291,10 @@ export default function Home() {
     setPhase("thinking");
 
     try {
-      const nextGame = await postGameTurn({ action: "start" });
+      const nextGame = await postGameTurn({
+        action: "start",
+        model: selectedModel
+      });
       commitGame(nextGame);
     } catch (nextError) {
       setError(readErrorMessage(nextError));
@@ -407,6 +433,20 @@ export default function Home() {
               Keep them in your head. I get 21 questions and one final guess.
               You just say yes, no, or not sure.
             </p>
+            <label className="model-picker">
+              <span>Mind reader</span>
+              <select
+                aria-label="Choose model"
+                onChange={(event) => setSelectedModel(event.target.value as GameModel)}
+                value={selectedModel}
+              >
+                {gameModelOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button className="primary-action" onClick={startGame} type="button">
               I&apos;ve got someone
             </button>
@@ -626,7 +666,14 @@ function readErrorMessage(error: unknown): string {
 }
 
 function formatModelName(model: string): string {
-  return model.replace(/^gpt/i, "GPT");
+  if (model === "gpt-chat-latest") {
+    return "GPT Chat Latest";
+  }
+
+  return model
+    .replace(/^gpt/i, "GPT")
+    .replace("-mini", " Mini")
+    .replace("-nano", " Nano");
 }
 
 function formatPercent(value: number | null): string {
@@ -662,6 +709,7 @@ function getPreviewGame(): GameState | null {
     latestQuestion: null,
     finalGuess: missedGuess ? "Charles Darwin" : "Taylor Swift",
     result: missedGuess ? "incorrect" : "correct",
+    model: DEFAULT_GAME_MODEL,
     reasoningEffort: "high",
     modelResponseId: null
   };

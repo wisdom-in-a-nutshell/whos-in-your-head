@@ -44,6 +44,12 @@ Deployed Azure runtime should use
 `LLM_API_*` app settings backed by Key Vault references so the repo does not
 depend on ambient global OpenAI provider routing.
 
+Players can choose the game model at the start of a round. The public picker is
+allowlisted to `gpt-5.4-mini`, `gpt-5.4`, `gpt-5.5`, and `gpt-chat-latest`;
+`gpt-5.4-mini` is the UI default. The selected model is stored on the explicit
+game state and reused for the normal model path, opening warmup, retries, and
+telemetry.
+
 `LLM_FALLBACK_MODELS` is a comma- or newline-separated model chain. It is used
 only when the primary Responses call returns `status: "incomplete"` with
 `incomplete_details.reason: "content_filter"`. That shape is currently logged
@@ -110,6 +116,7 @@ Keep state inspectable:
 - `latestQuestion`
 - `finalGuess`
 - `result`
+- `model`
 - `modelResponseId`
 
 The MVP route keeps HTTP handling stateless, but model turns are linked with

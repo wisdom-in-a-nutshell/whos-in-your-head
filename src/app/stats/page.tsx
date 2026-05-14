@@ -160,5 +160,12 @@ function formatCompactNumber(value: number | null) {
 }
 
 function formatModelName(model: string) {
-  return model.replace(/^gpt/i, "GPT");
+  if (model === "gpt-chat-latest") {
+    return "GPT Chat Latest";
+  }
+
+  return model
+    .replace(/^gpt/i, "GPT")
+    .replace("-mini", " Mini")
+    .replace("-nano", " Nano");
 }

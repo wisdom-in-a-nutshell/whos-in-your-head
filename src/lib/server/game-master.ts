@@ -12,7 +12,7 @@ import {
   selectTurnReasoningEffort,
   type GameReasoningEffort
 } from "@/lib/game/reasoning";
-import type { GameState } from "@/lib/game/state";
+import { DEFAULT_GAME_MODEL, type GameModel, type GameState } from "@/lib/game/state";
 import { describeError, logError, logInfo, logWarn } from "./logging";
 import { getOpenAIRequestConfig } from "./openai";
 
@@ -65,22 +65,24 @@ export function isContentFilterIncompleteResponseError(
 }
 
 export function warmOpeningMoveResponses() {
-  warmOpeningMoveResponsesForReasoning("high");
+  warmOpeningMoveResponsesForReasoning("high", DEFAULT_GAME_MODEL);
 }
 
 export function warmOpeningMoveResponsesForReasoning(
-  reasoningEffort: GameReasoningEffort
+  reasoningEffort: GameReasoningEffort,
+  model: GameModel
 ) {
   for (const answer of OPENING_WARMUP_ANSWERS) {
-    warmOpeningMoveResponse(answer, reasoningEffort);
+    warmOpeningMoveResponse(answer, reasoningEffort, model);
   }
 }
 
 export function readWarmedOpeningMove(
   answer: PlayerAnswer,
-  reasoningEffort: GameReasoningEffort
+  reasoningEffort: GameReasoningEffort,
+  model: GameModel
 ): GeneratedAiMove | null {
-  return warmedOpenings.get(warmupKey(answer, reasoningEffort)) ?? null;
+  return warmedOpenings.get(warmupKey(answer, reasoningEffort, model)) ?? null;
 }
 
 export async function generateAiMove(
@@ -98,7 +100,7 @@ export async function generateAiMove(
     model: configuredModel,
     serviceTier
   } = getOpenAIRequestConfig(reasoningEffort);
-  const model = modelOverride ?? configuredModel;
+  const model = modelOverride ?? state.model ?? configuredModel;
 
   const bypassResponseCache = retryAttempt > 1;
   const usesPreviousResponse = state.modelResponseId !== null && !bypassResponseCache;
@@ -287,17 +289,18 @@ function parseGameMasterMove(
 
 function warmOpeningMoveResponse(
   answer: PlayerAnswer,
-  reasoningEffort: GameReasoningEffort
+  reasoningEffort: GameReasoningEffort,
+  model: GameModel
 ) {
-  const key = warmupKey(answer, reasoningEffort);
+  const key = warmupKey(answer, reasoningEffort, model);
 
   if (warmedOpenings.has(key) || openingWarmups.has(key)) {
     return;
   }
 
   const warmup = generateAiMove(
-    createSharedOpeningAnswerState(answer, reasoningEffort),
-    `opening-warmup-${reasoningEffort}-${answer}`
+    createSharedOpeningAnswerState(answer, reasoningEffort, model),
+    `opening-warmup-${model}-${reasoningEffort}-${answer}`
   )
     .then((generated) => {
       warmedOpenings.set(key, generated);
@@ -324,8 +327,8 @@ function warmOpeningMoveResponse(
   void warmup.catch(() => undefined);
 }
 
-function warmupKey(answer: PlayerAnswer, reasoningEffort: GameReasoningEffort) {
-  return `${reasoningEffort}:${answer}`;
+function warmupKey(answer: PlayerAnswer, reasoningEffort: GameReasoningEffort, model: GameModel) {
+  return `${model}:${reasoningEffort}:${answer}`;
 }
 
 function summarizeResponseUsage(usage: ResponseUsage | null) {

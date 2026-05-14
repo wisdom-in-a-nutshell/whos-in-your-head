@@ -9,10 +9,18 @@ import { gameReasoningEffortSchema, type GameReasoningEffort } from "./reasoning
 
 export const MAX_QUESTIONS = 21;
 export const DEFAULT_GAME_REASONING_EFFORT: GameReasoningEffort = "high";
+export const gameModelValues = [
+  "gpt-5.4-mini",
+  "gpt-5.4",
+  "gpt-5.5",
+  "gpt-chat-latest"
+] as const;
+export const DEFAULT_GAME_MODEL = "gpt-5.4-mini";
 
 export const gamePhaseSchema = z.enum(["asking", "guessing", "result"]);
 export const gameResultSchema = z.enum(["unknown", "correct", "incorrect"]);
 export const actualAnswerSchema = z.string().trim().min(1).max(160);
+export const gameModelSchema = z.enum(gameModelValues);
 
 export const answeredTurnSchema = z.object({
   question: z.string().trim().min(1).max(180),
@@ -29,6 +37,7 @@ export const gameStateSchema = z
     latestQuestion: z.string().trim().min(1).max(180).nullable(),
     finalGuess: z.string().trim().min(1).max(120).nullable(),
     result: gameResultSchema,
+    model: gameModelSchema.default(DEFAULT_GAME_MODEL),
     reasoningEffort: gameReasoningEffortSchema.default(DEFAULT_GAME_REASONING_EFFORT),
     modelResponseId: z.string().trim().min(1).nullable()
   })
@@ -36,7 +45,8 @@ export const gameStateSchema = z
 
 export const gameTurnRequestSchema = z.discriminatedUnion("action", [
   z.object({
-    action: z.literal("start")
+    action: z.literal("start"),
+    model: gameModelSchema.default(DEFAULT_GAME_MODEL)
   }),
   z.object({
     action: z.literal("answer"),
@@ -59,6 +69,7 @@ export type GamePhase = z.infer<typeof gamePhaseSchema>;
 export type GameResult = z.infer<typeof gameResultSchema>;
 export type AnsweredTurn = z.infer<typeof answeredTurnSchema>;
 export type GameState = z.infer<typeof gameStateSchema>;
+export type GameModel = z.infer<typeof gameModelSchema>;
 export type GameTurnRequest = z.infer<typeof gameTurnRequestSchema>;
 
 export class GameRuleError extends Error {
@@ -69,7 +80,8 @@ export class GameRuleError extends Error {
 }
 
 export function createInitialGameState(
-  reasoningEffort: GameReasoningEffort = DEFAULT_GAME_REASONING_EFFORT
+  reasoningEffort: GameReasoningEffort = DEFAULT_GAME_REASONING_EFFORT,
+  model: GameModel = DEFAULT_GAME_MODEL
 ): GameState {
   return {
     gameId: crypto.randomUUID(),
@@ -80,6 +92,7 @@ export function createInitialGameState(
     latestQuestion: null,
     finalGuess: null,
     result: "unknown",
+    model,
     reasoningEffort,
     modelResponseId: null
   };
@@ -180,6 +193,7 @@ export function buildModelGameSnapshot(state: GameState) {
     remainingQuestionSlots,
     latestUnansweredQuestion: state.latestQuestion,
     lastAnswer: state.transcript.at(-1)?.answer ?? null,
+    model: state.model,
     reasoningEffort: state.reasoningEffort,
     transcript: state.transcript
   };

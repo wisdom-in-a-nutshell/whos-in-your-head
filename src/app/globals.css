@@ -159,6 +159,44 @@ button {
   line-height: 1.55;
 }
 
+.model-picker {
+  display: inline-grid;
+  grid-template-columns: auto minmax(160px, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 5px 6px 5px 16px;
+  background: var(--surface);
+}
+
+.model-picker span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.model-picker select {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0 34px 0 12px;
+  font-size: 0.88rem;
+  font-weight: 850;
+}
+
+.model-picker select:focus-visible {
+  outline: 3px solid var(--highlight);
+  outline-offset: 3px;
+}
+
 .primary-action,
 .secondary-action,
 .answer-grid button {
@@ -680,6 +718,18 @@ button {
 
   .start-subtitle {
     font-size: 1rem;
+  }
+
+  .model-picker {
+    width: 100%;
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+    border-radius: 8px;
+    padding: 12px;
+  }
+
+  .model-picker select {
+    width: 100%;
   }
 
   .play-screen {
