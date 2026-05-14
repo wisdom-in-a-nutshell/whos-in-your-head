@@ -312,6 +312,7 @@ npm run telemetry -- model-stats --json --minutes 60
 npm run telemetry -- model-results --json --model gemini --minutes 60 --limit 12
 npm run telemetry -- token-stats --json --minutes 60
 npm run telemetry -- token-stats --plain --model gemini --minutes 30 --limit 8
+npm run telemetry -- summary --plain --minutes 30 --limit 8
 ```
 
 `misses` counts player-reported missed guesses by `actualAnswerReportedAt`.
@@ -327,7 +328,9 @@ intentionally do not include full transcripts by default. `token-stats`
 aggregates turn-level runtime telemetry from `whiyh_game_events`, including
 input, cached, output, reasoning, and total tokens, cache read rate, model
 duration, route duration, guesses, fallback turns, and recent sanitized turn
-samples.
+samples. `summary` combines the common operational snapshot into one call:
+completed-game aggregate, active-game count, per-model result stats, reported
+miss groups, token/cache stats, and recent completed games.
 
 ## Game Telemetry
 

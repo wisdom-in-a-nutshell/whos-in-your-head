@@ -33,6 +33,8 @@ try {
     data = await readModelResults(args);
   } else if (command === "token-stats") {
     data = await readTokenStats(args);
+  } else if (command === "summary") {
+    data = await readSummary(args);
   } else {
     throw usageError(`Unknown command: ${command}`);
   }
@@ -459,6 +461,89 @@ async function readTokenStats(args) {
   });
 }
 
+async function readSummary(args) {
+  return withTelemetryDb(args, async ({ db, dbName, since, until }) => {
+    const results = db.collection(RESULTS_COLLECTION);
+    const events = db.collection(EVENTS_COLLECTION);
+    const resultWindowQuery = {
+      completedAt: {
+        $gte: since,
+        $lte: until
+      }
+    };
+    const missWindowQuery = {
+      ...reportedAnswerQuery(),
+      actualAnswerReportedAt: {
+        $gte: since,
+        $lte: until
+      }
+    };
+    const tokenWindowQuery = {
+      eventType: "game_turn",
+      createdAt: {
+        $gte: since,
+        $lte: until
+      }
+    };
+
+    const [
+      summary,
+      modelStats,
+      reportedMissCount,
+      reportedMissGroups,
+      recentMisses,
+      tokenStats,
+      recentResults,
+      activeGames
+    ] = await Promise.all([
+      readCompletedSummary(results, resultWindowQuery),
+      readModelStatsList(results, resultWindowQuery, args.limit),
+      results.countDocuments(missWindowQuery),
+      readMissGroups(results, missWindowQuery, {
+        ...args,
+        groupBy: "model"
+      }),
+      results
+        .find(missWindowQuery, {
+          projection: resultProjection(),
+          sort: {
+            actualAnswerReportedAt: -1
+          },
+          limit: args.limit
+        })
+        .toArray(),
+      readTokenStatsList(events, tokenWindowQuery, args.limit),
+      results
+        .find(resultWindowQuery, {
+          projection: resultProjection(),
+          sort: {
+            completedAt: -1
+          },
+          limit: args.limit
+        })
+        .toArray(),
+      readActiveGameCount(events, results, until)
+    ]);
+
+    return {
+      window: buildWindow(args, since, until, "completedAt/game_turn.createdAt"),
+      db: buildDbInfo(dbName),
+      limit: args.limit,
+      active_games_5m: activeGames,
+      completed_summary: summary,
+      model_stats: modelStats,
+      reported_misses: {
+        count: reportedMissCount,
+        group_by: "model",
+        groups: reportedMissGroups,
+        recent: recentMisses.map(formatMiss)
+      },
+      token_stats: tokenStats,
+      recent_results: recentResults.map(formatResult)
+    };
+  });
+}
+
 async function withTelemetryDb(args, reader) {
   const mongoUri = process.env.MONGODB_URI?.trim();
   if (!mongoUri) {
@@ -485,6 +570,151 @@ async function withTelemetryDb(args, reader) {
   } finally {
     await client.close();
   }
+}
+
+async function readCompletedSummary(results, query) {
+  return (
+    (await results
+      .aggregate([
+        {
+          $match: query
+        },
+        {
+          $group: {
+            _id: null,
+            total_games: {
+              $sum: 1
+            },
+            correct_games: {
+              $sum: {
+                $cond: ["$correct", 1, 0]
+              }
+            },
+            incorrect_games: {
+              $sum: {
+                $cond: ["$correct", 0, 1]
+              }
+            },
+            reported_misses: {
+              $sum: {
+                $cond: [hasReportedAnswerExpression(), 1, 0]
+              }
+            },
+            average_questions: {
+              $avg: "$questionCount"
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            total_games: 1,
+            correct_games: 1,
+            incorrect_games: 1,
+            reported_misses: 1,
+            correct_rate: roundedRatio("$correct_games", "$total_games", 4),
+            reported_miss_rate: roundedRatio("$reported_misses", "$total_games", 4),
+            average_questions: {
+              $round: ["$average_questions", 2]
+            }
+          }
+        }
+      ])
+      .next()) ?? {
+      total_games: 0,
+      correct_games: 0,
+      incorrect_games: 0,
+      reported_misses: 0,
+      correct_rate: null,
+      reported_miss_rate: null,
+      average_questions: null
+    }
+  );
+}
+
+async function readModelStatsList(results, query, limit) {
+  return results
+    .aggregate([
+      {
+        $match: query
+      },
+      {
+        $group: modelStatsGroupStage()
+      },
+      {
+        $project: modelStatsProjectStage()
+      },
+      {
+        $sort: {
+          total_games: -1,
+          correct_games: -1,
+          model: 1
+        }
+      },
+      {
+        $limit: limit
+      }
+    ])
+    .toArray();
+}
+
+async function readTokenStatsList(events, query, limit) {
+  return events
+    .aggregate([
+      {
+        $match: query
+      },
+      {
+        $group: tokenStatsGroupStage()
+      },
+      {
+        $project: tokenStatsProjectStage()
+      },
+      {
+        $sort: {
+          turns: -1,
+          total_tokens: -1,
+          model: 1
+        }
+      },
+      {
+        $limit: limit
+      }
+    ])
+    .toArray();
+}
+
+async function readActiveGameCount(events, results, now) {
+  const since = new Date(now.getTime() - 5 * 60 * 1000);
+  const [completedGameIds, latestEvents] = await Promise.all([
+    results.distinct("gameId", {}),
+    events
+      .aggregate([
+        {
+          $match: {
+            gameId: {
+              $ne: null
+            },
+            createdAt: {
+              $gte: since,
+              $lte: now
+            }
+          }
+        },
+        {
+          $group: {
+            _id: "$gameId",
+            lastEventAt: {
+              $max: "$createdAt"
+            }
+          }
+        }
+      ])
+      .toArray()
+  ]);
+  const completed = new Set(completedGameIds);
+
+  return latestEvents.filter((event) => !completed.has(event._id)).length;
 }
 
 function tokenStatsGroupStage() {
@@ -773,6 +1003,23 @@ function formatResult(result) {
   };
 }
 
+function resultProjection() {
+  return {
+    _id: 0,
+    gameId: 1,
+    createdAt: 1,
+    completedAt: 1,
+    updatedAt: 1,
+    correct: 1,
+    actualAnswer: 1,
+    actualAnswerReportedAt: 1,
+    finalGuess: 1,
+    questionCount: 1,
+    finalModel: 1,
+    answerPath: 1
+  };
+}
+
 function formatTurn(turn) {
   const runtime = turn.runtime && typeof turn.runtime === "object" ? turn.runtime : {};
   const usage = runtime.usage && typeof runtime.usage === "object" ? runtime.usage : {};
@@ -986,6 +1233,29 @@ function emitPlain(result) {
     for (const turn of result.data.recent_turns) {
       console.log(
         `${turn.created_at_utc ?? "-"} model=${turn.actual_model ?? turn.requested_model ?? "-"} action=${turn.action ?? "-"} input=${turn.input_tokens ?? "-"} cached=${turn.cached_tokens ?? "-"} output=${turn.output_tokens ?? "-"} reasoning=${turn.reasoning_tokens ?? "-"} total=${turn.total_tokens ?? "-"} model_ms=${turn.model_duration_ms ?? "-"}`
+      );
+    }
+    return;
+  }
+
+  if (result.command === "game-telemetry.summary") {
+    const summary = result.data.completed_summary;
+    console.log(
+      `completed=${summary.total_games} correct=${summary.correct_games} incorrect=${summary.incorrect_games} correct_rate=${summary.correct_rate ?? "-"} reported_misses=${result.data.reported_misses.count} active_5m=${result.data.active_games_5m} since=${result.data.window.since_utc}`
+    );
+    for (const model of result.data.model_stats) {
+      console.log(
+        `model=${model.model ?? "-"} games=${model.total_games} correct=${model.correct_games} incorrect=${model.incorrect_games} reported_misses=${model.reported_misses} correct_rate=${model.correct_rate ?? "-"}`
+      );
+    }
+    for (const tokens of result.data.token_stats) {
+      console.log(
+        `tokens model=${tokens.model ?? "-"} turns=${tokens.turns} avg_total=${tokens.average_total_tokens ?? "-"} cache_rate=${tokens.cache_read_rate ?? "-"} avg_ms=${tokens.average_model_duration_ms ?? "-"}`
+      );
+    }
+    for (const game of result.data.recent_results) {
+      console.log(
+        `${game.completed_at_utc ?? "-"} correct=${game.correct} guessed=${game.final_guess ?? "-"} reported_answer=${game.reported_answer ?? "-"} questions=${game.question_count ?? "-"} model=${game.final_model ?? "-"}`
       );
     }
     return;

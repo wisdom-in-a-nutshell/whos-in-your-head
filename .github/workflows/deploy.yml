@@ -8,9 +8,19 @@ on:
       - ".codex/**"
       - "**/.agents/**"
       - "**/.codex/**"
+      - "**/*.md"
       - "docs/**"
-      - "**/README*.md"
       - "AGENTS.md"
+      - "**/*.test.ts"
+      - "**/*.test.tsx"
+      - "vitest.config.*"
+      - "scripts/check-fast.sh"
+      - "scripts/check-full.sh"
+      - "scripts/game-telemetry.mjs"
+      - "scripts/prod-logs.mjs"
+      - "src/app/api/stats/**"
+      - "src/app/stats/**"
+      - "src/lib/server/game-telemetry.ts"
   workflow_dispatch:
 
 permissions:

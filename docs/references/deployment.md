@@ -21,6 +21,12 @@ Deploy the app as a standalone Next.js container to Azure Web App.
 4. Build and push the Docker image to ACR.
 5. Update the Azure Web App container image.
 
+Push deploys intentionally ignore docs, tests, local telemetry/logging clients,
+and stats/telemetry-only app surfaces. This keeps frequent analysis and stats
+iteration from recycling the production Web App while people are playing. Use
+`workflow_dispatch` for an explicit manual deploy when a telemetry or stats
+change should go live.
+
 Azure identifiers are GitHub repo variables:
 
 - `AZURE_CLIENT_ID`
