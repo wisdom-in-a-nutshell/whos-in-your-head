@@ -173,6 +173,7 @@ type GameTurnResponse =
     };
 
 type ActualAnswerStatus = "idle" | "sending" | "sent" | "error";
+type ShareStatus = "idle" | "copied" | "shared" | "error";
 
 type RuntimeStatus = {
   model: string;
@@ -212,6 +213,7 @@ export default function Home() {
   const [actualAnswerStatus, setActualAnswerStatus] =
     useState<ActualAnswerStatus>("idle");
   const [actualAnswerError, setActualAnswerError] = useState<string | null>(null);
+  const [shareStatus, setShareStatus] = useState<ShareStatus>("idle");
   const pendingTurnRef = useRef(false);
 
   const progressMarks = useMemo(
@@ -228,6 +230,10 @@ export default function Home() {
   const currentPrompt = phase === "thinking" ? thinkingPrompt : questionPrompt;
   const activeModel = game?.model ?? selectedModel ?? runtimeStatus?.model ?? DEFAULT_GAME_MODEL;
   const modelName = formatModelName(activeModel);
+  const shareText = game ? formatShareText(game) : "";
+  const shareUrl = getShareUrl();
+  const xShareUrl = getXShareUrl(shareText, shareUrl);
+  const redditShareUrl = getRedditShareUrl(shareText, shareUrl);
 
   useEffect(() => {
     let active = true;
@@ -307,6 +313,7 @@ export default function Home() {
     setActualAnswer("");
     setActualAnswerStatus("idle");
     setActualAnswerError(null);
+    setShareStatus("idle");
     setPhase("thinking");
 
     try {
@@ -409,6 +416,48 @@ export default function Home() {
     } catch (nextError) {
       setActualAnswerStatus("error");
       setActualAnswerError(readErrorMessage(nextError));
+    }
+  }
+
+  async function shareResult() {
+    if (!game || game.phase !== "result") {
+      return;
+    }
+
+    setShareStatus("idle");
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Who's In Your Head?",
+          text: shareText,
+          url: shareUrl
+        });
+        setShareStatus("shared");
+        return;
+      }
+
+      await copyShareText(shareText, shareUrl);
+      setShareStatus("copied");
+    } catch (shareError) {
+      if (shareError instanceof DOMException && shareError.name === "AbortError") {
+        return;
+      }
+
+      setShareStatus("error");
+    }
+  }
+
+  async function copyResult() {
+    if (!game || game.phase !== "result") {
+      return;
+    }
+
+    try {
+      await copyShareText(shareText, shareUrl);
+      setShareStatus("copied");
+    } catch {
+      setShareStatus("error");
     }
   }
 
@@ -641,9 +690,38 @@ export default function Home() {
               ) : null}
             </form>
           ) : null}
-          <button className="primary-action" onClick={startGame} type="button">
-            Play again
-          </button>
+          <div className="result-actions">
+            <button className="primary-action" onClick={startGame} type="button">
+              Play again
+            </button>
+            <button className="secondary-action" onClick={shareResult} type="button">
+              Share result
+            </button>
+          </div>
+          <div className="share-actions" aria-label="Share result links">
+            <button className="secondary-action" onClick={copyResult} type="button">
+              Copy text
+            </button>
+            <a
+              className="secondary-action"
+              href={xShareUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              Post on X
+            </a>
+            <a
+              className="secondary-action"
+              href={redditShareUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              Post on Reddit
+            </a>
+          </div>
+          {shareStatus !== "idle" ? (
+            <p className="share-note">{formatShareStatus(shareStatus)}</p>
+          ) : null}
           <div className="result-meta">
             {publicStats && publicStats.totalGames > 0 ? (
               <p>
@@ -729,6 +807,88 @@ function formatPercent(value: number | null): string {
   }
 
   return `${Math.round(value * 100)}%`;
+}
+
+function formatShareText(game: GameState): string {
+  const questionLabel =
+    game.questionCount === 1 ? "1 question" : `${game.questionCount} questions`;
+
+  if (game.result === "correct" && game.finalGuess) {
+    return `The AI guessed ${game.finalGuess} in ${questionLabel}. Think of someone famous and see if it can read your mind.`;
+  }
+
+  if (game.result === "incorrect") {
+    return `I beat the AI in Who's In Your Head. It had ${questionLabel} and still missed.`;
+  }
+
+  return "Think of someone famous. The AI has 21 questions and one guess.";
+}
+
+function getShareUrl() {
+  if (typeof window === "undefined") {
+    return "https://mindreader.adithyan.io";
+  }
+
+  return window.location.origin;
+}
+
+function getXShareUrl(text: string, url: string) {
+  const params = new URLSearchParams({
+    text,
+    url
+  });
+
+  return `https://twitter.com/intent/tweet?${params.toString()}`;
+}
+
+function getRedditShareUrl(text: string, url: string) {
+  const params = new URLSearchParams({
+    url,
+    title: text
+  });
+
+  return `https://www.reddit.com/submit?${params.toString()}`;
+}
+
+async function copyShareText(text: string, url: string) {
+  const shareCopy = `${text}\n${url}`;
+
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(shareCopy);
+      return;
+    } catch {
+      // Fall through to the selection-based copy path for embedded browsers.
+    }
+  }
+
+  const textArea = document.createElement("textarea");
+  textArea.value = shareCopy;
+  textArea.setAttribute("readonly", "");
+  textArea.style.position = "fixed";
+  textArea.style.left = "-9999px";
+  textArea.style.top = "0";
+  document.body.append(textArea);
+  textArea.select();
+
+  const copied = document.execCommand("copy");
+  textArea.remove();
+
+  if (!copied) {
+    throw new Error("Copy failed");
+  }
+}
+
+function formatShareStatus(status: ShareStatus) {
+  if (status === "shared") {
+    return "Shared.";
+  }
+
+  if (status === "copied") {
+    return "Copied. Send it to a friend.";
+  }
+
+  return "Could not copy. Use the social buttons.";
 }
 
 function getPreviewGame(): GameState | null {

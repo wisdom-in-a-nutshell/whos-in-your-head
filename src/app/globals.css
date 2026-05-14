@@ -386,7 +386,9 @@ button {
 }
 
 .answer-grid,
-.guess-actions {
+.guess-actions,
+.result-actions,
+.share-actions {
   display: grid;
   gap: 14px;
 }
@@ -422,9 +424,31 @@ button {
   gap: 22px;
 }
 
-.guess-actions {
+.guess-actions,
+.result-actions {
   grid-template-columns: repeat(2, minmax(150px, 1fr));
   margin-top: 10px;
+}
+
+.result-actions {
+  width: min(430px, 100%);
+}
+
+.share-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: min(560px, 100%);
+}
+
+.share-actions .secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0 16px;
+  color: var(--ink);
+  font-size: 0.92rem;
+  text-align: center;
+  text-decoration: none;
 }
 
 .guess-stat {
@@ -440,7 +464,8 @@ button {
 }
 
 .actual-answer-form label,
-.actual-answer-saved {
+.actual-answer-saved,
+.share-note {
   margin: 0;
   color: var(--muted);
   font-size: 0.86rem;
@@ -478,6 +503,10 @@ button {
 }
 
 .actual-answer-saved {
+  color: var(--ink);
+}
+
+.share-note {
   color: var(--ink);
 }
 
@@ -806,6 +835,8 @@ button {
 
   .answer-grid,
   .guess-actions,
+  .result-actions,
+  .share-actions,
   .actual-answer-row {
     grid-template-columns: 1fr;
   }
@@ -813,6 +844,7 @@ button {
   .answer-grid button,
   .primary-action,
   .secondary-action,
+  .share-actions .secondary-action,
   .actual-answer-row input {
     width: 100%;
     min-height: 58px;
