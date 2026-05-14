@@ -170,6 +170,27 @@ describe("GAME_MASTER_INSTRUCTIONS", () => {
     );
     expect(input).toContain("fictional character or screen persona");
   });
+
+  it("does not ask the persona boundary just because a music split mentions acting", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "yes"],
+      ["Is this person primarily famous for entertainment or media?", "yes"],
+      ["Is this person best known as a performer rather than a creator?", "yes"],
+      [
+        "Is this person primarily known for music rather than acting, comedy, or hosting?",
+        "yes"
+      ],
+      ["Is this person primarily associated with English-language music?", "yes"],
+      ["Did this person first become famous before 2010?", "no"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).not.toContain(
+      "mixing a real performer with a famous character or screen persona"
+    );
+    expect(input).not.toContain("fictional character or screen persona");
+  });
 });
 
 function createAnsweredState(turns: Array<[string, AnsweredTurn["answer"]]>): GameState {

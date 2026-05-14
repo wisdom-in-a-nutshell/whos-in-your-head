@@ -635,8 +635,8 @@ function isFictionalPersonaAmbiguityCluster(
       question
     )
   );
-  const personaProneMedium = asked.some((question) =>
-    /(screen acting|acting|television|film|comedy|sitcom|series|cartoon|animation|comics|superhero|masked crime-fighter|video game|fictional world)/.test(
+  const personaProneMedium = answeredYes.some((question) =>
+    /(known for acting|acting rather than|acting on screen|screen actor|screen acting|film acting|television acting|television or film|movies rather than television|television rather than movies|associated with comedy|scripted sitcom|iconic.*series|cartoon|animation|comics|superhero|masked crime-fighter|video game|fictional world)/.test(
       question
     )
   );
