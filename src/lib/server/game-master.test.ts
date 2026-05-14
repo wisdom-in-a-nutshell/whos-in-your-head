@@ -87,8 +87,12 @@ describe("generateAiMove", () => {
     expect(request.reasoning).toEqual({ effort: "low" });
     expect(request.text).toEqual(
       expect.objectContaining({
-        verbosity: "low",
         format: expect.any(Object)
+      })
+    );
+    expect(request.text).not.toEqual(
+      expect.objectContaining({
+        verbosity: expect.any(String)
       })
     );
   });

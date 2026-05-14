@@ -150,7 +150,6 @@ export async function generateAiMove(
         }
       : {}),
     text: {
-      ...(useReasoningControls ? { verbosity: "low" as const } : {}),
       format: zodTextFormat(aiMoveSchema, AI_MOVE_FORMAT_NAME, {
         description:
           "The next game-master move: either one yes/no-compatible question or one final famous-person guess."

@@ -63,12 +63,13 @@ as a successful LiteLLM `/responses` call instead of a router
 deterministic per-turn reasoning schedule for telemetry and future product
 experiments: turns generated after questions 1-8 map to `low`, turns after
 questions 9-16 map to `medium`, and turns after question 17+ map to
-`LLM_REASONING_EFFORT`. The live game-master request sends
-request-level `reasoning.effort` and `text.verbosity` only for
-`gpt-5.4-mini`, where the route supports those controls. The default
-`gpt-chat-latest` route stays on its native fast path and relies on LiteLLM
-route-level parameter dropping for unsupported provider knobs. The stable prompt
-prefix, `prompt_cache_key`, and Responses state chain stay the same.
+`LLM_REASONING_EFFORT`. The live game-master request sends request-level
+`reasoning.effort` only for `gpt-5.4-mini`, where the route supports that
+control. The app does not send `text.verbosity`; strict structured output
+already keeps the response compact. The default `gpt-chat-latest` route stays
+on its native fast path and relies on LiteLLM route-level parameter dropping for
+unsupported provider knobs. The stable prompt prefix, `prompt_cache_key`, and
+Responses state chain stay the same.
 
 `LLM_SERVICE_TIER` accepts `auto`, `default`, or `priority`; the default is
 `priority`. The value is sent as the Responses API request-level `service_tier`,
