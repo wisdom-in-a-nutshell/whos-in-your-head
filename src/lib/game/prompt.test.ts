@@ -23,4 +23,15 @@ describe("GAME_MASTER_INSTRUCTIONS", () => {
       /A very famous candidate\s+should not be eliminated by one noisy answer/
     );
   });
+
+  it("allows person-like cultural figures without opening all fictional characters", () => {
+    expect(GAME_MASTER_INSTRUCTIONS).toMatch(
+      /widely recognized\s+person-like cultural figures are allowed/
+    );
+    expect(GAME_MASTER_INSTRUCTIONS).toContain("Santa Claus");
+    expect(GAME_MASTER_INSTRUCTIONS).toContain("Sinterklaas");
+    expect(GAME_MASTER_INSTRUCTIONS).toContain(
+      "Do not open the full fictional-character universe by default."
+    );
+  });
 });
