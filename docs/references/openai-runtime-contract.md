@@ -142,6 +142,13 @@ including the last `modelResponseId`. The server validates the shape and turn
 rules before applying the next transition, then sends `previous_response_id`
 when asking the model for the next move.
 
+The `answer` action is idempotent within a short server-runtime window. If the
+same browser state and same answer are submitted again while the first model
+turn is in flight, or shortly after a lost response, the route replays the same
+generated result instead of starting a second OpenAI request or recording a
+duplicate game-turn telemetry event. Failed model turns are not cached, so the
+player can retry the same preserved answer state after an error.
+
 ## Structured Model Move
 
 Use a root object schema because the OpenAI SDK's Zod text format helper expects a root object for Structured Outputs:

@@ -35,9 +35,22 @@ import {
   recordGameTurnTelemetry
 } from "@/lib/server/game-telemetry";
 import { describeError, logError, logInfo, logWarn } from "@/lib/server/logging";
+import { PromiseReplayCache } from "@/lib/server/replay-cache";
+import type { PlayerAnswer } from "@/lib/game/ai-move";
 
 export const runtime = "nodejs";
 const MODEL_MOVE_ATTEMPTS = 2;
+const ANSWER_TURN_REPLAY_TTL_MS = 2 * 60 * 1000;
+const ANSWER_TURN_REPLAY_MAX_ENTRIES = 500;
+type AnswerTurnGeneration = {
+  generated: GeneratedAiMove;
+  nextGame: GameState;
+  source: string;
+};
+const answerTurnReplayCache = new PromiseReplayCache<AnswerTurnGeneration>({
+  ttlMs: ANSWER_TURN_REPLAY_TTL_MS,
+  maxEntries: ANSWER_TURN_REPLAY_MAX_ENTRIES
+});
 
 export function GET() {
   return NextResponse.json({
@@ -220,27 +233,35 @@ export async function POST(request: Request) {
       );
     }
 
-    const game = recordPlayerAnswer(parsed.data.state, parsed.data.answer);
-    const { generated, nextGame, source } = await generateNextGameState(game, requestId);
+    if (parsed.data.action !== "answer") {
+      throw new GameRuleError("Unsupported game turn action.");
+    }
+
+    const answerRequest = parsed.data;
+    const answerTurn = answerTurnReplayCache.getOrCreate(
+      buildAnswerTurnReplayKey(answerRequest.state, answerRequest.answer),
+      () =>
+        generateAnsweredTurn({
+          state: answerRequest.state,
+          answer: answerRequest.answer,
+          requestId,
+          startedAt
+        })
+    );
+
+    if (answerTurn.replayed) {
+      logInfo("game_turn_answer_replayed", {
+        requestId,
+        gameId: answerRequest.state.gameId,
+        questionCount: answerRequest.state.questionCount,
+        transcriptLength: answerRequest.state.transcript.length,
+        answer: answerRequest.answer,
+        routeDurationMs: Date.now() - startedAt
+      });
+    }
+
+    const { generated, nextGame, source } = await answerTurn.promise;
     const move = generated.move;
-    logAnsweredTurn({
-      requestId,
-      game,
-      answer: parsed.data.answer,
-      generated,
-      nextGame,
-      source,
-      routeDurationMs: Date.now() - startedAt
-    });
-    recordGameTurnTelemetry({
-      requestId,
-      game,
-      answer: parsed.data.answer,
-      generated,
-      nextGame,
-      source,
-      routeDurationMs: Date.now() - startedAt
-    });
 
     return NextResponse.json({
       ok: true,
@@ -293,6 +314,47 @@ export async function POST(request: Request) {
       { status: isRuleError ? 409 : 502 }
     );
   }
+}
+
+async function generateAnsweredTurn({
+  state,
+  answer,
+  requestId,
+  startedAt
+}: {
+  state: GameState;
+  answer: PlayerAnswer;
+  requestId: string;
+  startedAt: number;
+}): Promise<AnswerTurnGeneration> {
+  const game = recordPlayerAnswer(state, answer);
+  const { generated, nextGame, source } = await generateNextGameState(game, requestId);
+  const routeDurationMs = Date.now() - startedAt;
+
+  logAnsweredTurn({
+    requestId,
+    game,
+    answer,
+    generated,
+    nextGame,
+    source,
+    routeDurationMs
+  });
+  recordGameTurnTelemetry({
+    requestId,
+    game,
+    answer,
+    generated,
+    nextGame,
+    source,
+    routeDurationMs
+  });
+
+  return {
+    generated,
+    nextGame,
+    source
+  };
 }
 
 async function generateNextGameState(
@@ -605,4 +667,22 @@ function readBodyState(body: unknown): GameState | null {
   const parsed = gameStateSchema.safeParse(body.state);
 
   return parsed.success ? parsed.data : null;
+}
+
+export function buildAnswerTurnReplayKey(state: GameState, answer: PlayerAnswer) {
+  return JSON.stringify({
+    gameId: state.gameId,
+    phase: state.phase,
+    questionCount: state.questionCount,
+    maxQuestions: state.maxQuestions,
+    transcript: state.transcript,
+    latestQuestion: state.latestQuestion,
+    finalGuess: state.finalGuess,
+    result: state.result,
+    model: state.model,
+    reasoningEffort: state.reasoningEffort,
+    modelResponseId: state.modelResponseId,
+    modelResponseModel: state.modelResponseModel,
+    answer
+  });
 }
