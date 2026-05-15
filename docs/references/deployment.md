@@ -45,8 +45,8 @@ Runtime LLM config lives on the Azure Web App as Key Vault references:
 
 Non-secret runtime defaults:
 
-- `LLM_MODEL=gpt-5.5`
-- `LLM_FALLBACK_MODELS=claude-sonnet-4-6`
+- `LLM_MODEL=gpt-chat-latest`
+- `LLM_FALLBACK_MODELS=` with only GPT-family models if fallback is needed
 - `LLM_REASONING_EFFORT=high`
 - `LLM_SERVICE_TIER=priority`
 - `MONGODB_DB_NAME=content_production`

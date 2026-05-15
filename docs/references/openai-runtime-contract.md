@@ -44,40 +44,33 @@ Deployed Azure runtime should use
 `LLM_API_*` app settings backed by Key Vault references so the repo does not
 depend on ambient global OpenAI provider routing.
 
-The public game defaults to `gpt-chat-latest`. The picker exposes only the live
-model allowlist for playable rounds and keeps unavailable models disabled in the
-UI. Empty, unknown, shorthand, stale, or otherwise invalid model values fall
-back to `gpt-chat-latest` instead of failing a public game request.
+The public game defaults to `gpt-chat-latest`. The picker exposes only the two
+GPT product paths for playable rounds. Empty, unknown, shorthand, stale,
+Gemini, Claude, unsupported GPT, or otherwise invalid model values fall back to
+`gpt-chat-latest` instead of failing a public game request.
 
 The home page accepts a `model` query parameter to preselect a live model before
 a round starts. The selected model is stored in game state and reused for later
 turns unless the submitted value is invalid and the schema falls back to the
-default. Gemini routes are treated as OpenAI-compatible LiteLLM routes, but
-their response ids are not reused for future `previous_response_id`
-continuation.
+default. The only public selectable model ids are `gpt-chat-latest` and the
+fast GPT path `gpt-5.4-mini`.
 
-`LLM_FALLBACK_MODELS` is a comma- or newline-separated model chain. It is used
-only when the primary Responses call returns `status: "incomplete"` with
-`incomplete_details.reason: "content_filter"`. That shape is currently logged
-as a successful LiteLLM `/responses` call instead of a router
+`LLM_FALLBACK_MODELS` is a comma- or newline-separated model chain. It accepts
+only the two supported GPT product ids: `gpt-chat-latest` and `gpt-5.4-mini`.
+It is used only when the primary Responses call returns `status: "incomplete"`
+with `incomplete_details.reason: "content_filter"`. That shape is currently
+logged as a successful LiteLLM `/responses` call instead of a router
 `ContentPolicyViolationError`, so the app owns this narrow fallback case.
 
 `LLM_REASONING_EFFORT` accepts `none`, `minimal`, `low`, `medium`, `high`, or
-`xhigh`; the code default is `high` for this game. The runtime still computes a
-deterministic per-turn reasoning schedule for telemetry and future product
-experiments: turns generated after questions 1-8 map to `low`, turns after
-questions 9-16 map to `medium`, and turns after question 17+ map to
-`LLM_REASONING_EFFORT`. Gemini Flash Lite is the exception: when selected, the
-OpenAI-compatible LiteLLM request sends `reasoning_effort: "medium"` through
-the move generated after question 11, then `reasoning_effort: "high"` from the
-move generated after question 12 onward. This keeps early Gemini turns fast while
-spending high thinking only once the transcript should be narrow enough to make
-it valuable. LiteLLM maps that OpenAI-compatible field to Gemini 3 thinking
-levels. Other OpenAI-compatible models do not receive explicit
-request-level `reasoning.effort` or `text.verbosity`; strict structured output
-already keeps those responses compact, and provider defaults keep the selectable
-models on their native paths. The stable prompt prefix, `prompt_cache_key`, and
-Responses state chain stay the same.
+`xhigh`; the code default is `high` for this game. The runtime computes a
+deterministic per-turn reasoning schedule for telemetry and GPT experiments:
+turns generated after questions 1-8 map to `low`, turns after questions 9-16
+map to `medium`, and turns after question 17+ map to `LLM_REASONING_EFFORT`.
+The game-master request does not send explicit request-level
+`reasoning.effort` or `text.verbosity`; strict structured output keeps
+responses compact, and provider defaults keep the GPT paths stable. The stable
+prompt prefix, `prompt_cache_key`, and Responses state chain stay the same.
 
 `LLM_SERVICE_TIER` accepts `auto`, `default`, or `priority`; the default is
 `priority`. The value is sent as the Responses API request-level `service_tier`,
@@ -86,28 +79,12 @@ the Azure deployment-level setting.
 
 ## Provider Architecture
 
-The game has one app-owned turn API and provider-native model adapters behind
-it.
-
-- OpenAI-family models use the Responses API with Structured Outputs,
-  `previous_response_id`, `prompt_cache_key`, and `prompt_cache_retention`.
-- Claude-family models use the official Anthropic TypeScript SDK and the
-  Messages API directly. The Claude path uses `messages.parse()` with
-  `output_config.format`/Zod structured output, `thinking: { type:
-  "adaptive" }`, and an explicit cache breakpoint on the stable system prompt.
-  Claude Messages are stateless, so the app rebuilds from explicit game state
-  on every Claude turn and does not set `modelResponseId`.
-
-Claude runtime config intentionally uses the same LiteLLM proxy settings as the
-OpenAI-family path:
-
-- `LLM_API_KEY`
-- `LLM_API_ENDPOINT`
-
-The Anthropic SDK receives `LLM_API_ENDPOINT` with a trailing `/v1` stripped so
-it can call LiteLLM's Anthropic-compatible `/v1/messages` passthrough. Do not
-add separate app-level provider-specific env names unless the project
-intentionally decides to bypass LiteLLM later.
+The game has one app-owned turn API and one model adapter behind it: GPT-family
+models use the OpenAI Responses API with Structured Outputs,
+`previous_response_id`, `prompt_cache_key`, and `prompt_cache_retention`.
+Gemini, Claude, and unsupported GPT provider paths are intentionally not
+supported. Stale public model inputs and unsupported fallback config are
+normalized away rather than routed.
 
 Keep the provider adapters narrow. The app owns game state, retries, rule
 enforcement, telemetry, and result handling; providers only propose the next
@@ -212,10 +189,9 @@ model turns; the next turn rebuilds from transcript rather than crossing model
 response chains.
 
 The server only stores response ids that begin with `resp_` for future
-`previous_response_id` use on models known to support that continuation path.
-Gemini routes and chat-completions-shaped provider ids such as `chatcmpl-...`
-are still accepted after schema validation, but the next turn rebuilds from the
-explicit transcript instead of sending that id to the Responses API.
+`previous_response_id` use. Chat-completions-shaped provider ids such as
+`chatcmpl-...` are accepted after schema validation, but the next turn rebuilds
+from the explicit transcript instead of sending that id to the Responses API.
 
 OpenAI's GPT-5.5 guidance says to use the Responses API, Structured Outputs,
 conversation state, prompt caching, and static prompt prefixes for this style
@@ -235,14 +211,14 @@ provider state, switch to manual context management by sending the prior output
 items back instead of the response id.
 
 The first public question is local so the round starts instantly. On `start`,
-the server asynchronously prewarms shared model responses for the common `yes`
-and `no` answers to that opener. If the player spends even a short moment on
-the first question, answering `yes` or `no` can reuse the warmed model move and
-response id instead of waiting for a fresh model call. The rare `maybe` branch
-uses the normal model path. The warmed response ids contain only the generic
-opener transcript (`Is this person alive?` plus `yes` or `no`), not a
-player-specific target. Player games still keep unique `gameId` values and
-branch into unique model response chains after the next answer.
+the server asynchronously prewarms the shared model response for the common
+`yes` answer to that opener. `No` uses a second deterministic local boundary
+question to split real deceased humans from fictional, legendary, holiday,
+religious, video-game, folklore, or screen-persona figures. The rare `maybe`
+branch uses the normal model path. Warmed response ids contain only the generic
+opener transcript (`Is this person alive?` plus `yes`), not a player-specific
+target. Player games still keep unique `gameId` values and branch into unique
+model response chains after the next answer.
 
 Local smoke on 2026-05-13 showed that prompt caching is supported through the
 current LiteLLM/Azure path when a stable user-message prefix is followed by a
@@ -308,10 +284,9 @@ npm run telemetry -- misses --json --minutes 30 --model gpt --limit 8 --include-
 npm run telemetry -- misses --json --minutes 30 --limit 8 --include-transcript
 npm run telemetry -- misses --json --minutes 60 --group-by model
 npm run telemetry -- model-stats --json --minutes 60
-npm run telemetry -- model-results --json --model gemini --minutes 60 --limit 12
 npm run telemetry -- model-results --json --model gpt --minutes 60 --limit 8 --include-transcript
 npm run telemetry -- token-stats --json --minutes 60
-npm run telemetry -- token-stats --plain --model gemini --minutes 30 --limit 8
+npm run telemetry -- token-stats --plain --model gpt --minutes 30 --limit 8
 npm run telemetry -- dropoffs --plain --minutes 60 --limit 10
 npm run telemetry -- summary --plain --minutes 30 --limit 8
 ```

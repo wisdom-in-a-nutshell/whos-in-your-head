@@ -3,12 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 const MAX_QUESTIONS = 21;
-const liveGameModelValues = [
-  "gpt-chat-latest",
-  "gpt-5.4-mini",
-  "gemini-3.1-flash-lite",
-  "claude-sonnet-4-6"
-] as const;
+const liveGameModelValues = ["gpt-chat-latest", "gpt-5.4-mini"] as const;
 const DEFAULT_GAME_MODEL = "gpt-chat-latest";
 const gameModelOptions = [
   {
@@ -18,36 +13,8 @@ const gameModelOptions = [
   },
   {
     value: "gpt-5.4-mini",
-    label: "GPT-5.4 Mini",
+    label: "GPT-5 Instant",
     disabled: false
-  },
-  {
-    value: "gemini-3.1-flash-lite",
-    label: "Gemini Flash Lite",
-    disabled: false
-  },
-  {
-    value: "gpt-5.4",
-    label: "GPT-5.4",
-    suffix: "coming soon",
-    disabled: true
-  },
-  {
-    value: "gpt-5.5",
-    label: "GPT-5.5",
-    suffix: "coming soon",
-    disabled: true
-  },
-  {
-    value: "claude-sonnet-4-6",
-    label: "Claude Sonnet",
-    disabled: false
-  },
-  {
-    value: "claude-opus-4-6",
-    label: "Claude Opus",
-    suffix: "coming soon",
-    disabled: true
   }
 ] as const;
 const questionPrompts = [
@@ -531,16 +498,10 @@ export default function Home() {
                     <option value="gpt-chat-latest">GPT Chat Latest</option>
                   </optgroup>
                   <optgroup label="Available">
-                    <option value="gpt-5.4-mini">GPT-5.4 Mini</option>
-                    <option value="gemini-3.1-flash-lite">Gemini Flash Lite</option>
-                    <option value="claude-sonnet-4-6">Claude Sonnet</option>
-                  </optgroup>
-                  <optgroup label="Coming soon">
                     {gameModelOptions
-                      .filter((option) => option.disabled)
+                      .filter((option) => option.value !== "gpt-chat-latest")
                       .map((option) => (
                         <option
-                          disabled
                           key={option.value}
                           value={option.value}
                         >
@@ -784,16 +745,8 @@ function formatModelName(model: string): string {
     return "GPT Chat Latest";
   }
 
-  if (model === "gemini-3.1-flash-lite") {
-    return "Gemini Flash Lite";
-  }
-
-  if (model === "claude-4.6-sonnet" || model === "claude-sonnet-4-6") {
-    return "Claude Sonnet";
-  }
-
-  if (model === "claude-4.6-opus" || model === "claude-opus-4-6") {
-    return "Claude Opus";
+  if (model === "gpt-5.4-mini") {
+    return "GPT-5 Instant";
   }
 
   return model

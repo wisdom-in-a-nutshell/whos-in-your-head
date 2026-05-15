@@ -30,6 +30,21 @@ describe("verifyLateAiMove", () => {
   beforeEach(() => {
     createMock.mockReset();
     delete process.env.LATE_VERIFIER_MODEL;
+    process.env.LATE_VERIFIER_ENABLED = "true";
+  });
+
+  it("is disabled unless explicitly enabled", async () => {
+    delete process.env.LATE_VERIFIER_ENABLED;
+    const { verifyLateAiMove } = await import("./late-verifier");
+
+    const result = await verifyLateAiMove(
+      createAnsweredState(18),
+      generatedGuess("Dr. Phil"),
+      "disabled-request"
+    );
+
+    expect(result).toBeNull();
+    expect(createMock).not.toHaveBeenCalled();
   });
 
   it("returns no override for early guesses", async () => {
@@ -46,7 +61,7 @@ describe("verifyLateAiMove", () => {
   });
 
   it("uses structured output and the configured verifier model", async () => {
-    process.env.LATE_VERIFIER_MODEL = "gpt-5.5";
+    process.env.LATE_VERIFIER_MODEL = "gpt-5.4-mini";
     createMock.mockResolvedValue(createResponse({
       outputText: JSON.stringify({
         candidates: [candidate("Dr. Phil")],
@@ -68,7 +83,7 @@ describe("verifyLateAiMove", () => {
 
     expect(result).toBeNull();
     expect(request).toMatchObject({
-      model: "gpt-5.5",
+      model: "gpt-5.4-mini",
       instructions: expect.stringContaining("late-game verifier"),
       store: true,
       prompt_cache_key: "whos-in-your-head-late-verifier-v1"
@@ -79,6 +94,32 @@ describe("verifyLateAiMove", () => {
         format: expect.any(Object)
       })
     );
+  });
+
+  it("falls an unsupported verifier model back to GPT Chat Latest", async () => {
+    process.env.LATE_VERIFIER_MODEL = "gpt-5.5";
+    createMock.mockResolvedValue(createResponse({
+      outputText: JSON.stringify({
+        candidates: [candidate("Dr. Phil")],
+        verdict: "approve_guess",
+        guess: null,
+        question: null,
+        shortRationale: null
+      })
+    }));
+
+    const { verifyLateAiMove } = await import("./late-verifier");
+
+    await verifyLateAiMove(
+      createAnsweredState(18),
+      generatedGuess("Dr. Phil"),
+      "unsupported-config-request"
+    );
+    const request = createMock.mock.calls[0][0] as Record<string, unknown>;
+
+    expect(request).toMatchObject({
+      model: "gpt-chat-latest"
+    });
   });
 
   it("can return a replacement question", async () => {

@@ -39,7 +39,7 @@ describe("game state transitions", () => {
     ).toBe("gpt-5.4-mini");
   });
 
-  it("accepts the Gemini Flash Lite game model", () => {
+  it("silently falls stale Gemini and Claude start models back to GPT Chat Latest", () => {
     const parsed = gameTurnRequestSchema.parse({
       action: "start",
       model: "gemini-3.1-flash-lite"
@@ -50,7 +50,19 @@ describe("game state transitions", () => {
       throw new Error("Expected a start action.");
     }
 
-    expect(parsed.model).toBe("gemini-3.1-flash-lite");
+    expect(parsed.model).toBe("gpt-chat-latest");
+
+    const claudeParsed = gameTurnRequestSchema.parse({
+      action: "start",
+      model: "claude-sonnet-4-6"
+    });
+
+    expect(claudeParsed.action).toBe("start");
+    if (claudeParsed.action !== "start") {
+      throw new Error("Expected a start action.");
+    }
+
+    expect(claudeParsed.model).toBe("gpt-chat-latest");
   });
 
   it("defaults start requests to GPT Chat Latest", () => {

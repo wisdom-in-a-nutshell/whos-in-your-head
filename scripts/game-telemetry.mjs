@@ -346,7 +346,7 @@ async function readModelResults(args) {
   if (!args.model) {
     throw usageError(
       "--model is required for model-results",
-      "Run `npm run telemetry -- model-results --model gemini --json --minutes 60`."
+      "Run `npm run telemetry -- model-results --model gpt --json --minutes 60`."
     );
   }
 

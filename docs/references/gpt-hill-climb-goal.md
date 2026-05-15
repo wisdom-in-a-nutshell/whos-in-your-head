@@ -72,13 +72,13 @@ Before merge readiness:
 Treat the GPT workflow as:
 
 - `gpt-chat-latest` turn telemetry.
-- Adaptive `gpt-5.5` final outcomes when `gpt-chat-latest` rounds escalate late.
+- The fast GPT path (`gpt-5.4-mini`) when users explicitly choose it.
 
-Do not judge the GPT path only by `gpt-chat-latest` completed-game rows, because
-the runtime can escalate to `gpt-5.5` for later or harder turns.
+Do not judge the GPT path only by `gpt-chat-latest` completed-game rows when
+players can explicitly choose the fast GPT option.
 
-Gemini and Claude can be used as comparison groups, but the main optimization
-target is the GPT default path unless the user explicitly redirects.
+Gemini, Claude, and unsupported GPT paths have been removed from the product.
+Do not optimize, compare, or route live games through them.
 
 ## Telemetry Loop
 

@@ -35,7 +35,7 @@ export async function verifyLateAiMove(
   proposed: GeneratedAiMove,
   requestId?: string
 ): Promise<GeneratedAiMove | null> {
-  if (!shouldRunLateVerifier(state, proposed.move)) {
+  if (!isLateVerifierEnabled() || !shouldRunLateVerifier(state, proposed.move)) {
     return null;
   }
 
@@ -127,8 +127,18 @@ export async function verifyLateAiMove(
   }
 }
 
+function isLateVerifierEnabled() {
+  return process.env.LATE_VERIFIER_ENABLED?.trim().toLowerCase() === "true";
+}
+
 function readLateVerifierModel() {
-  return process.env.LATE_VERIFIER_MODEL?.trim() || DEFAULT_LATE_VERIFIER_MODEL;
+  const model = process.env.LATE_VERIFIER_MODEL?.trim();
+
+  if (model === "gpt-chat-latest" || model === "gpt-5.4-mini") {
+    return model;
+  }
+
+  return DEFAULT_LATE_VERIFIER_MODEL;
 }
 
 function parseLateVerification(response: Response) {

@@ -41,8 +41,9 @@ function readOpenAIConfig(
     process.env.LLM_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim();
   const baseURL =
     process.env.LLM_API_ENDPOINT?.trim() || process.env.OPENAI_BASE_URL?.trim();
-  const model =
-    process.env.LLM_MODEL?.trim() || process.env.OPENAI_MODEL?.trim() || DEFAULT_MODEL;
+  const model = normalizeOpenAIModel(
+    process.env.LLM_MODEL?.trim() || process.env.OPENAI_MODEL?.trim()
+  );
   const fallbackModels = readFallbackModels(model);
   const reasoningEffort = reasoningEffortOverride ?? readReasoningEffort();
   const serviceTier = readServiceTier();
@@ -75,8 +76,9 @@ export function getOpenAIRuntimeStatus(): OpenAIRuntimeStatus {
       process.env.LLM_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim();
     const baseURL =
       process.env.LLM_API_ENDPOINT?.trim() || process.env.OPENAI_BASE_URL?.trim();
-    const model =
-      process.env.LLM_MODEL?.trim() || process.env.OPENAI_MODEL?.trim() || DEFAULT_MODEL;
+    const model = normalizeOpenAIModel(
+      process.env.LLM_MODEL?.trim() || process.env.OPENAI_MODEL?.trim()
+    );
 
     return {
       configured: Boolean(apiKey),
@@ -184,11 +186,23 @@ function readFallbackModels(primaryModel: string): string[] {
     .split(/[,\n]/)
     .map((model) => model.trim())
     .filter((model) => {
-      if (!model || model === primaryModel || seen.has(model)) {
+      if (!isGptModel(model) || model === primaryModel || seen.has(model)) {
         return false;
       }
 
       seen.add(model);
       return true;
     });
+}
+
+function normalizeOpenAIModel(model: string | undefined) {
+  if (!model || !isGptModel(model)) {
+    return DEFAULT_MODEL;
+  }
+
+  return model;
+}
+
+function isGptModel(model: string) {
+  return model === "gpt-chat-latest" || model === "gpt-5.4-mini";
 }

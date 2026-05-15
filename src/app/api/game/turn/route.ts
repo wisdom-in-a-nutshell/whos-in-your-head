@@ -15,7 +15,6 @@ import {
   OPENING_MOVE,
   readDeterministicOpeningFollowupMove
 } from "@/lib/game/opening";
-import { getAnthropicRuntimeStatus } from "@/lib/server/anthropic";
 import {
   getOpenAIModelFallbacks,
   getOpenAIRuntimeStatus
@@ -163,12 +162,12 @@ export async function POST(request: Request) {
       });
     }
 
-    const status = getRuntimeStatusForGame(parsed.data.state.model);
+    const status = getOpenAIRuntimeStatus();
 
     if (status.configurationError) {
       logError("game_turn_llm_configuration_error", {
         requestId,
-        provider: status.provider,
+        provider: "openai",
         error: status.configurationError
       });
       recordGameFailureTelemetry({
@@ -193,16 +192,19 @@ export async function POST(request: Request) {
     }
 
     if (!status.configured) {
+      const missingConfigurationMessage =
+        "LLM_API_KEY or OPENAI_API_KEY is not configured.";
+
       logError("game_turn_llm_not_configured", {
         requestId,
-        provider: status.provider
+        provider: "openai"
       });
       recordGameFailureTelemetry({
         requestId,
         action: parsed.data.action,
         state: parsed.data.state,
         code: "llm_not_configured",
-        error: new Error(status.missingConfigurationMessage),
+        error: new Error(missingConfigurationMessage),
         routeDurationMs: Date.now() - startedAt,
         body
       });
@@ -211,7 +213,7 @@ export async function POST(request: Request) {
         {
           ok: false,
           code: "llm_not_configured",
-          error: status.missingConfigurationMessage,
+          error: missingConfigurationMessage,
           llm: status
         },
         { status: 503 }
@@ -566,31 +568,11 @@ function getReusableResponseId(generated: GeneratedAiMove) {
     return null;
   }
 
-  if (generated.requestedModel.startsWith("gemini-")) {
-    return null;
-  }
-
   return generated.responseId;
 }
 
 function getReusableResponseModel(generated: GeneratedAiMove) {
   return getReusableResponseId(generated) === null ? null : generated.requestedModel;
-}
-
-function getRuntimeStatusForGame(model: string) {
-  if (model.startsWith("claude-")) {
-    return {
-      ...getAnthropicRuntimeStatus(model),
-      provider: "anthropic",
-      missingConfigurationMessage: "LLM_API_KEY is not configured."
-    };
-  }
-
-  return {
-    ...getOpenAIRuntimeStatus(),
-    provider: "openai",
-    missingConfigurationMessage: "LLM_API_KEY or OPENAI_API_KEY is not configured."
-  };
 }
 
 function summarizeUsage(usage: GeneratedAiMove["usage"]) {
