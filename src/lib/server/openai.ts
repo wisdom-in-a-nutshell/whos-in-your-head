@@ -9,6 +9,8 @@ import {
 const DEFAULT_MODEL = "gpt-chat-latest";
 const DEFAULT_REASONING_EFFORT: OpenAIReasoningEffort = "high";
 const DEFAULT_SERVICE_TIER: OpenAIServiceTier = "priority";
+const DEFAULT_REQUEST_TIMEOUT_MS = 20_000;
+const DEFAULT_MAX_RETRIES = 0;
 
 const SERVICE_TIERS = ["auto", "default", "priority"] as const;
 
@@ -22,6 +24,8 @@ type OpenAIConfig = {
   fallbackModels: string[];
   reasoningEffort: OpenAIReasoningEffort;
   serviceTier: OpenAIServiceTier;
+  requestTimeoutMs: number;
+  maxRetries: number;
 };
 
 export type OpenAIRuntimeStatus = {
@@ -31,6 +35,8 @@ export type OpenAIRuntimeStatus = {
   fallbackModels: string[];
   reasoningEffort: OpenAIReasoningEffort;
   serviceTier: OpenAIServiceTier;
+  requestTimeoutMs: number;
+  maxRetries: number;
   configurationError: string | null;
 };
 
@@ -47,6 +53,7 @@ function readOpenAIConfig(
   const fallbackModels = readFallbackModels(model);
   const reasoningEffort = reasoningEffortOverride ?? readReasoningEffort();
   const serviceTier = readServiceTier();
+  const requestTimeoutMs = readRequestTimeoutMs();
 
   return {
     apiKey: apiKey || undefined,
@@ -54,7 +61,9 @@ function readOpenAIConfig(
     model,
     fallbackModels,
     reasoningEffort,
-    serviceTier
+    serviceTier,
+    requestTimeoutMs,
+    maxRetries: DEFAULT_MAX_RETRIES
   };
 }
 
@@ -69,6 +78,8 @@ export function getOpenAIRuntimeStatus(): OpenAIRuntimeStatus {
       fallbackModels: config.fallbackModels,
       reasoningEffort: config.reasoningEffort,
       serviceTier: config.serviceTier,
+      requestTimeoutMs: config.requestTimeoutMs,
+      maxRetries: config.maxRetries,
       configurationError: null
     };
   } catch (error) {
@@ -87,6 +98,8 @@ export function getOpenAIRuntimeStatus(): OpenAIRuntimeStatus {
       fallbackModels: [],
       reasoningEffort: DEFAULT_REASONING_EFFORT,
       serviceTier: DEFAULT_SERVICE_TIER,
+      requestTimeoutMs: DEFAULT_REQUEST_TIMEOUT_MS,
+      maxRetries: DEFAULT_MAX_RETRIES,
       configurationError:
         error instanceof Error ? error.message : "Unknown OpenAI configuration error."
     };
@@ -102,7 +115,9 @@ export function getOpenAIClient(): OpenAI {
 
   return new OpenAI({
     apiKey: config.apiKey,
-    baseURL: config.baseURL
+    baseURL: config.baseURL,
+    timeout: config.requestTimeoutMs,
+    maxRetries: config.maxRetries
   });
 }
 
@@ -168,6 +183,26 @@ function readServiceTier(): OpenAIServiceTier {
 
   throw new Error(
     `LLM_SERVICE_TIER or OPENAI_SERVICE_TIER must be one of: ${SERVICE_TIERS.join(", ")}.`
+  );
+}
+
+function readRequestTimeoutMs() {
+  const raw =
+    process.env.LLM_REQUEST_TIMEOUT_MS?.trim() ||
+    process.env.OPENAI_REQUEST_TIMEOUT_MS?.trim();
+
+  if (!raw) {
+    return DEFAULT_REQUEST_TIMEOUT_MS;
+  }
+
+  const timeoutMs = Number(raw);
+
+  if (Number.isInteger(timeoutMs) && timeoutMs >= 5_000 && timeoutMs <= 60_000) {
+    return timeoutMs;
+  }
+
+  throw new Error(
+    "LLM_REQUEST_TIMEOUT_MS or OPENAI_REQUEST_TIMEOUT_MS must be an integer between 5000 and 60000."
   );
 }
 

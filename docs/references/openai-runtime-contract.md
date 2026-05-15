@@ -36,10 +36,12 @@ Optional:
 - `LLM_FALLBACK_MODELS`
 - `LLM_REASONING_EFFORT`
 - `LLM_SERVICE_TIER`
+- `LLM_REQUEST_TIMEOUT_MS`
 
 The server also accepts the OpenAI SDK names `OPENAI_API_KEY`,
 `OPENAI_BASE_URL`, `OPENAI_MODEL`, `OPENAI_FALLBACK_MODELS`,
-`OPENAI_REASONING_EFFORT`, and `OPENAI_SERVICE_TIER` as local fallbacks.
+`OPENAI_REASONING_EFFORT`, `OPENAI_SERVICE_TIER`, and
+`OPENAI_REQUEST_TIMEOUT_MS` as local fallbacks.
 Deployed Azure runtime should use
 `LLM_API_*` app settings backed by Key Vault references so the repo does not
 depend on ambient global OpenAI provider routing.
@@ -76,6 +78,11 @@ prompt prefix, `prompt_cache_key`, and Responses state chain stay the same.
 `priority`. The value is sent as the Responses API request-level `service_tier`,
 so the app can choose priority processing per game-master call without changing
 the Azure deployment-level setting.
+
+`LLM_REQUEST_TIMEOUT_MS` caps each OpenAI SDK request. The default is `20000`
+milliseconds and accepted overrides must be between `5000` and `60000`. SDK
+internal retries are disabled; the game turn route owns retry behavior so one
+stalled upstream request cannot hold a player turn for minutes.
 
 ## Provider Architecture
 

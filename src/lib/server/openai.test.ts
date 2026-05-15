@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { getOpenAIRuntimeStatus } from "./openai";
+import { getOpenAIClient, getOpenAIRuntimeStatus } from "./openai";
 
 const ORIGINAL_ENV = process.env;
 
@@ -13,6 +13,8 @@ describe("OpenAI runtime defaults", () => {
     delete process.env.OPENAI_REASONING_EFFORT;
     delete process.env.LLM_FALLBACK_MODELS;
     delete process.env.OPENAI_FALLBACK_MODELS;
+    delete process.env.LLM_REQUEST_TIMEOUT_MS;
+    delete process.env.OPENAI_REQUEST_TIMEOUT_MS;
   });
 
   afterEach(() => {
@@ -42,5 +44,31 @@ describe("OpenAI runtime defaults", () => {
 
     expect(status.reasoningEffort).toBe("high");
     expect("reasoningMix" in status).toBe(false);
+  });
+
+  it("caps request timeout and uses route-level retries instead of SDK retries", () => {
+    process.env.LLM_API_KEY = "test-key";
+
+    const status = getOpenAIRuntimeStatus();
+    const client = getOpenAIClient();
+
+    expect(status.requestTimeoutMs).toBe(20000);
+    expect(status.maxRetries).toBe(0);
+    expect(client.timeout).toBe(20000);
+    expect(client.maxRetries).toBe(0);
+  });
+
+  it("accepts a bounded request timeout override", () => {
+    process.env.LLM_REQUEST_TIMEOUT_MS = "15000";
+
+    expect(getOpenAIRuntimeStatus().requestTimeoutMs).toBe(15000);
+  });
+
+  it("rejects unsafe request timeout overrides", () => {
+    process.env.LLM_REQUEST_TIMEOUT_MS = "120000";
+
+    expect(getOpenAIRuntimeStatus().configurationError).toContain(
+      "must be an integer between 5000 and 60000"
+    );
   });
 });
