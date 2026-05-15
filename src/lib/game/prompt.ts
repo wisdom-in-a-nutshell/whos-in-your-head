@@ -201,6 +201,14 @@ experiment, writing, institution, or movement. For biology-adjacent figures,
 separate genetics/heredity, evolution, medicine, botany/agriculture, chemistry,
 and physics/math as soon as that cluster becomes likely.
 
+Historical astronomy, astrology, and esoteric scholarship need their own split.
+When a dead historical target sits near astronomy, mathematics, religion,
+spirituality, court scholarship, or learned writing but ordinary science,
+literary, or religious branches do not fit cleanly, test astrology,
+occult/esoteric scholarship, alchemy, court astrologer/adviser work, or
+mathematical astronomy before guessing a mainstream astronomer, saint,
+philosopher, or literary figure.
+
 In life-science branches, avoid bundled questions like evolution or natural
 history when genetics, heredity, botany, and evolution are all still plausible.
 After medicine and physics/math are weak, test genetics/heredity early before
@@ -446,6 +454,14 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
     return "No question slots remain. Make a final guess now.";
   }
 
+  if (isHistoricalAstrologyScholarCluster(state, remainingQuestionSlots)) {
+    return [
+      "The transcript is in a historical astronomy, astrology, or esoteric-scholarship cluster.",
+      "Do not guess a mainstream astronomer, literary figure, saint, ruler, or philosopher from broad scholarship and era clues alone.",
+      "Ask one discriminator for astrology, occult or esoteric scholarship, alchemy, court astrologer/adviser work, or mathematical astronomy before guessing."
+    ].join(" ");
+  }
+
   if (remainingQuestionSlots === 1) {
     return [
       "Exactly one question slot remains.",
@@ -678,6 +694,64 @@ function isMaybeHeavy(state: GameState, remainingQuestionSlots: number): boolean
   return totalMaybes >= 4 || recentMaybes >= 3;
 }
 
+function isHistoricalAstrologyScholarCluster(
+  state: GameState,
+  remainingQuestionSlots: number
+): boolean {
+  if (remainingQuestionSlots <= 0 || state.transcript.length < 8) {
+    return false;
+  }
+
+  const signalQuestions = yesOrMaybeQuestions(state);
+  const asked = allQuestions(state);
+  const rejectedQuestions = noQuestions(state);
+
+  if (
+    asked.some((question) =>
+      /(astrolog|horoscope|zodiac|occult|esoteric|alchemy|alchemist)/.test(question)
+    )
+  ) {
+    return false;
+  }
+
+  const historicalSignal = signalQuestions.some((question) =>
+    /(before the 20th|before the 18th|ancient|medieval|renaissance|islamic golden age|middle east|persia|italy|europe)/.test(
+      question
+    )
+  );
+  const astronomySignal = signalQuestions.some((question) =>
+    /(astronomy|astronomical|space observation|planetary|celestial|telescope|stars)/.test(
+      question
+    )
+  );
+  const scholarlyBridgeSignal = signalQuestions.some((question) =>
+    /(mathematics|scholar|philosophy|religion|spirituality|theology|writing|learned)/.test(
+      question
+    )
+  );
+  const ordinaryScholarBranchesWeak = rejectedQuestions.some((question) =>
+    /(creative literature|poetry|literature|arts|religion|theology|religious leader|saint|philosopher|philosophy|politics|government|monarch|royal)/.test(
+      question
+    )
+  );
+  const esotericBridgeSignal =
+    scholarlyBridgeSignal &&
+    ordinaryScholarBranchesWeak &&
+    signalQuestions.some((question) =>
+      /(court|ruler|religion|spirituality|theology|writing|scholar)/.test(question)
+    );
+  const deadOrHistoricalPersonSignal =
+    state.transcript[0]?.question.toLowerCase() === "is this person alive?" &&
+    state.transcript[0]?.answer === "no";
+
+  return (
+    deadOrHistoricalPersonSignal &&
+    historicalSignal &&
+    scholarlyBridgeSignal &&
+    (astronomySignal || esotericBridgeSignal)
+  );
+}
+
 function isFictionalPersonaAmbiguityCluster(
   state: GameState,
   remainingQuestionSlots: number
@@ -791,6 +865,18 @@ function isBusinessExecutiveCluster(
 function yesQuestions(state: GameState) {
   return state.transcript
     .filter((turn) => turn.answer === "yes")
+    .map((turn) => turn.question.toLowerCase());
+}
+
+function yesOrMaybeQuestions(state: GameState) {
+  return state.transcript
+    .filter((turn) => turn.answer === "yes" || turn.answer === "maybe")
+    .map((turn) => turn.question.toLowerCase());
+}
+
+function noQuestions(state: GameState) {
+  return state.transcript
+    .filter((turn) => turn.answer === "no")
     .map((turn) => turn.question.toLowerCase());
 }
 

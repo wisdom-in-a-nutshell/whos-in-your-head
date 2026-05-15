@@ -163,6 +163,59 @@ describe("GAME_MASTER_INSTRUCTIONS", () => {
     expect(input).toContain("current-versus-former role");
   });
 
+  it("asks for astrology and esoteric-scholar splits in historical astronomy clusters", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "no"],
+      ["Was this a real person who actually lived?", "yes"],
+      ["Is this person primarily known for science, mathematics, or scholarly work?", "yes"],
+      ["Was this person active before the 20th century?", "yes"],
+      ["Is this person mainly associated with physics or mathematics?", "no"],
+      ["Is this person connected to astronomy or space observation?", "yes"],
+      ["Was this person active before the 18th century?", "yes"],
+      ["Is this person mainly known for developing a solar-system model?", "no"],
+      ["Was this person associated with the Islamic Golden Age or medieval Middle East?", "yes"],
+      ["Was this person primarily a religious leader or theologian?", "maybe"],
+      ["Was this person mainly known for writing rather than experiments?", "maybe"],
+      ["Was this person associated with a court or ruler?", "maybe"],
+      ["Was this person from Europe?", "no"],
+      ["Was this person from Persia or the broader Middle East?", "yes"],
+      ["Was this person primarily known for medicine?", "no"],
+      ["Was this person primarily known for algebra?", "no"],
+      ["Was this person known for observational instruments?", "maybe"],
+      ["Was this person active before 1000 CE?", "yes"],
+      ["Was this person primarily known for poetry or literature?", "no"],
+      ["Was this person primarily known as a philosopher?", "no"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain(
+      "historical astronomy, astrology, or esoteric-scholarship cluster"
+    );
+    expect(input).toContain("court astrologer/adviser");
+    expect(input).toContain("mathematical astronomy");
+    expect(input).not.toContain("Exactly one question slot remains");
+  });
+
+  it("does not ask the historical astrology split after that axis has already been tested", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "no"],
+      ["Was this a real person who actually lived?", "yes"],
+      ["Is this person primarily known for science, mathematics, or scholarly work?", "yes"],
+      ["Was this person active before the 20th century?", "yes"],
+      ["Is this person connected to astronomy or space observation?", "yes"],
+      ["Was this person associated with the Islamic Golden Age or medieval Middle East?", "yes"],
+      ["Was this person primarily known for astrology or horoscope work?", "no"],
+      ["Was this person primarily known for medicine?", "no"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).not.toContain(
+      "historical astronomy, astrology, or esoteric-scholarship cluster"
+    );
+  });
+
   it("allows person-like cultural figures without opening all fictional characters", () => {
     expect(GAME_MASTER_INSTRUCTIONS).toMatch(
       /widely recognized\s+person-like cultural figures are allowed/
