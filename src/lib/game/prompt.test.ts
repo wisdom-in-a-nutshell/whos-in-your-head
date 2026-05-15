@@ -163,6 +163,40 @@ describe("GAME_MASTER_INSTRUCTIONS", () => {
     expect(input).toContain("current-versus-former role");
   });
 
+  it("asks for region and language before Hollywood-style actor narrowing", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "yes"],
+      ["Is this person primarily known for entertainment or media?", "yes"],
+      ["Is this person best known as a performer rather than a creator?", "yes"],
+      ["Is this person primarily known for acting in film or television?", "yes"],
+      ["Has this person been a leading actor in major blockbuster franchise films?", "yes"],
+      ["Is this person primarily associated with superhero franchise films?", "no"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain("global entertainment/media branch");
+    expect(input).toContain("region, language, or public industry");
+    expect(input).toContain("Indian regional cinema");
+    expect(input).toContain("European/French-language cinema");
+  });
+
+  it("does not ask the global entertainment region split once that axis is grounded", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "yes"],
+      ["Is this person primarily known for entertainment or media?", "yes"],
+      ["Is this person best known as a performer rather than a creator?", "yes"],
+      ["Is this person primarily known for acting in film or television?", "yes"],
+      ["Is this person primarily associated with non-English-language film or television?", "yes"],
+      ["Is this person primarily associated with Indian cinema or television?", "yes"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).not.toContain("global entertainment/media branch");
+    expect(input).not.toContain("public industry yet");
+  });
+
   it("asks a neutral adult-entertainment fame-source split before weak actor guesses", () => {
     const state = createAnsweredState([
       ["Is this person alive?", "yes"],

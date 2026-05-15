@@ -259,6 +259,15 @@ media creation, visual/design work, platform-native creation, and other media
 authorship. If acting, music, comedy, and hosting are weak, test creator/designer
 or behind-the-scenes public fame before drifting into obscure performer guesses.
 
+For entertainment/media branches, geography, language, and industry are
+first-class splits, not late cleanup details. Once the path points toward
+acting, directing, voice work, screen performance, or film/television creation,
+establish the public industry or language sphere before using Hollywood-style
+award, franchise, genre, or era clues. Split English-language/Hollywood,
+Indian regional cinema, European/French-language cinema, East Asian media,
+Latin/Spanish-language media, and other regional industries at a broad level
+when that axis is still unknown.
+
 Entertainment answers can refer to a real performer or to a famous character,
 role, or screen persona. In TV, film, comedy, animation, comics, and game
 branches, ask a real-person versus fictional/persona boundary question before
@@ -669,6 +678,14 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
     ].join(" ");
   }
 
+  if (isGlobalEntertainmentRegionGap(state, remainingQuestionSlots)) {
+    return [
+      "The transcript is in a global entertainment/media branch but has not grounded region, language, or public industry yet.",
+      "Do not default to Hollywood, English-language media, or the most famous nearby actor/director from genre, award, franchise, or era clues alone.",
+      "Ask one broad region/language/industry split before narrowing further, such as English-language/Hollywood versus Indian regional cinema, European/French-language cinema, East Asian media, Latin/Spanish-language media, or another regional industry."
+    ].join(" ");
+  }
+
   return [
     "Ask one strong yes/no-compatible question that prunes the remaining possibility space.",
     "Do not ask a confirmation question about one suspected person, company, brand, product, spouse, award, or exact work unless the transcript has already narrowed to a tiny cluster.",
@@ -722,6 +739,44 @@ function isMaybeHeavy(state: GameState, remainingQuestionSlots: number): boolean
     .filter((turn) => turn.answer === "maybe").length;
 
   return totalMaybes >= 4 || recentMaybes >= 3;
+}
+
+function isGlobalEntertainmentRegionGap(
+  state: GameState,
+  remainingQuestionSlots: number
+): boolean {
+  if (remainingQuestionSlots <= 0 || state.transcript.length < 5) {
+    return false;
+  }
+
+  const signalQuestions = yesOrMaybeQuestions(state);
+  const asked = allQuestions(state);
+
+  const entertainmentSignal = signalQuestions.some((question) =>
+    /(entertainment|media|arts)/.test(question)
+  );
+  const screenOrCreatorSignal = signalQuestions.some((question) =>
+    /(acting|actor|film|television|tv|screen|scripted|voice acting|animated|director|directing|visual media|creator|producer|performer)/.test(
+      question
+    )
+  );
+  const usingSpecificScreenClues = asked.some((question) =>
+    /(hollywood|academy award|blockbuster|franchise|superhero|science-fiction|fantasy|action|dramatic|romantic|comedy|sitcom|voice acting|animated|director|genre|released in the)/.test(
+      question
+    )
+  );
+  const regionOrLanguageGrounded = signalQuestions.some((question) =>
+    /(english-language|hollywood|non-english|indian|india|bollywood|tamil|telugu|malayalam|kannada|south indian|european|french|italian|spanish-language|latin|east asian|korean|japanese|chinese|country|region|language)/.test(
+      question
+    )
+  );
+
+  return (
+    entertainmentSignal &&
+    screenOrCreatorSignal &&
+    usingSpecificScreenClues &&
+    !regionOrLanguageGrounded
+  );
 }
 
 function isAdultEntertainmentFameSourceCluster(
