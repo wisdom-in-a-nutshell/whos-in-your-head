@@ -10,7 +10,11 @@ import {
   recordPlayerAnswer,
   type GameState
 } from "@/lib/game/state";
-import { isFirstOpeningAnswer, OPENING_MOVE } from "@/lib/game/opening";
+import {
+  isFirstOpeningAnswer,
+  OPENING_MOVE,
+  readDeterministicOpeningFollowupMove
+} from "@/lib/game/opening";
 import { getAnthropicRuntimeStatus } from "@/lib/server/anthropic";
 import {
   getOpenAIModelFallbacks,
@@ -293,6 +297,12 @@ async function generateNextGameState(
   game: GameState,
   requestId: string
 ): Promise<{ generated: GeneratedAiMove; nextGame: GameState; source: string }> {
+  const deterministicOpening = readDeterministicOpeningGameState(game);
+
+  if (deterministicOpening) {
+    return deterministicOpening;
+  }
+
   const warmedOpening = readWarmedOpeningGameState(game);
 
   if (warmedOpening) {
@@ -364,6 +374,36 @@ async function generateNextGameState(
   }
 
   throw new Error("The game master failed to produce a valid move after retries.");
+}
+
+function readDeterministicOpeningGameState(
+  game: GameState
+): { generated: GeneratedAiMove; nextGame: GameState; source: string } | null {
+  const move = readDeterministicOpeningFollowupMove(game);
+
+  if (!move) {
+    return null;
+  }
+
+  const generated: GeneratedAiMove = {
+    move,
+    requestedModel: "local-deterministic",
+    actualModel: "local-deterministic",
+    reasoningEffort: game.reasoningEffort,
+    requestedServiceTier: "local",
+    actualServiceTier: "local",
+    promptCacheKey: null,
+    responseId: null,
+    usage: null,
+    durationMs: 0
+  };
+  const nextGame = attachModelResponseId(applyAiMove(game, move), null);
+
+  return {
+    generated,
+    nextGame,
+    source: "local_non_living_identity_boundary"
+  };
 }
 
 export function shouldTryContentFilterFallback(

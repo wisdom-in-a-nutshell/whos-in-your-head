@@ -13,6 +13,17 @@ export const OPENING_MOVE: AiMove = {
   shortRationale: "Open with a broad split."
 };
 
+export const NON_LIVING_IDENTITY_BOUNDARY_QUESTION =
+  "Was this a real person who actually lived, rather than a fictional, legendary, or screen-persona figure?";
+
+export const NON_LIVING_IDENTITY_BOUNDARY_MOVE: AiMove = {
+  action: "ask_question",
+  question: NON_LIVING_IDENTITY_BOUNDARY_QUESTION,
+  guess: null,
+  shortRationale:
+    "After Alive = No, separate real dead humans from person-like fictional or legendary targets."
+};
+
 export function isFirstOpeningAnswer(state: GameState): state is GameState & {
   transcript: [{ question: string; answer: PlayerAnswer }];
 } {
@@ -24,6 +35,18 @@ export function isFirstOpeningAnswer(state: GameState): state is GameState & {
     state.finalGuess === null &&
     state.result === "unknown"
   );
+}
+
+export function readDeterministicOpeningFollowupMove(state: GameState): AiMove | null {
+  if (!isFirstOpeningAnswer(state)) {
+    return null;
+  }
+
+  if (state.transcript[0].answer === "no") {
+    return NON_LIVING_IDENTITY_BOUNDARY_MOVE;
+  }
+
+  return null;
 }
 
 export function createSharedOpeningAnswerState(

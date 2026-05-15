@@ -28,7 +28,7 @@ const AI_MOVE_FORMAT_NAME = "who_in_your_head_ai_move";
 const PROMPT_CACHE_KEY = "whos-in-your-head-game-master-v1";
 const GAME_MASTER_REQUEST_INSTRUCTIONS =
   "Follow the static game-master instructions in the input. Return only the structured move.";
-const OPENING_WARMUP_ANSWERS: PlayerAnswer[] = ["yes", "no"];
+const OPENING_WARMUP_ANSWERS: PlayerAnswer[] = ["yes"];
 const OUTPUT_PREVIEW_CHARACTERS = 220;
 const DISABLE_LITELLM_RESPONSE_CACHE = true;
 const LATE_GAME_UPGRADE_START_AFTER_QUESTIONS = 18;

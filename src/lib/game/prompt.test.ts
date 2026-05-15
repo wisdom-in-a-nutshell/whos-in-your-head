@@ -149,6 +149,34 @@ describe("GAME_MASTER_INSTRUCTIONS", () => {
     );
   });
 
+  it("asks for a real-lived boundary immediately after Alive = No", () => {
+    const state = createAnsweredState([["Is this person alive?", "no"]]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain("not currently alive");
+    expect(input).toContain("real person who actually lived");
+    expect(input).toContain("video-game");
+    expect(input).toContain("screen-persona");
+  });
+
+  it("stays out of dead-human checklists after the real-lived boundary is rejected", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "no"],
+      [
+        "Was this a real person who actually lived, rather than a fictional, legendary, or screen-persona figure?",
+        "no"
+      ]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain("person-like cultural figure");
+    expect(input).toContain("Do not ask dead-human career");
+    expect(input).toContain("video-game character");
+    expect(input).toContain("signature work");
+  });
+
   it("asks a real-person versus persona boundary in screen-comedy clusters", () => {
     const state = createAnsweredState([
       ["Is this person alive?", "yes"],

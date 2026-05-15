@@ -51,6 +51,10 @@ transcript has narrowed naturally to one identity or a tiny cluster.
 - If the player may be thinking of a character, role, or screen persona, do not
   silently convert that answer into the actor, voice actor, creator, or performer
   behind it. Ask one boundary question first, then continue in the right space.
+- After the deterministic opener gets Alive = No, do not assume an ordinary dead
+  human. First separate a real person who actually lived from fictional,
+  legendary, folkloric, religious, holiday, video-game, or screen-persona
+  figures, then narrow in the chosen space.
 - Prefer public career, era, geography, and fame-source questions over private or sensitive identity traits.
 - A final guess should be one canonical public name, not a list of alternatives
   or an explanation.
@@ -290,6 +294,14 @@ separate it with public, answerable clues such as holiday association, gift
 giving, saint/Christian tradition, Dutch-language or Low Countries association,
 or modern Christmas iconography.
 
+For non-living entertainment or culture targets, check whether the answer is a
+fictional, legendary, video-game, comics, animation, folklore, holiday, or
+screen-persona figure before asking a dead-human career checklist. If the target
+is not a real person who actually lived, narrow by medium/source, signature
+work or franchise, origin language or region, era, and iconic role. Do not guess
+the actor, creator, author, voice actor, or historical inspiration unless the
+transcript asks for that real person.
+
 Avoid wasting questions on a long chain of job titles. Do not ask actor, singer,
 athlete, politician, influencer one by one unless prior answers point there.
 
@@ -437,6 +449,39 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
   const lastTurn = state.transcript.at(-1);
   const lastQuestion = lastTurn?.question.toLowerCase() ?? "";
 
+  if (isOpeningNoAnswer(state, remainingQuestionSlots)) {
+    return [
+      "The opener only says the target is not currently alive.",
+      "Do not start an ordinary dead-human checklist yet.",
+      "Ask whether this was a real person who actually lived, rather than a fictional, legendary, folkloric, holiday, religious, video-game, or screen-persona figure."
+    ].join(" ");
+  }
+
+  if (
+    lastTurn?.answer === "no" &&
+    /(real person who actually lived|real human who actually lived|real person who lived|actually lived)/.test(
+      lastQuestion
+    )
+  ) {
+    return [
+      "The last answer rejected a real historical human and points to a person-like cultural figure.",
+      "Do not ask dead-human career, royalty, politics, science, or war checklists.",
+      "Split medium/source next: video-game character, film/TV/animation/comics character, folklore/legend/religion/holiday figure, or screen persona; then narrow by signature work, franchise, origin language/region, era, and iconic role."
+    ].join(" ");
+  }
+
+  if (
+    lastTurn?.answer === "yes" &&
+    /(real person who actually lived|real human who actually lived|real person who lived|actually lived)/.test(
+      lastQuestion
+    )
+  ) {
+    return [
+      "The last answer confirmed a real person who actually lived.",
+      "Continue in the real historical/deceased-person space and do not drift into fictional characters or screen personas unless later answers contradict this boundary."
+    ].join(" ");
+  }
+
   if (
     lastTurn?.answer === "yes" &&
     /(adult-entertainment|adult entertainment|mature-audience entertainment)/.test(
@@ -574,6 +619,20 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
     "Do not ask a confirmation question about one suspected person, company, brand, product, spouse, award, or exact work unless the transcript has already narrowed to a tiny cluster.",
     "Guess only when one identity is genuinely better supported than asking another discriminator."
   ].join(" ");
+}
+
+function isOpeningNoAnswer(
+  state: GameState,
+  remainingQuestionSlots: number
+): boolean {
+  return (
+    remainingQuestionSlots > 0 &&
+    state.questionCount === 1 &&
+    state.transcript.length === 1 &&
+    state.transcript[0].question === "Is this person alive?" &&
+    state.transcript[0].answer === "no" &&
+    state.latestQuestion === null
+  );
 }
 
 function isRecentUsPresidentCluster(
