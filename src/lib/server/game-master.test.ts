@@ -244,7 +244,7 @@ describe("generateAiMove", () => {
 
     const { generateAiMove } = await import("./game-master");
     const state = createAnsweredStateWithAnswers(
-      ["yes", "yes", "no", "maybe", "yes", "no", "maybe", "yes"],
+      ["yes", "yes", "no", "maybe", "yes", "no", "maybe", "yes", "maybe"],
       "gpt-chat-latest"
     );
 

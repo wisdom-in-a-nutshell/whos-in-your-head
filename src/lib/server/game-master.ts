@@ -34,7 +34,9 @@ const DISABLE_LITELLM_RESPONSE_CACHE = true;
 const LATE_GAME_UPGRADE_START_AFTER_QUESTIONS = 18;
 const LATE_GAME_UPGRADE_MODEL = "gpt-5.5";
 const EARLY_UPGRADE_MIN_QUESTIONS_FOR_UNCERTAINTY = 8;
-const EARLY_UPGRADE_MAYBE_COUNT = 2;
+const EARLY_UPGRADE_MAYBE_COUNT = 3;
+const EARLY_UPGRADE_RECENT_ANSWER_WINDOW = 6;
+const EARLY_UPGRADE_RECENT_MAYBE_COUNT = 2;
 const CLAUDE_MAX_OUTPUT_TOKENS = 8192;
 const CLAUDE_PROMPT_CACHE_TTL = "5m";
 
@@ -467,10 +469,14 @@ function getRecommendedProfileEscalationReason(state: GameState): string | null 
 
   const answers = state.transcript.map((turn) => turn.answer);
   const maybeCount = answers.filter((answer) => answer === "maybe").length;
+  const recentAnswers = answers.slice(-EARLY_UPGRADE_RECENT_ANSWER_WINDOW);
+  const recentMaybeCount = recentAnswers.filter((answer) => answer === "maybe").length;
+  const lastAnswer = recentAnswers.at(-1) ?? null;
 
   if (
     state.questionCount >= EARLY_UPGRADE_MIN_QUESTIONS_FOR_UNCERTAINTY &&
-    maybeCount >= EARLY_UPGRADE_MAYBE_COUNT
+    maybeCount >= EARLY_UPGRADE_MAYBE_COUNT &&
+    (recentMaybeCount >= EARLY_UPGRADE_RECENT_MAYBE_COUNT || lastAnswer === "maybe")
   ) {
     return "uncertain_path";
   }
