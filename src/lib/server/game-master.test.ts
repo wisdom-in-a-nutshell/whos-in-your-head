@@ -257,7 +257,7 @@ describe("generateAiMove", () => {
     });
   });
 
-  it("upgrades gpt-chat-latest early when broad branches look exhausted", async () => {
+  it("keeps gpt-chat-latest on the fast model when branches look exhausted", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-exhausted-upgrade-test",
       outputText: JSON.stringify({
@@ -277,9 +277,9 @@ describe("generateAiMove", () => {
     const generated = await generateAiMove(state, "exhausted-upgrade-request");
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
-    expect(generated.requestedModel).toBe("gpt-5.5");
+    expect(generated.requestedModel).toBe("gpt-chat-latest");
     expect(request).toMatchObject({
-      model: "gpt-5.5"
+      model: "gpt-chat-latest"
     });
   });
 

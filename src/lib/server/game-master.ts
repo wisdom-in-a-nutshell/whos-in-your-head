@@ -34,10 +34,7 @@ const DISABLE_LITELLM_RESPONSE_CACHE = true;
 const LATE_GAME_UPGRADE_START_AFTER_QUESTIONS = 18;
 const LATE_GAME_UPGRADE_MODEL = "gpt-5.5";
 const EARLY_UPGRADE_MIN_QUESTIONS_FOR_UNCERTAINTY = 8;
-const EARLY_UPGRADE_MIN_QUESTIONS_FOR_EXHAUSTION = 10;
 const EARLY_UPGRADE_MAYBE_COUNT = 2;
-const EARLY_UPGRADE_NO_COUNT = 8;
-const EARLY_UPGRADE_NO_STREAK = 6;
 const CLAUDE_MAX_OUTPUT_TOKENS = 8192;
 const CLAUDE_PROMPT_CACHE_TTL = "5m";
 
@@ -470,8 +467,6 @@ function getRecommendedProfileEscalationReason(state: GameState): string | null 
 
   const answers = state.transcript.map((turn) => turn.answer);
   const maybeCount = answers.filter((answer) => answer === "maybe").length;
-  const noCount = answers.filter((answer) => answer === "no").length;
-  const trailingNoCount = countTrailingAnswers(answers, "no");
 
   if (
     state.questionCount >= EARLY_UPGRADE_MIN_QUESTIONS_FOR_UNCERTAINTY &&
@@ -480,35 +475,7 @@ function getRecommendedProfileEscalationReason(state: GameState): string | null 
     return "uncertain_path";
   }
 
-  if (
-    state.questionCount >= EARLY_UPGRADE_MIN_QUESTIONS_FOR_EXHAUSTION &&
-    noCount >= EARLY_UPGRADE_NO_COUNT
-  ) {
-    return "branch_exhaustion";
-  }
-
-  if (
-    state.questionCount >= EARLY_UPGRADE_MIN_QUESTIONS_FOR_EXHAUSTION &&
-    trailingNoCount >= EARLY_UPGRADE_NO_STREAK
-  ) {
-    return "no_streak";
-  }
-
   return null;
-}
-
-function countTrailingAnswers(answers: PlayerAnswer[], target: PlayerAnswer) {
-  let count = 0;
-
-  for (let index = answers.length - 1; index >= 0; index -= 1) {
-    if (answers[index] !== target) {
-      break;
-    }
-
-    count += 1;
-  }
-
-  return count;
 }
 
 function parseGameMasterMove(
