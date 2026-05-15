@@ -64,6 +64,37 @@ describe("GAME_MASTER_INSTRUCTIONS", () => {
     expect(input).toContain("Ask one objective discriminator");
   });
 
+  it("uses the final question slot before a premature broad-cluster guess", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "yes"],
+      ["Is this person primarily known for entertainment or media?", "yes"],
+      ["Is this person primarily known as a performer?", "yes"],
+      ["Is this person primarily known for music?", "yes"],
+      ["Is this person part of a globally famous group?", "yes"],
+      ["Is this person associated with South Korea?", "yes"],
+      ["Is this person female?", "yes"],
+      ["Is this person also known for fashion or modeling?", "maybe"],
+      ["Is this person primarily a rapper?", "maybe"],
+      ["Is this person also known for acting?", "maybe"],
+      ["Did this person have major solo releases?", "yes"],
+      ["Is this person associated with English-language solo music?", "maybe"],
+      ["Was this person born outside South Korea?", "maybe"],
+      ["Is this person known for a distinctive singing voice?", "no"],
+      ["Is this person in a four-member group?", "yes"],
+      ["Is this person older than the other members?", "no"],
+      ["Is this person strongly associated with luxury fashion?", "yes"],
+      ["Is this person the group's main vocalist?", "no"],
+      ["Is this person the group's main dancer?", "maybe"],
+      ["Is this person known primarily as a rapper rather than a vocalist?", "maybe"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain("Exactly one question slot remains");
+    expect(input).toContain("Do not leave it unused");
+    expect(input).toContain("Ask the single best remaining discriminator");
+  });
+
   it("asks for scene splits in long-tail platform creator clusters", () => {
     const state = createAnsweredState([
       ["Is this person alive?", "yes"],

@@ -446,6 +446,15 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
     return "No question slots remain. Make a final guess now.";
   }
 
+  if (remainingQuestionSlots === 1) {
+    return [
+      "Exactly one question slot remains.",
+      "Do not leave it unused while multiple plausible candidates or a broad cluster still fit the transcript.",
+      "Ask the single best remaining discriminator now unless the transcript already uniquely identifies one public identity.",
+      "Make a final guess only when one candidate is clearly better supported than any last question."
+    ].join(" ");
+  }
+
   const lastTurn = state.transcript.at(-1);
   const lastQuestion = lastTurn?.question.toLowerCase() ?? "";
 
