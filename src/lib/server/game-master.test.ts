@@ -208,7 +208,7 @@ describe("generateAiMove", () => {
     });
   });
 
-  it("upgrades gpt-chat-latest games to gpt-5.5 from question 19 onward", async () => {
+  it("keeps gpt-chat-latest as the model after question 19", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-late-upgrade-test",
       outputText: JSON.stringify({
@@ -225,13 +225,13 @@ describe("generateAiMove", () => {
     const generated = await generateAiMove(state, "late-upgrade-request");
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
-    expect(generated.requestedModel).toBe("gpt-5.5");
+    expect(generated.requestedModel).toBe("gpt-chat-latest");
     expect(request).toMatchObject({
-      model: "gpt-5.5"
+      model: "gpt-chat-latest"
     });
   });
 
-  it("upgrades gpt-chat-latest early when the path has repeated uncertainty", async () => {
+  it("keeps gpt-chat-latest on uncertain paths", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-uncertain-upgrade-test",
       outputText: JSON.stringify({
@@ -251,9 +251,9 @@ describe("generateAiMove", () => {
     const generated = await generateAiMove(state, "uncertain-upgrade-request");
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
-    expect(generated.requestedModel).toBe("gpt-5.5");
+    expect(generated.requestedModel).toBe("gpt-chat-latest");
     expect(request).toMatchObject({
-      model: "gpt-5.5"
+      model: "gpt-chat-latest"
     });
   });
 
@@ -309,7 +309,7 @@ describe("generateAiMove", () => {
     });
   });
 
-  it("does not continue a stored response chain across the late-game model switch", async () => {
+  it("continues a stored response chain during late-game turns when the model stays the same", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-late-switch-rebuild-test",
       outputText: JSON.stringify({
@@ -331,11 +331,14 @@ describe("generateAiMove", () => {
 
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
-    expect(request).not.toHaveProperty("previous_response_id");
-    expect(JSON.stringify(request.input)).toContain("<game_state>");
+    expect(request).toMatchObject({
+      model: "gpt-chat-latest",
+      previous_response_id: "resp-chat-latest-chain"
+    });
+    expect(JSON.stringify(request.input)).not.toContain("<game_state>");
   });
 
-  it("continues the stored response chain after the late-game model matches", async () => {
+  it("rebuilds from full state when the stored response chain model does not match", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-late-chain-test",
       outputText: JSON.stringify({
@@ -357,11 +360,8 @@ describe("generateAiMove", () => {
 
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
-    expect(request).toMatchObject({
-      model: "gpt-5.5",
-      previous_response_id: "resp-gpt-55-chain"
-    });
-    expect(JSON.stringify(request.input)).not.toContain("<game_state>");
+    expect(request).not.toHaveProperty("previous_response_id");
+    expect(JSON.stringify(request.input)).toContain("<game_state>");
   });
 
   it("tracks medium reasoning for middle turns without sending request controls", async () => {
