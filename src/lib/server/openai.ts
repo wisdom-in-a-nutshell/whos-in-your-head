@@ -6,7 +6,7 @@ import {
   type GameReasoningEffort
 } from "@/lib/game/reasoning";
 
-const DEFAULT_MODEL = "gpt-5.5";
+const DEFAULT_MODEL = "gpt-chat-latest";
 const DEFAULT_REASONING_EFFORT: OpenAIReasoningEffort = "high";
 const DEFAULT_SERVICE_TIER: OpenAIServiceTier = "priority";
 
