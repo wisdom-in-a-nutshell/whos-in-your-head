@@ -163,6 +163,113 @@ describe("GAME_MASTER_INSTRUCTIONS", () => {
     expect(input).toContain("current-versus-former role");
   });
 
+  it("asks a neutral adult-entertainment fame-source split before weak actor guesses", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "yes"],
+      ["Is this person best known for entertainment or media?", "yes"],
+      [
+        "Is this person primarily known as a performer rather than as a creator or behind-the-scenes media figure?",
+        "yes"
+      ],
+      ["Is this person primarily known for music?", "no"],
+      ["Is this person primarily known for acting in film or television?", "maybe"],
+      ["Did this person first become famous through comedy?", "no"],
+      ["Is this person primarily known from television rather than movies?", "no"],
+      ["Did this person become famous before 2000?", "maybe"],
+      [
+        "Is this person primarily known for scripted entertainment rather than sports, news, reality TV, or online-platform fame?",
+        "yes"
+      ],
+      ["Is this person strongly associated with action or adventure films?", "no"],
+      ["Is this person female?", "yes"],
+      ["Has this person won an Academy Award for acting?", "maybe"],
+      ["Did this person first become famous as an adult rather than as a child performer?", "yes"],
+      ["Is this person primarily known for dramatic roles rather than comedic or romantic ones?", "no"],
+      ["Is this person especially associated with romantic comedy films?", "no"],
+      ["Is this person widely associated with science fiction or fantasy films?", "no"],
+      [
+        "Is this person also well known for work outside acting, such as modeling, directing, or business ventures?",
+        "yes"
+      ],
+      ["Is this person known for directing films as well as acting?", "no"],
+      ["Is this person strongly associated with the fashion or modeling world?", "no"],
+      [
+        "Is this person especially known for producing or owning media-related businesses or brands?",
+        "no"
+      ]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain("mainstream-screen versus adult-entertainment-industry");
+    expect(input).toContain("neutral public fame-source discriminator");
+    expect(input).not.toContain("Exactly one question slot remains");
+  });
+
+  it("asks for scene-level splits in fashion design clusters", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "no"],
+      ["Was this a real person who actually lived?", "yes"],
+      ["Was this person primarily known for politics or government leadership?", "no"],
+      ["Was this person primarily known for science, mathematics, or invention?", "no"],
+      ["Was this person primarily known for entertainment or the arts?", "yes"],
+      ["Was this person primarily known for music?", "no"],
+      ["Was this person primarily known as an actor or screen performer?", "no"],
+      ["Was this person primarily known as a writer or author?", "no"],
+      ["Was this person primarily known for visual art such as painting or sculpture?", "no"],
+      ["Was this person primarily known for creating or directing media rather than performing in it?", "yes"],
+      ["Was this person primarily associated with film or television rather than another medium?", "no"],
+      ["Was this person primarily associated with comics, animation, or illustrated characters?", "no"],
+      ["Was this person primarily known for comedy or humor-related work?", "no"],
+      ["Was this person primarily known for designing or creating things rather than writing or directing performances?", "yes"],
+      ["Was this person primarily associated with architecture or industrial/product design?", "no"],
+      ["Was this person primarily associated with games or interactive entertainment?", "no"],
+      ["Was this person primarily associated with fashion or clothing design?", "yes"],
+      ["Was this person primarily associated with European fashion rather than American fashion?", "no"],
+      ["Was this person primarily associated with women's fashion rather than men's fashion?", "no"],
+      ["Was this person primarily associated with luxury high fashion rather than mass-market or casual clothing?", "yes"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain("fashion or clothing-design cluster");
+    expect(input).toContain("streetwear");
+    expect(input).toContain("luxury creative direction");
+    expect(input).not.toContain("Exactly one question slot remains");
+  });
+
+  it("asks for scene-level splits in heavy metal clusters", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "no"],
+      ["Was this a real person who actually lived?", "yes"],
+      ["Was this person primarily known for politics or government leadership?", "no"],
+      ["Was this person primarily known for entertainment or the arts?", "yes"],
+      ["Was this person primarily known for music?", "yes"],
+      ["Was this person primarily associated with rock or pop music?", "no"],
+      ["Was this person primarily associated with classical music?", "no"],
+      ["Was this person primarily associated with jazz or blues music?", "no"],
+      ["Was this person primarily associated with country, folk, or Americana music?", "no"],
+      ["Was this person primarily associated with hip-hop or rap music?", "no"],
+      ["Was this person primarily associated with music outside the English-speaking world?", "no"],
+      ["Was this person primarily known as a solo performer rather than as part of a group or band?", "no"],
+      ["Was this group primarily associated with electronic or dance music?", "no"],
+      ["Was this person primarily associated with heavy metal or hard rock music?", "yes"],
+      ["Was this person primarily known as the lead singer of their band?", "yes"],
+      ["Was this person primarily associated with a British band?", "no"],
+      ["Was this person primarily associated with a band formed before 1980?", "no"],
+      ["Was this person primarily associated with grunge or alternative rock rather than traditional heavy metal?", "no"],
+      ["Was this person primarily associated with glam or hair metal?", "no"],
+      ["Was this person primarily associated with a band that became famous in the 1990s or later?", "yes"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain("heavy-metal or hard-rock cluster");
+    expect(input).toContain("guitarist/instrumentalist");
+    expect(input).toContain("country or region");
+    expect(input).not.toContain("Exactly one question slot remains");
+  });
+
   it("asks for astrology and esoteric-scholar splits in historical astronomy clusters", () => {
     const state = createAnsweredState([
       ["Is this person alive?", "no"],

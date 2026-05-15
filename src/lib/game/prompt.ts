@@ -231,13 +231,19 @@ illustration, separate superhero comics, humor/satire, magazine work, newspaper
 strips, manga, European comics, and editorial cartoons before defaulting to a
 superhero artist. For business executives in a narrowed industry, ask the
 specific company, current versus former role, founder versus hired executive,
-or region before guessing a nearby CEO.
+or region before guessing a nearby CEO. For fashion and clothing design,
+separate couture/high fashion, streetwear, sneakers, luxury creative-direction,
+founder-label fame, menswear versus womenswear, and region before guessing a
+nearby designer.
 
 Music subgenres matter once the broad genre is known. If the transcript points
 to country or another large genre but the mainstream star is not uniquely
 supported, split mainstream radio fame from bluegrass, folk, Americana,
 instrumental virtuosity, songwriter-first fame, regional scenes, and award
-circuits before making a final guess.
+circuits before making a final guess. In heavy-metal and hard-rock branches,
+split lead vocalist versus guitarist/instrumentalist, extreme/death/black/power
+metal and other metal subgenres, region, band era, and mainstream crossover
+fame before guessing a general rock singer.
 
 Narrowing questions should still separate clusters. Good narrowing axes include
 public role, first source of fame, dominant public association, signature
@@ -459,6 +465,30 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
       "The transcript is in a historical astronomy, astrology, or esoteric-scholarship cluster.",
       "Do not guess a mainstream astronomer, literary figure, saint, ruler, or philosopher from broad scholarship and era clues alone.",
       "Ask one discriminator for astrology, occult or esoteric scholarship, alchemy, court astrologer/adviser work, or mathematical astronomy before guessing."
+    ].join(" ");
+  }
+
+  if (isAdultEntertainmentFameSourceCluster(state, remainingQuestionSlots)) {
+    return [
+      "The transcript is late in a mainstream-screen versus adult-entertainment-industry ambiguity.",
+      "Do not guess a mainstream actor from broad entertainment and performer clues when ordinary acting, comedy, TV, genre, fashion/modeling, directing, and business paths are weak.",
+      "Ask one neutral public fame-source discriminator about adult-entertainment-industry fame versus mainstream screen/media fame, without asking sensitive details."
+    ].join(" ");
+  }
+
+  if (isFashionDesignSceneCluster(state, remainingQuestionSlots)) {
+    return [
+      "The transcript is in a fashion or clothing-design cluster.",
+      "Do not guess a nearby European couturier or general luxury designer from fashion, menswear, or luxury clues alone.",
+      "Ask one scene-level split such as streetwear, sneakers, luxury creative direction, founder-label fame, primary label, region, or menswear versus womenswear before guessing."
+    ].join(" ");
+  }
+
+  if (isHeavyMetalSceneCluster(state, remainingQuestionSlots)) {
+    return [
+      "The transcript is in a heavy-metal or hard-rock cluster.",
+      "Do not guess a mainstream rock singer from broad band, era, and metal clues alone.",
+      "Ask one scene-level split such as lead vocalist versus guitarist/instrumentalist, extreme/death/black/power metal, country or region, band era, or mainstream crossover fame before guessing."
     ].join(" ");
   }
 
@@ -692,6 +722,113 @@ function isMaybeHeavy(state: GameState, remainingQuestionSlots: number): boolean
     .filter((turn) => turn.answer === "maybe").length;
 
   return totalMaybes >= 4 || recentMaybes >= 3;
+}
+
+function isAdultEntertainmentFameSourceCluster(
+  state: GameState,
+  remainingQuestionSlots: number
+): boolean {
+  if (remainingQuestionSlots <= 0 || remainingQuestionSlots > 4 || state.transcript.length < 12) {
+    return false;
+  }
+
+  const signalQuestions = yesOrMaybeQuestions(state);
+  const rejectedQuestions = noQuestions(state);
+  const asked = allQuestions(state);
+
+  if (
+    asked.some((question) =>
+      /(adult-entertainment|adult entertainment|mature-audience entertainment)/.test(
+        question
+      )
+    )
+  ) {
+    return false;
+  }
+
+  const aliveSignal =
+    state.transcript[0]?.question.toLowerCase() === "is this person alive?" &&
+    state.transcript[0]?.answer === "yes";
+  const entertainmentPerformerSignal =
+    signalQuestions.some((question) => /(entertainment|media)/.test(question)) &&
+    signalQuestions.some((question) => /(performer|scripted|acting|film|television)/.test(question));
+  const mainstreamScreenWeak =
+    rejectedQuestions.some((question) => /music/.test(question)) &&
+    rejectedQuestions.some((question) => /comedy/.test(question)) &&
+    rejectedQuestions.some((question) => /television rather than movies/.test(question)) &&
+    rejectedQuestions.filter((question) =>
+      /(action|adventure|dramatic|romantic|science fiction|fantasy)/.test(question)
+    ).length >= 2;
+  const otherPublicSidePathsWeak =
+    signalQuestions.some((question) => /outside acting/.test(question)) &&
+    rejectedQuestions.filter((question) =>
+      /(directing|fashion|modeling|business|brand|producing|owning media)/.test(question)
+    ).length >= 2;
+
+  return (
+    aliveSignal &&
+    entertainmentPerformerSignal &&
+    mainstreamScreenWeak &&
+    otherPublicSidePathsWeak
+  );
+}
+
+function isFashionDesignSceneCluster(
+  state: GameState,
+  remainingQuestionSlots: number
+): boolean {
+  if (remainingQuestionSlots <= 0 || remainingQuestionSlots > 4 || state.transcript.length < 10) {
+    return false;
+  }
+
+  const signalQuestions = yesOrMaybeQuestions(state);
+  const asked = allQuestions(state);
+
+  const realPersonSignal =
+    state.transcript[0]?.answer === "yes" ||
+    asked.some((question) => /real person who actually lived/.test(question));
+  const fashionSignal = signalQuestions.some((question) =>
+    /(fashion|clothing|menswear|womenswear|luxury high fashion|tailoring)/.test(
+      question
+    )
+  );
+  const designSignal = signalQuestions.some((question) =>
+    /(designing|creating|design|designer|clothing)/.test(question)
+  );
+  const missingSceneSplit = !asked.some((question) =>
+    /(streetwear|sneaker|off-white|louis vuitton|creative director|founder|label|brand founded|sportswear)/.test(
+      question
+    )
+  );
+
+  return realPersonSignal && fashionSignal && designSignal && missingSceneSplit;
+}
+
+function isHeavyMetalSceneCluster(
+  state: GameState,
+  remainingQuestionSlots: number
+): boolean {
+  if (remainingQuestionSlots <= 0 || remainingQuestionSlots > 4 || state.transcript.length < 10) {
+    return false;
+  }
+
+  const answeredYes = yesQuestions(state);
+  const asked = allQuestions(state);
+
+  const realPersonSignal =
+    state.transcript[0]?.answer === "yes" ||
+    asked.some((question) => /real person who actually lived/.test(question));
+  const musicSignal = answeredYes.some((question) => /music/.test(question));
+  const metalSignal = answeredYes.some((question) =>
+    /(heavy metal|hard rock|metal band)/.test(question)
+  );
+  const missingSceneSplit = !asked.some((question) =>
+    /(guitar|guitarist|instrumentalist|scandinavian|finnish|finland|swedish|norwegian|death metal|black metal|power metal|extreme metal|metalcore)/.test(
+      question
+    )
+  );
+
+  return realPersonSignal && musicSignal && metalSignal && missingSceneSplit;
 }
 
 function isHistoricalAstrologyScholarCluster(
