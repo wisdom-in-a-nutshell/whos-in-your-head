@@ -514,8 +514,81 @@ describe("GAME_MASTER_INSTRUCTIONS", () => {
 
     expect(input).toContain("person-like cultural figure");
     expect(input).toContain("Do not ask dead-human career");
-    expect(input).toContain("video-game character");
+    expect(input).toContain("video-game or interactive-media figure");
     expect(input).toContain("signature work");
+  });
+
+  it("includes mascot and virtual-idol sources after the real-lived boundary is rejected", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "no"],
+      [
+        "Was this a real person who actually lived, rather than a fictional, legendary, or screen-persona figure?",
+        "no"
+      ]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain("mascot or advertising persona");
+    expect(input).toContain("virtual idol or music/software persona");
+    expect(input).toContain("national/political symbol");
+  });
+
+  it("recovers mascot and virtual-idol source splits after weak story-franchise narrowing", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "no"],
+      [
+        "Was this a real person who actually lived, rather than a fictional, legendary, or screen-persona figure?",
+        "no"
+      ],
+      ["Is this figure primarily from film, television, animation, or comics rather than from video games?", "yes"],
+      ["Is this figure primarily associated with superhero stories?", "no"],
+      ["Is this figure primarily associated with animation or television rather than comics or print media?", "yes"],
+      ["Is this figure primarily associated with animated content made for children or families?", "yes"],
+      ["Is this figure primarily associated with Disney?", "no"],
+      ["Is this figure primarily associated with Japanese animation or anime?", "no"],
+      ["Is this figure depicted as a non-human character for most audiences?", "yes"],
+      ["Is this figure primarily associated with a long-running television series rather than a movie franchise?", "no"],
+      ["Is this figure primarily associated with computer-animated films rather than traditionally animated ones?", "no"],
+      ["Is this figure primarily associated with Warner Bros. animation?", "no"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain("person-like cultural-figure branch");
+    expect(input).toContain("mascot/advertising persona");
+    expect(input).toContain("virtual idol or music/software persona");
+  });
+
+  it("recovers virtual-idol source splits after weak Japanese game-franchise narrowing", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "no"],
+      [
+        "Was this a real person who actually lived, rather than a fictional, legendary, or screen-persona figure?",
+        "no"
+      ],
+      [
+        "Is this figure primarily associated with a film, TV show, animation, comic, or other scripted screen/story medium rather than folklore, religion, or holiday tradition?",
+        "no"
+      ],
+      ["Is this figure strongly associated with a major religious tradition?", "no"],
+      ["Is this figure primarily associated with folklore, mythology, or traditional legends rather than a modern holiday tradition?", "no"],
+      ["Is this figure strongly associated with Christmas or the winter holiday season?", "no"],
+      ["Is this figure primarily known as a mascot, symbolic national figure, or advertising persona rather than as a character from a story?", "no"],
+      ["Is this figure primarily associated with video games or interactive media?", "yes"],
+      ["Did this figure first become famous before the year 2000?", "no"],
+      ["Is this figure primarily human or human-like in appearance?", "yes"],
+      ["Is this figure primarily associated with a Japanese game franchise?", "yes"],
+      ["Is this figure primarily associated with role-playing games rather than action, fighting, or platform games?", "yes"],
+      ["Is this figure primarily known as the main playable protagonist of their game or series?", "no"],
+      ["Is this figure primarily associated with the Pokémon franchise?", "no"],
+      ["Is this figure primarily associated with the Final Fantasy series?", "no"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain("person-like cultural-figure branch");
+    expect(input).toContain("virtual idol or music/software persona");
   });
 
   it("asks a real-person versus persona boundary in screen-comedy clusters", () => {

@@ -55,6 +55,11 @@ transcript has narrowed naturally to one identity or a tiny cluster.
   human. First separate a real person who actually lived from fictional,
   legendary, folkloric, religious, holiday, video-game, or screen-persona
   figures, then narrow in the chosen space.
+- If the target is a person-like cultural figure rather than a real person,
+  split the public source broadly before story-franchise narrowing: mascot or
+  advertising persona, virtual idol or music/software persona, video-game or
+  interactive-media figure, film/TV/animation/comics/story character, folklore,
+  religion, holiday, national/political symbol, or screen persona.
 - Prefer public career, era, geography, and fame-source questions over private or sensitive identity traits.
 - A final guess should be one canonical public name, not a list of alternatives
   or an explanation.
@@ -337,10 +342,13 @@ or modern Christmas iconography.
 For non-living entertainment or culture targets, check whether the answer is a
 fictional, legendary, video-game, comics, animation, folklore, holiday, or
 screen-persona figure before asking a dead-human career checklist. If the target
-is not a real person who actually lived, narrow by medium/source, signature
-work or franchise, origin language or region, era, and iconic role. Do not guess
-the actor, creator, author, voice actor, or historical inspiration unless the
-transcript asks for that real person.
+is not a real person who actually lived, narrow by medium/source first:
+mascot/advertising persona, virtual idol or music/software persona, video game
+or interactive media, film/TV/animation/comics/story character, folklore,
+religion, holiday, national/political symbol, or screen persona. Then narrow by
+signature work or franchise, origin language or region, era, and iconic role.
+Do not guess the actor, creator, author, voice actor, or historical inspiration
+unless the transcript asks for that real person.
 
 Avoid wasting questions on a long chain of job titles. Do not ask actor, singer,
 athlete, politician, influencer one by one unless prior answers point there.
@@ -563,7 +571,7 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
     return [
       "The last answer rejected a real historical human and points to a person-like cultural figure.",
       "Do not ask dead-human career, royalty, politics, science, or war checklists.",
-      "Split medium/source next: video-game character, film/TV/animation/comics character, folklore/legend/religion/holiday figure, or screen persona; then narrow by signature work, franchise, origin language/region, era, and iconic role."
+      "Split medium/source next: mascot or advertising persona, virtual idol or music/software persona, video-game or interactive-media figure, film/TV/animation/comics/story character, folklore/legend/religion/holiday figure, national/political symbol, or screen persona; then narrow by signature work, franchise, origin language/region, era, and iconic role."
     ].join(" ");
   }
 
@@ -660,6 +668,14 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
       "Do not make a final guess from one election-year answer while several question slots remain.",
       "Ask one robust nearby-candidate split, preferably whether the person served as vice president before becoming president or took office after 2020, unless that split has already been asked.",
       "Treat exact election-year answers as easy for players to misremember."
+    ].join(" ");
+  }
+
+  if (isNonRealCulturalSourceGap(state, remainingQuestionSlots)) {
+    return [
+      "The transcript is in a person-like cultural-figure branch, but the public source is not grounded.",
+      "Do not keep narrowing inside film, game, animation, or story franchises after those candidates are weak.",
+      "Ask one broad source split such as mascot/advertising persona, virtual idol or music/software persona, video-game or interactive-media figure, film/TV/animation/comics/story character, folklore/holiday/religious figure, national/political symbol, or screen persona."
     ].join(" ");
   }
 
@@ -1100,6 +1116,67 @@ function isFictionalPersonaAmbiguityCluster(
   );
 
   return entertainmentBranch && personaProneMedium && performerOrRoleBranch;
+}
+
+function isNonRealCulturalSourceGap(
+  state: GameState,
+  remainingQuestionSlots: number
+): boolean {
+  if (remainingQuestionSlots <= 0 || state.transcript.length < 5) {
+    return false;
+  }
+
+  const asked = allQuestions(state);
+  const rejectedQuestions = noQuestions(state);
+  const signalQuestions = yesOrMaybeQuestions(state);
+  const rejectedRealPerson =
+    asked.some((question) => /real person who actually lived/.test(question)) &&
+    rejectedQuestions.some((question) => /real person who actually lived/.test(question));
+
+  if (!rejectedRealPerson) {
+    return false;
+  }
+
+  const sourceGrounded = signalQuestions.some((question) =>
+    /(mascot|advertising|brand|corporate promotion|virtual idol|vocaloid|music software|software persona|screen persona|national personification|political symbol)/.test(
+      question
+    )
+  );
+  if (sourceGrounded) {
+    return false;
+  }
+
+  const storyOrGameBranch = signalQuestions.some((question) =>
+    /(film|television|tv|animation|animated|comic|screen|story|franchise|video game|interactive media|game franchise|japanese game)/.test(
+      question
+    )
+  );
+  const weakStoryOrGameCandidates = rejectedQuestions.filter((question) =>
+    /(disney|warner bros|pokemon|final fantasy|persona|nintendo|superhero|anime|comic strips|theatrical animated|film produced|main playable protagonist|antagonist|villain)/.test(
+      question
+    )
+  ).length;
+  const mascotSourceMissing = !asked.some((question) =>
+    /(mascot|advertising|brand|corporate promotion)/.test(question)
+  );
+  const virtualSourceMissing = !asked.some((question) =>
+    /(virtual idol|vocaloid|music software|software persona)/.test(question)
+  );
+  const nonHumanOrAnimationSignal = signalQuestions.some((question) =>
+    /(non-human|talking animal|animated|animation|children|family)/.test(question)
+  );
+  const japaneseInteractiveSignal = signalQuestions.some((question) =>
+    /(video game|interactive media|japanese game|female|human or human-like)/.test(
+      question
+    )
+  );
+
+  return (
+    storyOrGameBranch &&
+    weakStoryOrGameCandidates >= 2 &&
+    ((mascotSourceMissing && nonHumanOrAnimationSignal) ||
+      (virtualSourceMissing && japaneseInteractiveSignal))
+  );
 }
 
 function isPlatformCreatorCluster(
