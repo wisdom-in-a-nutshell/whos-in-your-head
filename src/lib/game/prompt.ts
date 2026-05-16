@@ -193,6 +193,14 @@ ask a sharp differentiator between the realistic candidates. If it does not
 support a clear shortlist, do not ask a narrow clue from a guessed branch. Ask a
 high-information reset question that can create a shortlist.
 
+When a late game has mostly become a broad-category elimination checklist, treat
+that as missing information rather than progress. If many ordinary fame sources,
+regions, jobs, and formats are rejected but only weak demographic or existence
+facts remain, do not guess a famous adjacent person. Ask a reset question that
+creates a candidate set: original fame source, dominant public association,
+region or language sphere, one iconic event/work versus a long career, or tie
+to an organization, team, movement, medium, industry, or public role.
+
 Historical science, invention, and scholarship branches need disciplined
 splits. Before guessing a dead scientist, inventor, scholar, or religious
 scholar, try to establish the discipline, century, geography or language
@@ -501,6 +509,14 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
     ].join(" ");
   }
 
+  if (isLateNoShortlistRecovery(state, remainingQuestionSlots)) {
+    return [
+      "The transcript is late, broad-checklist heavy, and still has no trustworthy shortlist.",
+      "Do not guess a famous adjacent person from weak demographic or residual category clues.",
+      "Ask one high-information reset question that creates a candidate set: original fame source, dominant public association, region or language sphere, one iconic event or work versus a long career, or tie to an organization, team, movement, medium, industry, or public role."
+    ].join(" ");
+  }
+
   if (remainingQuestionSlots === 1) {
     return [
       "Exactly one question slot remains.",
@@ -739,6 +755,52 @@ function isMaybeHeavy(state: GameState, remainingQuestionSlots: number): boolean
     .filter((turn) => turn.answer === "maybe").length;
 
   return totalMaybes >= 4 || recentMaybes >= 3;
+}
+
+function isLateNoShortlistRecovery(
+  state: GameState,
+  remainingQuestionSlots: number
+): boolean {
+  if (remainingQuestionSlots <= 0 || remainingQuestionSlots > 4 || state.transcript.length < 12) {
+    return false;
+  }
+
+  const rejectedQuestions = noQuestions(state);
+  const answeredYes = yesQuestions(state);
+  const broadRejectedAxes = countMatchingQuestionAxes(rejectedQuestions, [
+    /(entertainment|media|arts|music|acting|actor|comedy|host|presenter|television|film|internet|social media|reality)/,
+    /(politics|government|president|prime minister|monarch|royal|public office)/,
+    /(sports|athletic|olympic|team sport|combat sport|motorsport|racket|track and field|swimming|gymnastics|cycling|golf)/,
+    /(business|entrepreneur|company|technology|founder|ceo)/,
+    /(science|technology|invention|mathematics|medicine|biology|physics|astronomy|engineering|chemistry)/,
+    /(writing|author|literature|visual art|design|fashion|modeling|beauty)/,
+    /(religion|religious|spiritual|holiday|folklore|legendary)/,
+    /(notoriety|violent conflict|crime|military|extremist|terrorism|armed conflict)/,
+    /(humanitarian|charitable|activism|public service|helping or caring)/,
+    /(united states|europe|asia|africa|middle east|english-speaking|country|region)/
+  ]);
+  const strongPositiveSignals = answeredYes.filter((question) => {
+    if (/(alive|real person|actually lived|female|male)/.test(question)) {
+      return false;
+    }
+
+    return /(associated with|known for|best known|served as|won|founding era|revolution|economics|mathematics|olympic|wimbledon|industry|language|region|country|movement|organization|team|specific|single|dominant)/.test(
+      question
+    );
+  }).length;
+
+  return (
+    rejectedQuestions.length >= 8 &&
+    broadRejectedAxes >= 4 &&
+    strongPositiveSignals <= 3
+  );
+}
+
+function countMatchingQuestionAxes(questions: string[], axes: RegExp[]): number {
+  return axes.reduce(
+    (count, axis) => count + (questions.some((question) => axis.test(question)) ? 1 : 0),
+    0
+  );
 }
 
 function isGlobalEntertainmentRegionGap(

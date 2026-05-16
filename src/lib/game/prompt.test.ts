@@ -95,6 +95,71 @@ describe("GAME_MASTER_INSTRUCTIONS", () => {
     expect(input).toContain("Ask the single best remaining discriminator");
   });
 
+  it("asks a reset question when a late broad checklist has no shortlist", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "maybe"],
+      ["Is this person primarily known for entertainment or media?", "yes"],
+      ["Is this person primarily known for music?", "no"],
+      ["Is this person primarily known for acting in film or television?", "no"],
+      ["Is this person primarily known for comedy?", "no"],
+      ["Did this person first become famous through the internet or social media?", "no"],
+      ["Is this person primarily known as a television host or presenter?", "no"],
+      ["Is this person primarily known for reality television or famous-family fame?", "no"],
+      ["Is this person primarily known for sports or athletic competition?", "no"],
+      ["Is this person primarily known for politics or government?", "no"],
+      ["Is this person primarily known for business or entrepreneurship?", "no"],
+      ["Is this person primarily known for science, technology, or invention?", "no"],
+      ["Is this person primarily known for writing or authorship?", "no"],
+      ["Is this person primarily known for religion or spiritual leadership?", "no"],
+      ["Is this person primarily known for news, journalism, or commentary?", "no"],
+      ["Is this person primarily known for military service or armed conflict?", "no"],
+      ["Did this person become famous primarily through the internet or social media?", "no"],
+      ["Is this person female?", "yes"],
+      ["Was this person primarily famous for one specific event or achievement rather than a long career?", "no"],
+      ["Was this person primarily known for fashion, modeling, or beauty-related fame?", "no"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain("broad-checklist heavy");
+    expect(input).toContain("high-information reset question");
+    expect(input).toContain("original fame source");
+    expect(input).not.toContain("Exactly one question slot remains");
+  });
+
+  it("does not ask the late reset when a strong shortlist has emerged", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "no"],
+      ["Was this person a real person who actually lived?", "yes"],
+      ["Was this person primarily known for politics or government leadership?", "yes"],
+      ["Was this person primarily associated with Europe?", "no"],
+      ["Was this person primarily associated with the United States?", "yes"],
+      ["Did this person serve as President of the United States?", "no"],
+      ["Was this person primarily known for civil rights or social-justice activism alongside politics?", "yes"],
+      ["Was this person assassinated?", "no"],
+      [
+        "Was this person primarily associated with the African American civil rights movement of the 1950s and 1960s?",
+        "no"
+      ],
+      ["Was this person a woman?", "no"],
+      ["Was this person primarily associated with labor or workers' rights movements?", "no"],
+      ["Was this person primarily associated with environmental or conservation causes?", "no"],
+      ["Was this person primarily associated with Native American rights or leadership?", "no"],
+      ["Was this person primarily associated with LGBTQ rights activism?", "no"],
+      ["Was this person primarily associated with anti-war or peace activism?", "no"],
+      ["Was this person primarily associated with the 20th century?", "no"],
+      ["Was this person primarily associated with the abolition of slavery or abolitionist activism?", "no"],
+      ["Was this person primarily associated with the American Revolution or the founding era of the United States?", "yes"],
+      ["Was this person primarily known for writing or political pamphlets rather than military or government service?", "yes"],
+      ["Was this person born outside the territory that became the United States?", "yes"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).not.toContain("broad-checklist heavy");
+    expect(input).toContain("Exactly one question slot remains");
+  });
+
   it("asks for scene splits in long-tail platform creator clusters", () => {
     const state = createAnsweredState([
       ["Is this person alive?", "yes"],
