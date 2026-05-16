@@ -45,6 +45,57 @@ describe("GAME_MASTER_INSTRUCTIONS", () => {
     expect(input).toContain("Treat exact election-year answers as easy for players to misremember.");
   });
 
+  it("asks country and role splits in late Middle East politics clusters", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "no"],
+      ["Was this a real person who actually lived, rather than a fictional, legendary, or screen-persona figure?", "yes"],
+      ["Was this person primarily known for politics or government leadership?", "yes"],
+      ["Was this person primarily associated with the United States?", "no"],
+      ["Was this person primarily associated with Europe?", "no"],
+      ["Was this person primarily associated with Asia?", "yes"],
+      ["Did this person hold power after 1950?", "yes"],
+      ["Was this person primarily known as an authoritarian or revolutionary leader?", "yes"],
+      ["Was this person primarily associated with China?", "no"],
+      ["Was this person primarily associated with the Middle East?", "yes"],
+      ["Was this person primarily associated with an Arab-majority country?", "yes"],
+      ["Did this person first come to power through a military coup or armed revolution?", "no"],
+      ["Was this person primarily known as a monarch or royal ruler?", "yes"],
+      ["Was this person primarily associated with the Arabian Peninsula?", "no"],
+      ["Was this person primarily associated with North Africa?", "no"],
+      ["Was this person primarily associated with the Levant region?", "yes"],
+      ["Was this person primarily associated with Jordan?", "no"],
+      ["Was this person primarily associated with Iraq?", "no"],
+      ["Did this person rule a country that still has a monarchy today?", "no"],
+      ["Was this person primarily associated with Iran?", "no"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain("Middle East, Arab-majority, or Levant politics cluster");
+    expect(input).toContain("country-and-role discriminator");
+    expect(input).toContain("Lebanon versus Palestinian/Syrian/Jordanian/Israeli politics");
+    expect(input).not.toContain("Exactly one question slot remains");
+  });
+
+  it("does not ask the Middle East politics split after country and role are grounded", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "no"],
+      ["Was this a real person who actually lived?", "yes"],
+      ["Was this person primarily known for politics or government leadership?", "yes"],
+      ["Was this person primarily associated with the Middle East?", "yes"],
+      ["Was this person primarily associated with an Arab-majority country?", "yes"],
+      ["Was this person primarily associated with the Levant region?", "yes"],
+      ["Was this person primarily associated with Lebanon?", "yes"],
+      ["Was this person known as a party or faction leader rather than a head of state?", "yes"],
+      ["Was this person assassinated?", "yes"],
+      ["Was this person female?", "no"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).not.toContain("Middle East, Arab-majority, or Levant politics cluster");
+  });
+
   it("adds a stabilizing directive when Maybe answers pile up", () => {
     const state = createAnsweredState([
       ["Is this person alive?", "yes"],

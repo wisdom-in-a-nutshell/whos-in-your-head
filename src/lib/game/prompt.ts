@@ -188,6 +188,15 @@ before becoming president, took office after 2020, served two elected terms, or
 was primarily known as a state governor before national office. Treat exact
 election-year answers as easy for players to misremember.
 
+Regional politics branches need country and role splits before famous default
+leaders. In Middle East, Arab-majority, and Levant paths, separate Palestinian,
+Lebanese, Syrian, Jordanian, Israeli, Egyptian, Gulf/Arabian, and North African
+political spheres before guessing. Also separate head of state/government,
+monarch or royal, party or faction leader, militia or armed-wing leader,
+civil-war or sectarian-political figure, reformist/intellectual, and
+assassinated leader. Treat one noisy monarchy, coup, or revolutionary answer as
+weak unless the rest of the transcript supports it.
+
 Late-game strategy has two modes. If the transcript supports a clear shortlist,
 ask a sharp differentiator between the realistic candidates. If it does not
 support a clear shortlist, do not ask a narrow clue from a guessed branch. Ask a
@@ -509,6 +518,14 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
     ].join(" ");
   }
 
+  if (isLevantPoliticsCluster(state, remainingQuestionSlots)) {
+    return [
+      "The transcript is in a Middle East, Arab-majority, or Levant politics cluster.",
+      "Do not default to a famous Palestinian, pan-Arab, monarch, or authoritarian leader from broad region and leadership clues alone, especially when monarchy, coup, or revolutionary answers conflict.",
+      "Ask one country-and-role discriminator: Lebanon versus Palestinian/Syrian/Jordanian/Israeli politics, head of state or government versus party/faction/militia/civil-war/sectarian leader, or assassinated leader versus long-term officeholder."
+    ].join(" ");
+  }
+
   if (isLateNoShortlistRecovery(state, remainingQuestionSlots)) {
     return [
       "The transcript is late, broad-checklist heavy, and still has no trustworthy shortlist.",
@@ -755,6 +772,46 @@ function isMaybeHeavy(state: GameState, remainingQuestionSlots: number): boolean
     .filter((turn) => turn.answer === "maybe").length;
 
   return totalMaybes >= 4 || recentMaybes >= 3;
+}
+
+function isLevantPoliticsCluster(
+  state: GameState,
+  remainingQuestionSlots: number
+): boolean {
+  if (remainingQuestionSlots <= 0 || remainingQuestionSlots > 5 || state.transcript.length < 10) {
+    return false;
+  }
+
+  const signalQuestions = yesOrMaybeQuestions(state);
+  const asked = allQuestions(state);
+
+  const politicsSignal = signalQuestions.some((question) =>
+    /(politics|government|leader|ruler|monarch|royal|president|prime minister|authoritarian|revolutionary)/.test(
+      question
+    )
+  );
+  const middleEastSignal = signalQuestions.some((question) =>
+    /(middle east|arab-majority|arab country|arabian|levant)/.test(question)
+  );
+  const localCountrySplitAsked = asked.some((question) =>
+    /(leban|palestin|syria|syrian|jordan|israel|iraq|iran|egypt|north africa|arabian peninsula|gulf)/.test(
+      question
+    )
+  );
+  const askedOnlyBroadOrNegativeLocalSplits =
+    !asked.some((question) => /(leban|palestin|syria|syrian|israel)/.test(question)) &&
+    localCountrySplitAsked;
+  const roleSplitAsked = asked.some((question) =>
+    /(party|faction|militia|armed wing|civil war|sectarian|assassinated|head of government|prime minister|president|parliament|intellectual|reformist)/.test(
+      question
+    )
+  );
+
+  return (
+    politicsSignal &&
+    middleEastSignal &&
+    (askedOnlyBroadOrNegativeLocalSplits || !roleSplitAsked)
+  );
 }
 
 function isLateNoShortlistRecovery(
