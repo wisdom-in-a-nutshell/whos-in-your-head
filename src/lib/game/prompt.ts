@@ -412,6 +412,11 @@ alternatives. If one remaining yes/no question would separate them, ask it. If
 the transcript does not yet support nearby alternatives, ask a broad reset
 question rather than guessing from an accidental branch.
 
+Before a final guess, treat recent hard Yes/No answers about role, source,
+field, region, or medium as guardrails. Do not guess a candidate that would
+require reversing those guardrails, even if the candidate is famous in a nearby
+cluster. Use the last question for the missing discriminator instead.
+
 # Output behavior
 
 Return the next move only through the structured output schema. Keep
@@ -531,6 +536,22 @@ function buildDirective(state: GameState, remainingQuestionSlots: number): strin
       "The transcript is in a Middle East, Arab-majority, or Levant politics cluster.",
       "Do not default to a famous Palestinian, pan-Arab, monarch, or authoritarian leader from broad region and leadership clues alone, especially when monarchy, coup, or revolutionary answers conflict.",
       "Ask one country-and-role discriminator: Lebanon versus Palestinian/Syrian/Jordanian/Israeli politics, head of state or government versus party/faction/militia/civil-war/sectarian leader, or assassinated leader versus long-term officeholder."
+    ].join(" ");
+  }
+
+  if (isLateBiblicalConstraintRisk(state, remainingQuestionSlots)) {
+    return [
+      "The transcript is late in a biblical or New Testament branch, and recent hard role answers constrain the next guess.",
+      "Do not guess a priest, governing authority, apostle, disciple, or other adjacent biblical figure after those roles have been rejected.",
+      "Use the remaining question for a direct identity-level split such as central figure of Christianity or Jesus himself versus another biblical associate."
+    ].join(" ");
+  }
+
+  if (isLateAcademicMathCsConstraintRisk(state, remainingQuestionSlots)) {
+    return [
+      "The transcript is late in an academic mathematics/computer-science branch, and recent hard field answers constrain the next guess.",
+      "Do not guess a linguist, philosopher, general public intellectual, or physics-adjacent figure when the transcript points to mathematics or computer science and rejects physics.",
+      "Use the remaining question for a direct field or identity split such as mathematician versus computer scientist/linguist, Fields Medal or major theorem fame, institution, country, or signature result."
     ].join(" ");
   }
 
@@ -866,6 +887,82 @@ function isLateNoShortlistRecovery(
     rejectedQuestions.length >= 8 &&
     broadRejectedAxes >= 4 &&
     strongPositiveSignals <= 3
+  );
+}
+
+function isLateBiblicalConstraintRisk(
+  state: GameState,
+  remainingQuestionSlots: number
+): boolean {
+  if (remainingQuestionSlots <= 0 || remainingQuestionSlots > 2 || state.transcript.length < 10) {
+    return false;
+  }
+
+  const signalQuestions = yesOrMaybeQuestions(state);
+  const answeredYes = yesQuestions(state);
+  const rejectedQuestions = noQuestions(state);
+
+  const biblicalSignal = signalQuestions.some((question) =>
+    /(bible|biblical|new testament|old testament|christian|christianity|crucifixion|jesus)/.test(
+      question
+    )
+  );
+  const crucifixionSignal = answeredYes.some((question) =>
+    /(crucifixion|directly associated with jesus|associated with jesus)/.test(question)
+  );
+  const rejectedAdjacentRoles =
+    rejectedQuestions.filter((question) =>
+      /(political or governing authority|governing authority|priest|disciple|apostle|twelve apostles|religious disciple)/.test(
+        question
+      )
+    ).length >= 2;
+
+  return biblicalSignal && crucifixionSignal && rejectedAdjacentRoles;
+}
+
+function isLateAcademicMathCsConstraintRisk(
+  state: GameState,
+  remainingQuestionSlots: number
+): boolean {
+  if (remainingQuestionSlots <= 0 || remainingQuestionSlots > 2 || state.transcript.length < 10) {
+    return false;
+  }
+
+  const signalQuestions = yesOrMaybeQuestions(state);
+  const answeredYes = yesQuestions(state);
+  const rejectedQuestions = noQuestions(state);
+  const asked = allQuestions(state);
+
+  const livingPersonSignal =
+    state.transcript[0]?.question.toLowerCase() === "is this person alive?" &&
+    state.transcript[0]?.answer === "yes";
+  const academiaSignal = signalQuestions.some((question) =>
+    /(academia|higher education|university|research institute|professor|researcher)/.test(
+      question
+    )
+  );
+  const mathPhysicsCsSignal = answeredYes.some((question) =>
+    /(mathematics, physics, or computer science|mathematics or computer science|math, physics, or computer science|mathematic|computer science|theoretical computer science)/.test(
+      question
+    )
+  );
+  const physicsRejected = rejectedQuestions.some((question) =>
+    /(physics rather than mathematics|primarily associated with physics|mainly associated with physics)/.test(
+      question
+    )
+  );
+  const mathVsCsGrounded = asked.some((question) =>
+    /(mathematician rather than|mathematics rather than computer science|computer scientist|computer science rather than mathematics|theoretical computer science|linguist|linguistics|number theory|algebraic geometry|fields medal|abel prize|signature result|major theorem)/.test(
+      question
+    )
+  );
+
+  return (
+    livingPersonSignal &&
+    academiaSignal &&
+    mathPhysicsCsSignal &&
+    physicsRejected &&
+    !mathVsCsGrounded
   );
 }
 

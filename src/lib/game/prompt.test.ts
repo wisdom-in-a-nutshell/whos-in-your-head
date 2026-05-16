@@ -25,6 +25,18 @@ describe("GAME_MASTER_INSTRUCTIONS", () => {
     );
   });
 
+  it("treats recent hard role and field answers as final-guess guardrails", () => {
+    expect(GAME_MASTER_INSTRUCTIONS).toContain(
+      "Before a final guess, treat recent hard Yes/No answers"
+    );
+    expect(GAME_MASTER_INSTRUCTIONS).toMatch(
+      /Do not guess a candidate that would\s+require reversing those guardrails/
+    );
+    expect(GAME_MASTER_INSTRUCTIONS).toContain(
+      "Use the last question for the missing discriminator instead"
+    );
+  });
+
   it("adds a focused directive for recent U.S. president clusters", () => {
     const state = createAnsweredState([
       ["Is this person alive?", "yes"],
@@ -144,6 +156,70 @@ describe("GAME_MASTER_INSTRUCTIONS", () => {
     expect(input).toContain("Exactly one question slot remains");
     expect(input).toContain("Do not leave it unused");
     expect(input).toContain("Ask the single best remaining discriminator");
+  });
+
+  it("uses the last question for biblical identity consistency before adjacent guesses", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "no"],
+      ["Was this a real person who actually lived?", "yes"],
+      ["Was this person primarily known for religion or spiritual leadership?", "yes"],
+      ["Was this person associated with Christianity?", "yes"],
+      ["Was this person recognized as a saint by a major Christian tradition?", "no"],
+      ["Was this person primarily known from events described in the Bible?", "yes"],
+      ["Was this person primarily associated with the New Testament rather than the Old Testament?", "maybe"],
+      ["Was this person directly associated with the crucifixion of Jesus?", "yes"],
+      ["Was this person a political or governing authority rather than a religious disciple or priest?", "no"],
+      ["Was this person one of the twelve apostles of Jesus?", "no"],
+      ["Was this person primarily known as a priest or temple authority?", "no"],
+      ["Was this person female?", "no"],
+      ["Was this person associated with Jerusalem?", "maybe"],
+      ["Was this person known for teachings or parables?", "yes"],
+      ["Was this person the central figure of a major world religion?", "maybe"],
+      ["Was this person primarily described in the Gospels?", "yes"],
+      ["Was this person connected to miracles in Christian tradition?", "yes"],
+      ["Was this person known as a ruler or king?", "no"],
+      ["Was this person known as a prophet?", "maybe"],
+      ["Was this person born in the first century?", "maybe"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain("biblical or New Testament branch");
+    expect(input).toContain("Do not guess a priest, governing authority, apostle");
+    expect(input).toContain("central figure of Christianity or Jesus himself");
+    expect(input).not.toContain("Exactly one question slot remains");
+  });
+
+  it("uses the last question for academic math/computer-science consistency before adjacent guesses", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "yes"],
+      ["Is this person primarily known for entertainment or media?", "no"],
+      ["Is this person primarily known for politics or government?", "no"],
+      ["Is this person primarily known for sports or athletic competition?", "no"],
+      ["Is this person primarily known for business or entrepreneurship?", "no"],
+      ["Is this person primarily known for science, technology, or invention?", "yes"],
+      ["Is this person primarily associated with academia or higher education?", "yes"],
+      ["Is this person primarily associated with mathematics, physics, or computer science?", "yes"],
+      ["Is this person widely known to the general public mainly because of artificial intelligence or AI-related work?", "no"],
+      ["Is this person primarily associated with physics rather than mathematics or computer science?", "no"],
+      ["Is this person primarily associated with the United States?", "no"],
+      ["Is this person primarily associated with Europe?", "yes"],
+      ["Is this person primarily associated with Germany?", "maybe"],
+      ["Has this person won a Nobel Prize?", "no"],
+      ["Has this person won a Turing Award?", "no"],
+      ["Is this person known for a controversial theory?", "no"],
+      ["Is this person younger than 50?", "yes"],
+      ["Is this person associated with a major university?", "yes"],
+      ["Is this person known outside academia?", "maybe"],
+      ["Is this person primarily known in the 21st century?", "yes"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain("academic mathematics/computer-science branch");
+    expect(input).toContain("Do not guess a linguist, philosopher");
+    expect(input).toContain("mathematician versus computer scientist/linguist");
+    expect(input).not.toContain("Exactly one question slot remains");
   });
 
   it("asks a reset question when a late broad checklist has no shortlist", () => {
