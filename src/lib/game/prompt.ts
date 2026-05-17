@@ -496,7 +496,11 @@ function buildRetryDirectiveLines(retryAttempt: number): string[] {
 
 function buildDirective(state: GameState, remainingQuestionSlots: number): string {
   if (remainingQuestionSlots <= 0) {
-    return "No question slots remain. Make a final guess now.";
+    return [
+      "No question slots remain. Make a final guess now.",
+      "Before choosing the name, re-check the most recent hard Yes/No guardrails for role, field, source, medium, platform, network, region, and era.",
+      "Do not guess a candidate that conflicts with those guardrails when another plausible candidate better matches them."
+    ].join(" ");
   }
 
   if (isHistoricalAstrologyScholarCluster(state, remainingQuestionSlots)) {

@@ -158,6 +158,42 @@ describe("GAME_MASTER_INSTRUCTIONS", () => {
     expect(input).toContain("Ask the single best remaining discriminator");
   });
 
+  it("keeps hard source and network guardrails when forced to make the final guess", () => {
+    const state = createAnsweredState([
+      ["Is this person alive?", "no"],
+      [
+        "Was this a real person who actually lived, rather than a fictional, legendary, or screen-persona figure?",
+        "no"
+      ],
+      ["Is this figure primarily from film, television, animation, comics, or another scripted story medium?", "yes"],
+      ["Is this figure male?", "yes"],
+      ["Is this figure primarily associated with a live-action sitcom?", "yes"],
+      ["Is this figure primarily associated with a sitcom originally from the 1990s?", "no"],
+      ["Is this figure primarily associated with a sitcom that first became popular in the 2000s?", "yes"],
+      ["Is this figure primarily associated with a workplace sitcom?", "no"],
+      ["Is this figure primarily associated with a family sitcom?", "no"],
+      ["Is this figure primarily associated with a group of friends or peers?", "yes"],
+      ["Is this figure primarily associated with a sitcom originally aired on NBC?", "no"],
+      ["Is this figure primarily associated with a sitcom originally aired on CBS?", "no"],
+      ["Is this figure primarily associated with a sitcom originally aired on Fox?", "no"],
+      ["Is this figure primarily associated with a sitcom originally aired on ABC?", "no"],
+      ["Is this figure primarily associated with a cable network sitcom?", "yes"],
+      ["Is this figure a main character rather than a recurring side character?", "no"],
+      ["Is this figure known for chaotic or morally questionable behavior?", "yes"],
+      ["Is this figure associated with Philadelphia?", "yes"],
+      ["Is this figure connected to a bar or nightlife setting?", "yes"],
+      ["Is this figure recurring rather than part of the central friend group?", "yes"],
+      ["Is this figure married or formerly married to a main character?", "yes"]
+    ]);
+
+    const input = buildGameMasterStateInput(state);
+
+    expect(input).toContain("No question slots remain");
+    expect(input).toContain("re-check the most recent hard Yes/No guardrails");
+    expect(input).toContain("platform, network");
+    expect(input).toContain("Do not guess a candidate that conflicts");
+  });
+
   it("uses the last question for biblical identity consistency before adjacent guesses", () => {
     const state = createAnsweredState([
       ["Is this person alive?", "no"],
