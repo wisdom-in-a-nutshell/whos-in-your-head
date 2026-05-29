@@ -36,8 +36,6 @@ Optional:
 - `LLM_REASONING_EFFORT`
 - `LLM_SERVICE_TIER`
 - `LLM_REQUEST_TIMEOUT_MS`
-- `LATE_VERIFIER_ENABLED`
-- `LATE_VERIFIER_MODEL`
 
 The server also accepts the OpenAI SDK names `OPENAI_API_KEY`,
 `OPENAI_BASE_URL`, `OPENAI_MODEL`, `OPENAI_REASONING_EFFORT`,
@@ -51,10 +49,9 @@ unsupported, or otherwise invalid model values fall back to `gpt-chat-latest`
 instead of failing a public game request. The home page no longer exposes a
 model picker or model-query preselection path.
 
-`LATE_VERIFIER_ENABLED` defaults to enabled. Set it to `false` only to disable
-the extra late-game verification pass. `LATE_VERIFIER_MODEL` is accepted for
-local experimentation but unsupported or stale values fall back to
-`gpt-chat-latest`, matching the single-model product contract.
+Each answer turn is handled by one Game Master request. There is no separate
+late-game verifier, fallback judge, or second model decision-maker in the live
+mechanics.
 
 `LLM_REASONING_EFFORT` accepts `none`, `minimal`, `low`, `medium`, `high`, or
 `xhigh`; the code default is `high` for this game. The runtime computes a

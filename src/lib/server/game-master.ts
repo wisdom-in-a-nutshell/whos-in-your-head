@@ -17,7 +17,7 @@ import {
 } from "@/lib/game/reasoning";
 import { DEFAULT_GAME_MODEL, type GameModel, type GameState } from "@/lib/game/state";
 import { describeError, logError, logInfo, logWarn } from "./logging";
-import { getOpenAIRequestConfig, getOpenAIRuntimeStatus } from "./openai";
+import { getOpenAIRequestConfig } from "./openai";
 
 const AI_MOVE_FORMAT_NAME = "who_in_your_head_ai_move";
 const PROMPT_CACHE_KEY = "whos-in-your-head-game-master-v1";
@@ -105,25 +105,18 @@ export function readWarmedOpeningMove(
 export async function generateAiMove(
   state: GameState,
   requestId?: string,
-  retryAttempt = 1,
-  modelOverride?: string
+  retryAttempt = 1
 ): Promise<GeneratedAiMove> {
-  const configuredModel = getOpenAIRuntimeStatus().model;
-  const { model, escalationReason } = selectGameMasterModel(
-    state,
-    configuredModel,
-    modelOverride
-  );
+  const model = normalizeGameMasterModel(state.model);
 
-  return generateOpenAIAiMove(state, requestId, retryAttempt, model, escalationReason);
+  return generateOpenAIAiMove(state, requestId, retryAttempt, model);
 }
 
 async function generateOpenAIAiMove(
   state: GameState,
   requestId: string | undefined,
   retryAttempt: number,
-  model: string,
-  escalationReason: string | null
+  model: string
 ): Promise<GeneratedAiMove> {
   const reasoningEffort = selectOpenAICompatibleReasoningEffort(state);
   const {
@@ -145,10 +138,8 @@ async function generateOpenAIAiMove(
     transcriptLength: state.transcript.length,
     model,
     configuredModel,
-    escalationReason,
     storedResponseModel: state.modelResponseModel,
     responseChainModelMatches,
-    modelOverride: null,
     gameReasoningEffort: state.reasoningEffort,
     reasoningEffort,
     requestedServiceTier: serviceTier,
@@ -205,10 +196,8 @@ async function generateOpenAIAiMove(
         transcriptLength: state.transcript.length,
         model,
         configuredModel,
-        escalationReason,
         storedResponseModel: state.modelResponseModel,
         responseChainModelMatches,
-        modelOverride: null,
         gameReasoningEffort: state.reasoningEffort,
         reasoningEffort,
         requestedServiceTier: serviceTier,
@@ -238,7 +227,6 @@ async function generateOpenAIAiMove(
     durationMs: Date.now() - startedAt,
     requestedModel: model,
     actualModel: response.model ?? null,
-    escalationReason,
     storedResponseModel: state.modelResponseModel,
     responseChainModelMatches,
     reasoningEffort,
@@ -263,20 +251,6 @@ async function generateOpenAIAiMove(
     responseId: response.id,
     usage: normalizeOpenAIUsage(response.usage ?? null),
     durationMs: Date.now() - startedAt
-  };
-}
-
-function selectGameMasterModel(
-  state: GameState,
-  configuredModel: string,
-  modelOverride?: string
-) {
-  void configuredModel;
-  void modelOverride;
-
-  return {
-    model: normalizeGameMasterModel(state.model),
-    escalationReason: null
   };
 }
 

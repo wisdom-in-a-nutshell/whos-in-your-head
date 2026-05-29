@@ -16,14 +16,6 @@ vi.mock("./logging", () => ({
 }));
 
 vi.mock("./openai", () => ({
-  getOpenAIRuntimeStatus: () => ({
-    configured: true,
-    baseUrlConfigured: true,
-    model: "gpt-chat-latest",
-    reasoningEffort: "high",
-    serviceTier: "priority",
-    configurationError: null
-  }),
   getOpenAIRequestConfig: () => ({
     client: {
       responses: {
@@ -141,7 +133,7 @@ describe("generateAiMove", () => {
 
   it("keeps gpt-chat-latest as the model after question 19", async () => {
     createMock.mockResolvedValue(createResponse({
-      id: "resp-late-upgrade-test",
+      id: "resp-late-single-model-test",
       outputText: JSON.stringify({
         action: "ask_question",
         question: "Are they primarily known for work outside the United States?",
@@ -153,7 +145,7 @@ describe("generateAiMove", () => {
     const { generateAiMove } = await import("./game-master");
     const state = createAnsweredState(18, "gpt-chat-latest");
 
-    const generated = await generateAiMove(state, "late-upgrade-request");
+    const generated = await generateAiMove(state, "late-single-model-request");
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
     expect(generated.requestedModel).toBe("gpt-chat-latest");
@@ -164,7 +156,7 @@ describe("generateAiMove", () => {
 
   it("keeps gpt-chat-latest on uncertain paths", async () => {
     createMock.mockResolvedValue(createResponse({
-      id: "resp-uncertain-upgrade-test",
+      id: "resp-uncertain-single-model-test",
       outputText: JSON.stringify({
         action: "ask_question",
         question: "Are they mainly known for one iconic work?",
@@ -179,7 +171,7 @@ describe("generateAiMove", () => {
       "gpt-chat-latest"
     );
 
-    const generated = await generateAiMove(state, "uncertain-upgrade-request");
+    const generated = await generateAiMove(state, "uncertain-single-model-request");
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
     expect(generated.requestedModel).toBe("gpt-chat-latest");
@@ -190,7 +182,7 @@ describe("generateAiMove", () => {
 
   it("keeps gpt-chat-latest when branches look exhausted", async () => {
     createMock.mockResolvedValue(createResponse({
-      id: "resp-exhausted-upgrade-test",
+      id: "resp-exhausted-single-model-test",
       outputText: JSON.stringify({
         action: "ask_question",
         question: "Is their fame tied to one unusual public event?",
@@ -205,7 +197,7 @@ describe("generateAiMove", () => {
       "gpt-chat-latest"
     );
 
-    const generated = await generateAiMove(state, "exhausted-upgrade-request");
+    const generated = await generateAiMove(state, "exhausted-single-model-request");
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
     expect(generated.requestedModel).toBe("gpt-chat-latest");
@@ -410,7 +402,7 @@ describe("generateAiMove", () => {
     ).rejects.toSatisfy(isContentFilterIncompleteResponseError);
   });
 
-  it("ignores stale model overrides while rebuilding from full state", async () => {
+  it("normalizes stale stored model values while rebuilding from full state", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-fallback-test",
       outputText: JSON.stringify({
@@ -424,15 +416,11 @@ describe("generateAiMove", () => {
     const { generateAiMove } = await import("./game-master");
     const state = {
       ...createSharedOpeningAnswerState("no"),
+      model: "stale-model" as GameModel,
       modelResponseId: "resp-primary-filtered"
     };
 
-    const generated = await generateAiMove(
-      state,
-      "fallback-request",
-      2,
-      "stale-model"
-    );
+    const generated = await generateAiMove(state, "fallback-request", 2);
 
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 

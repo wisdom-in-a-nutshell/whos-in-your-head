@@ -22,7 +22,6 @@ import {
   warmOpeningMoveResponsesForReasoning,
   type GeneratedAiMove
 } from "@/lib/server/game-master";
-import { verifyLateAiMove } from "@/lib/server/late-verifier";
 import {
   recordActualAnswerTelemetry,
   recordGameFailureTelemetry,
@@ -372,32 +371,6 @@ async function generateNextGameState(
   for (let attempt = 1; attempt <= MODEL_MOVE_ATTEMPTS; attempt += 1) {
     try {
       const generated = await generateAiMove(game, requestId, attempt);
-      const verifiedGenerated = await verifyLateAiMove(game, generated, requestId);
-
-      if (verifiedGenerated !== null) {
-        try {
-          const nextGame = attachModelResponseId(
-            applyAiMove(game, verifiedGenerated.move),
-            null
-          );
-
-          return {
-            generated: verifiedGenerated,
-            nextGame,
-            source: "late_verifier_override"
-          };
-        } catch (verifierError) {
-          logWarn("late_verifier_override_invalid_open", {
-            requestId,
-            gameId: game.gameId,
-            questionCount: game.questionCount,
-            transcriptLength: game.transcript.length,
-            move: verifiedGenerated.move,
-            error: describeError(verifierError)
-          });
-        }
-      }
-
       const nextGame = attachModelResponseId(
         applyAiMove(game, generated.move),
         getReusableResponseId(generated),

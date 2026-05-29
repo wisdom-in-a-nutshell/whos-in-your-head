@@ -40,7 +40,6 @@ Optional env:
 LLM_MODEL=gpt-chat-latest
 LLM_REASONING_EFFORT=high
 LLM_SERVICE_TIER=priority
-LATE_VERIFIER_ENABLED=true
 ```
 
 The server also accepts `OPENAI_API_KEY`, `OPENAI_BASE_URL`,
@@ -51,8 +50,8 @@ references.
 
 The public game uses only `gpt-chat-latest`. Unknown, stale, or query-string
 model values silently fall back to that model instead of failing a public game.
-Late final guesses are verified by a second `gpt-chat-latest` pass unless
-`LATE_VERIFIER_ENABLED=false` is set.
+Each turn is handled by a single Game Master call; there is no separate
+late-game verifier or second model decision-maker.
 
 Local validation:
 
