@@ -25,16 +25,15 @@ describe("OpenAI runtime defaults", () => {
     expect(getOpenAIRuntimeStatus().reasoningEffort).toBe("high");
   });
 
-  it("reads only supported GPT fallback models without repeating the primary model", () => {
+  it("does not expose fallback model configuration", () => {
     process.env.LLM_MODEL = "gpt-chat-latest";
-    process.env.LLM_FALLBACK_MODELS =
-      "gpt-chat-latest, gpt-5.5, claude-sonnet-4-6, gemini-3.1-flash-lite, gpt-5.4-mini, gpt-5.4-mini";
+    process.env.LLM_FALLBACK_MODELS = "gpt-chat-latest, stale-model";
 
-    expect(getOpenAIRuntimeStatus().fallbackModels).toEqual(["gpt-5.4-mini"]);
+    expect("fallbackModels" in getOpenAIRuntimeStatus()).toBe(false);
   });
 
   it("falls unsupported primary model env back to GPT Chat Latest", () => {
-    process.env.LLM_MODEL = "gpt-5.5";
+    process.env.LLM_MODEL = "stale-model";
 
     expect(getOpenAIRuntimeStatus().model).toBe("gpt-chat-latest");
   });

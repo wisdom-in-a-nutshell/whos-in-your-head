@@ -33,36 +33,28 @@ Required:
 Optional:
 
 - `LLM_MODEL`
-- `LLM_FALLBACK_MODELS`
 - `LLM_REASONING_EFFORT`
 - `LLM_SERVICE_TIER`
 - `LLM_REQUEST_TIMEOUT_MS`
+- `LATE_VERIFIER_ENABLED`
+- `LATE_VERIFIER_MODEL`
 
 The server also accepts the OpenAI SDK names `OPENAI_API_KEY`,
-`OPENAI_BASE_URL`, `OPENAI_MODEL`, `OPENAI_FALLBACK_MODELS`,
-`OPENAI_REASONING_EFFORT`, `OPENAI_SERVICE_TIER`, and
-`OPENAI_REQUEST_TIMEOUT_MS` as local fallbacks.
+`OPENAI_BASE_URL`, `OPENAI_MODEL`, `OPENAI_REASONING_EFFORT`,
+`OPENAI_SERVICE_TIER`, and `OPENAI_REQUEST_TIMEOUT_MS` as local fallbacks.
 Deployed Azure runtime should use
 `LLM_API_*` app settings backed by Key Vault references so the repo does not
 depend on ambient global OpenAI provider routing.
 
-The public game defaults to `gpt-chat-latest`. The picker exposes only the two
-GPT product paths for playable rounds. Empty, unknown, shorthand, stale,
-Gemini, Claude, unsupported GPT, or otherwise invalid model values fall back to
-`gpt-chat-latest` instead of failing a public game request.
+The public game uses only `gpt-chat-latest`. Empty, unknown, shorthand, stale,
+unsupported, or otherwise invalid model values fall back to `gpt-chat-latest`
+instead of failing a public game request. The home page no longer exposes a
+model picker or model-query preselection path.
 
-The home page accepts a `model` query parameter to preselect a live model before
-a round starts. The selected model is stored in game state and reused for later
-turns unless the submitted value is invalid and the schema falls back to the
-default. The only public selectable model ids are `gpt-chat-latest` and the
-fast GPT path `gpt-5.4-mini`.
-
-`LLM_FALLBACK_MODELS` is a comma- or newline-separated model chain. It accepts
-only the two supported GPT product ids: `gpt-chat-latest` and `gpt-5.4-mini`.
-It is used only when the primary Responses call returns `status: "incomplete"`
-with `incomplete_details.reason: "content_filter"`. That shape is currently
-logged as a successful LiteLLM `/responses` call instead of a router
-`ContentPolicyViolationError`, so the app owns this narrow fallback case.
+`LATE_VERIFIER_ENABLED` defaults to enabled. Set it to `false` only to disable
+the extra late-game verification pass. `LATE_VERIFIER_MODEL` is accepted for
+local experimentation but unsupported or stale values fall back to
+`gpt-chat-latest`, matching the single-model product contract.
 
 `LLM_REASONING_EFFORT` accepts `none`, `minimal`, `low`, `medium`, `high`, or
 `xhigh`; the code default is `high` for this game. The runtime computes a
@@ -86,12 +78,10 @@ stalled upstream request cannot hold a player turn for minutes.
 
 ## Provider Architecture
 
-The game has one app-owned turn API and one model adapter behind it: GPT-family
-models use the OpenAI Responses API with Structured Outputs,
+The game has one app-owned turn API and one model adapter behind it:
+`gpt-chat-latest` uses the OpenAI Responses API with Structured Outputs,
 `previous_response_id`, `prompt_cache_key`, and `prompt_cache_retention`.
-Gemini, Claude, and unsupported GPT provider paths are intentionally not
-supported. Stale public model inputs and unsupported fallback config are
-normalized away rather than routed.
+Unsupported model inputs are normalized away rather than routed.
 
 Keep the provider adapters narrow. The app owns game state, retries, rule
 enforcement, telemetry, and result handling; providers only propose the next
@@ -193,21 +183,16 @@ game-rule application, the second attempt still adds a retry marker, ignores
 `previous_response_id`, and rebuilds from the full transcript so one bad stored
 Responses branch cannot trap a game turn.
 
-If the failed response is specifically an incomplete content-filter response,
-the route tries `LLM_FALLBACK_MODELS` before giving up. Fallback model calls use
-the same structured output schema, same prompt, and same server-side game-rule
-validation, but they rebuild from explicit game state instead of continuing the
-primary model's `previous_response_id`. A successful fallback move is applied
-to explicit game state, but its response id is not preserved for future primary
-model turns; the next turn rebuilds from transcript rather than crossing model
-response chains.
+Incomplete content-filter responses are retried once on the same model. If the
+second attempt also fails, the route returns a failed-turn response and the
+browser keeps the preserved game state so the player can retry the same answer.
 
 The server only stores response ids that begin with `resp_` for future
 `previous_response_id` use. Chat-completions-shaped provider ids such as
 `chatcmpl-...` are accepted after schema validation, but the next turn rebuilds
 from the explicit transcript instead of sending that id to the Responses API.
 
-OpenAI's GPT-5.5 guidance says to use the Responses API, Structured Outputs,
+OpenAI's current API guidance recommends the Responses API, Structured Outputs,
 conversation state, prompt caching, and static prompt prefixes for this style
 of workload. The game-master call follows that shape: stable instructions
 first, dynamic state last, `previous_response_id` for continued turns,

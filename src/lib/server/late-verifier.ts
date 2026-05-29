@@ -128,13 +128,13 @@ export async function verifyLateAiMove(
 }
 
 function isLateVerifierEnabled() {
-  return process.env.LATE_VERIFIER_ENABLED?.trim().toLowerCase() === "true";
+  return process.env.LATE_VERIFIER_ENABLED?.trim().toLowerCase() !== "false";
 }
 
 function readLateVerifierModel() {
   const model = process.env.LATE_VERIFIER_MODEL?.trim();
 
-  if (model === "gpt-chat-latest" || model === "gpt-5.4-mini") {
+  if (model === "gpt-chat-latest") {
     return model;
   }
 

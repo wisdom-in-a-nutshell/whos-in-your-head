@@ -30,11 +30,11 @@ describe("verifyLateAiMove", () => {
   beforeEach(() => {
     createMock.mockReset();
     delete process.env.LATE_VERIFIER_MODEL;
-    process.env.LATE_VERIFIER_ENABLED = "true";
+    delete process.env.LATE_VERIFIER_ENABLED;
   });
 
-  it("is disabled unless explicitly enabled", async () => {
-    delete process.env.LATE_VERIFIER_ENABLED;
+  it("can be explicitly disabled", async () => {
+    process.env.LATE_VERIFIER_ENABLED = "false";
     const { verifyLateAiMove } = await import("./late-verifier");
 
     const result = await verifyLateAiMove(
@@ -60,8 +60,7 @@ describe("verifyLateAiMove", () => {
     expect(createMock).not.toHaveBeenCalled();
   });
 
-  it("uses structured output and the configured verifier model", async () => {
-    process.env.LATE_VERIFIER_MODEL = "gpt-5.4-mini";
+  it("uses structured output and GPT Chat Latest", async () => {
     createMock.mockResolvedValue(createResponse({
       outputText: JSON.stringify({
         candidates: [candidate("Dr. Phil")],
@@ -83,7 +82,7 @@ describe("verifyLateAiMove", () => {
 
     expect(result).toBeNull();
     expect(request).toMatchObject({
-      model: "gpt-5.4-mini",
+      model: "gpt-chat-latest",
       instructions: expect.stringContaining("late-game verifier"),
       store: true,
       prompt_cache_key: "whos-in-your-head-late-verifier-v1"
@@ -96,8 +95,8 @@ describe("verifyLateAiMove", () => {
     );
   });
 
-  it("falls an unsupported verifier model back to GPT Chat Latest", async () => {
-    process.env.LATE_VERIFIER_MODEL = "gpt-5.5";
+  it("falls stale verifier model env back to GPT Chat Latest", async () => {
+    process.env.LATE_VERIFIER_MODEL = "stale-model";
     createMock.mockResolvedValue(createResponse({
       outputText: JSON.stringify({
         candidates: [candidate("Dr. Phil")],

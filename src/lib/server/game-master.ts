@@ -26,12 +26,6 @@ const GAME_MASTER_REQUEST_INSTRUCTIONS =
 const OPENING_WARMUP_ANSWERS: PlayerAnswer[] = ["yes"];
 const OUTPUT_PREVIEW_CHARACTERS = 220;
 const DISABLE_LITELLM_RESPONSE_CACHE = true;
-const LATE_GAME_UPGRADE_START_AFTER_QUESTIONS = 18;
-const LATE_GAME_UPGRADE_MODEL = "gpt-chat-latest";
-const EARLY_UPGRADE_MIN_QUESTIONS_FOR_UNCERTAINTY = 8;
-const EARLY_UPGRADE_MAYBE_COUNT = 3;
-const EARLY_UPGRADE_RECENT_ANSWER_WINDOW = 6;
-const EARLY_UPGRADE_RECENT_MAYBE_COUNT = 2;
 
 const openingWarmups = new Map<string, Promise<GeneratedAiMove>>();
 const warmedOpenings = new Map<string, GeneratedAiMove>();
@@ -277,57 +271,13 @@ function selectGameMasterModel(
   configuredModel: string,
   modelOverride?: string
 ) {
-  if (modelOverride) {
-    return {
-      model: normalizeGameMasterModel(modelOverride),
-      escalationReason: null
-    };
-  }
-
-  const selectedModel = normalizeGameMasterModel(state.model ?? configuredModel);
-
-  if (selectedModel !== "gpt-chat-latest") {
-    return {
-      model: selectedModel,
-      escalationReason: null
-    };
-  }
-
-  const escalationReason = getRecommendedProfileEscalationReason(state);
-
-  if (escalationReason !== null) {
-    return {
-      model: LATE_GAME_UPGRADE_MODEL,
-      escalationReason
-    };
-  }
+  void configuredModel;
+  void modelOverride;
 
   return {
-    model: selectedModel,
+    model: normalizeGameMasterModel(state.model),
     escalationReason: null
   };
-}
-
-function getRecommendedProfileEscalationReason(state: GameState): string | null {
-  if (state.questionCount >= LATE_GAME_UPGRADE_START_AFTER_QUESTIONS) {
-    return "late_game";
-  }
-
-  const answers = state.transcript.map((turn) => turn.answer);
-  const maybeCount = answers.filter((answer) => answer === "maybe").length;
-  const recentAnswers = answers.slice(-EARLY_UPGRADE_RECENT_ANSWER_WINDOW);
-  const recentMaybeCount = recentAnswers.filter((answer) => answer === "maybe").length;
-  const lastAnswer = recentAnswers.at(-1) ?? null;
-
-  if (
-    state.questionCount >= EARLY_UPGRADE_MIN_QUESTIONS_FOR_UNCERTAINTY &&
-    maybeCount >= EARLY_UPGRADE_MAYBE_COUNT &&
-    (recentMaybeCount >= EARLY_UPGRADE_RECENT_MAYBE_COUNT || lastAnswer === "maybe")
-  ) {
-    return "uncertain_path";
-  }
-
-  return null;
 }
 
 function parseGameMasterMove(
@@ -415,7 +365,7 @@ function trimPrivateRationale(value: unknown) {
 }
 
 function normalizeGameMasterModel(model: string) {
-  if (model === "gpt-chat-latest" || model === "gpt-5.4-mini") {
+  if (model === DEFAULT_GAME_MODEL) {
     return model;
   }
 

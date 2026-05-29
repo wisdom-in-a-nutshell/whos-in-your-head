@@ -4,14 +4,7 @@ import { OPENING_MOVE } from "@/lib/game/opening";
 
 vi.mock("server-only", () => ({}));
 
-import { buildAnswerTurnReplayKey, shouldTryContentFilterFallback } from "./route";
-
-describe("game turn retry policy", () => {
-  it("retries the primary model before trying content-filter fallbacks", () => {
-    expect(shouldTryContentFilterFallback(1, 2)).toBe(false);
-    expect(shouldTryContentFilterFallback(2, 2)).toBe(true);
-  });
-});
+import { buildAnswerTurnReplayKey } from "./route";
 
 describe("answer turn replay keys", () => {
   it("matches duplicate submissions for the same state and answer", () => {

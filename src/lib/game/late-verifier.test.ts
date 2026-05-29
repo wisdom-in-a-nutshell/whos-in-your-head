@@ -20,9 +20,6 @@ describe("late verifier", () => {
     expect(shouldRunLateVerifier(createAnsweredState(15), guess)).toBe(false);
     expect(shouldRunLateVerifier(createAnsweredState(16), guess)).toBe(true);
     expect(
-      shouldRunLateVerifier(createAnsweredState(16, "gpt-5.4-mini"), guess)
-    ).toBe(false);
-    expect(
       shouldRunLateVerifier(createAnsweredState(16), {
         action: "ask_question",
         question: "Is this person alive?",
@@ -147,17 +144,14 @@ function candidate(name: string) {
   };
 }
 
-function createAnsweredState(
-  questionCount: number,
-  model: "gpt-chat-latest" | "gpt-5.4-mini" = "gpt-chat-latest"
-) {
+function createAnsweredState(questionCount: number) {
   const answers = Array.from({ length: questionCount }, (_, index) => ({
     question: `Is this test question ${index + 1}?`,
     answer: index % 3 === 0 ? "yes" : index % 3 === 1 ? "no" : "maybe"
   })) as ReturnType<typeof createSharedOpeningAnswerState>["transcript"];
 
   return {
-    ...createSharedOpeningAnswerState("yes", "high", model),
+    ...createSharedOpeningAnswerState("yes", "high"),
     questionCount,
     transcript: answers,
     latestQuestion: null

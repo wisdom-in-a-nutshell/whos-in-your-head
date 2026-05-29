@@ -16,7 +16,7 @@ Start simple:
 
 - Next.js + TypeScript for a small deployable web app.
 - Server-side route handlers for OpenAI calls; never expose `OPENAI_API_KEY` in the browser.
-- `OPENAI_MODEL` env var, defaulting to a current Responses-capable model.
+- `LLM_MODEL=gpt-chat-latest`; stale or unsupported model env values are ignored.
 - OpenAI official JavaScript SDK and Zod for structured model moves.
 
 ## Setup
@@ -37,9 +37,10 @@ LLM_API_ENDPOINT=...
 Optional env:
 
 ```bash
-LLM_MODEL=gpt-5.5
-LLM_REASONING_EFFORT=medium
+LLM_MODEL=gpt-chat-latest
+LLM_REASONING_EFFORT=high
 LLM_SERVICE_TIER=priority
+LATE_VERIFIER_ENABLED=true
 ```
 
 The server also accepts `OPENAI_API_KEY`, `OPENAI_BASE_URL`,
@@ -48,13 +49,10 @@ fallback names.
 For deployed Azure runtime, prefer `LLM_API_*` app settings backed by Key Vault
 references.
 
-The public game defaults to `gpt-chat-latest`. The start screen lets players
-choose from the currently live model allowlist, and unknown or stale model
-values silently fall back to the default instead of failing a public game.
-
-Share links can include exact live model ids such as
-`?model=gemini-3.1-flash-lite`; unknown shorthand values such as `?model=chat`
-fall back to `gpt-chat-latest`.
+The public game uses only `gpt-chat-latest`. Unknown, stale, or query-string
+model values silently fall back to that model instead of failing a public game.
+Late final guesses are verified by a second `gpt-chat-latest` pass unless
+`LATE_VERIFIER_ENABLED=false` is set.
 
 Local validation:
 

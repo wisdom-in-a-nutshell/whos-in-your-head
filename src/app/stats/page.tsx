@@ -447,10 +447,6 @@ function formatModelName(model: string) {
     return "GPT Chat Latest";
   }
 
-  if (model === "gpt-5.4-mini") {
-    return "GPT-5 Instant";
-  }
-
   return model
     .replace(/^gpt/i, "GPT")
     .replace("-mini", " Mini")

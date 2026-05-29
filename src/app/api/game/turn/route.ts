@@ -15,13 +15,9 @@ import {
   OPENING_MOVE,
   readDeterministicOpeningFollowupMove
 } from "@/lib/game/opening";
-import {
-  getOpenAIModelFallbacks,
-  getOpenAIRuntimeStatus
-} from "@/lib/server/openai";
+import { getOpenAIRuntimeStatus } from "@/lib/server/openai";
 import {
   generateAiMove,
-  isContentFilterIncompleteResponseError,
   readWarmedOpeningMove,
   warmOpeningMoveResponsesForReasoning,
   type GeneratedAiMove
@@ -424,16 +420,6 @@ async function generateNextGameState(
         error: describeError(error)
       });
 
-      if (
-        isContentFilterIncompleteResponseError(error) &&
-        shouldTryContentFilterFallback(attempt, MODEL_MOVE_ATTEMPTS)
-      ) {
-        const fallback = await tryContentFilterFallbacks(game, requestId, attempt + 1);
-
-        if (fallback) {
-          return fallback;
-        }
-      }
     }
   }
 
@@ -468,77 +454,6 @@ function readDeterministicOpeningGameState(
     nextGame,
     source: "local_non_living_identity_boundary"
   };
-}
-
-export function shouldTryContentFilterFallback(
-  attempt: number,
-  maxAttempts: number
-) {
-  return attempt >= maxAttempts;
-}
-
-async function tryContentFilterFallbacks(
-  game: GameState,
-  requestId: string,
-  retryAttempt: number
-): Promise<{ generated: GeneratedAiMove; nextGame: GameState; source: string } | null> {
-  const fallbackModels = getOpenAIModelFallbacks();
-
-  if (fallbackModels.length === 0) {
-    logWarn("game_turn_content_filter_no_fallback_configured", {
-      requestId,
-      gameId: game.gameId,
-      questionCount: game.questionCount,
-      transcriptLength: game.transcript.length
-    });
-    return null;
-  }
-
-  for (const fallbackModel of fallbackModels) {
-    try {
-      logInfo("game_turn_content_filter_fallback_started", {
-        requestId,
-        gameId: game.gameId,
-        questionCount: game.questionCount,
-        transcriptLength: game.transcript.length,
-        fallbackModel,
-        retryAttempt
-      });
-
-      const generated = await generateAiMove(game, requestId, retryAttempt, fallbackModel);
-      const nextGame = attachModelResponseId(
-        applyAiMove(game, generated.move),
-        null
-      );
-
-      logInfo("game_turn_content_filter_fallback_succeeded", {
-        requestId,
-        gameId: game.gameId,
-        questionCount: game.questionCount,
-        fallbackModel,
-        responseId: generated.responseId,
-        preservedResponseId: false
-      });
-
-      return {
-        generated,
-        nextGame,
-        source: "model_move_content_filter_fallback"
-      };
-    } catch (fallbackError) {
-      logWarn("game_turn_content_filter_fallback_failed", {
-        requestId,
-        gameId: game.gameId,
-        questionCount: game.questionCount,
-        transcriptLength: game.transcript.length,
-        fallbackModel,
-        retryAttempt,
-        error: describeError(fallbackError)
-      });
-    }
-  }
-
-  return null;
 }
 
 function readWarmedOpeningGameState(

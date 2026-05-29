@@ -19,8 +19,7 @@ vi.mock("./openai", () => ({
   getOpenAIRuntimeStatus: () => ({
     configured: true,
     baseUrlConfigured: true,
-    model: "gpt-5.5",
-    fallbackModels: [],
+    model: "gpt-chat-latest",
     reasoningEffort: "high",
     serviceTier: "priority",
     configurationError: null
@@ -31,7 +30,7 @@ vi.mock("./openai", () => ({
         create: createMock
       }
     },
-    model: "gpt-5.5",
+    model: "gpt-chat-latest",
     reasoningEffort: "high",
     serviceTier: "priority"
   })
@@ -87,7 +86,7 @@ describe("generateAiMove", () => {
     }));
 
     const { generateAiMove } = await import("./game-master");
-    const state = createSharedOpeningAnswerState("yes", "low", "gpt-5.4-mini");
+    const state = createSharedOpeningAnswerState("yes", "low", "gpt-chat-latest");
 
     const generated = await generateAiMove(state, "low-request");
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
@@ -189,7 +188,7 @@ describe("generateAiMove", () => {
     });
   });
 
-  it("keeps gpt-chat-latest on the fast model when branches look exhausted", async () => {
+  it("keeps gpt-chat-latest when branches look exhausted", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-exhausted-upgrade-test",
       outputText: JSON.stringify({
@@ -215,7 +214,7 @@ describe("generateAiMove", () => {
     });
   });
 
-  it("keeps clean gpt-chat-latest paths on the fast model before question 19", async () => {
+  it("keeps clean gpt-chat-latest paths before question 19", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-clean-fast-test",
       outputText: JSON.stringify({
@@ -284,8 +283,8 @@ describe("generateAiMove", () => {
     const { generateAiMove } = await import("./game-master");
     const state = {
       ...createAnsweredState(18, "gpt-chat-latest"),
-      modelResponseId: "resp-gpt-55-chain",
-      modelResponseModel: "gpt-5.5"
+      modelResponseId: "resp-stale-chain",
+      modelResponseModel: "stale-model"
     };
 
     await generateAiMove(state, "late-chain-request");
@@ -308,7 +307,7 @@ describe("generateAiMove", () => {
     }));
 
     const { generateAiMove } = await import("./game-master");
-    const state = createAnsweredState(9, "gpt-5.4-mini");
+    const state = createAnsweredState(9, "gpt-chat-latest");
 
     const generated = await generateAiMove(state, "medium-request");
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
@@ -329,7 +328,7 @@ describe("generateAiMove", () => {
     }));
 
     const { generateAiMove } = await import("./game-master");
-    const state = createAnsweredState(17, "gpt-5.4-mini");
+    const state = createAnsweredState(17, "gpt-chat-latest");
 
     const generated = await generateAiMove(state, "high-request");
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
@@ -411,7 +410,7 @@ describe("generateAiMove", () => {
     ).rejects.toSatisfy(isContentFilterIncompleteResponseError);
   });
 
-  it("can request a configured fallback model while rebuilding from full state", async () => {
+  it("ignores stale model overrides while rebuilding from full state", async () => {
     createMock.mockResolvedValue(createResponse({
       id: "resp-fallback-test",
       outputText: JSON.stringify({
@@ -432,14 +431,14 @@ describe("generateAiMove", () => {
       state,
       "fallback-request",
       2,
-      "gpt-5.4-mini"
+      "stale-model"
     );
 
     const request = createMock.mock.calls[0][0] as Record<string, unknown>;
 
-    expect(generated.requestedModel).toBe("gpt-5.4-mini");
+    expect(generated.requestedModel).toBe("gpt-chat-latest");
     expect(request).toMatchObject({
-      model: "gpt-5.4-mini",
+      model: "gpt-chat-latest",
       cache: {
         "no-cache": true,
         "no-store": true
@@ -477,7 +476,7 @@ describe("generateAiMove", () => {
     });
   });
 
-  it("prefers chat message content over reasoning text in fallback responses", async () => {
+  it("prefers chat message content over reasoning text in compatible responses", async () => {
     const outputText = JSON.stringify({
       action: "ask_question",
       question: "Were they primarily associated with the Middle East or the Islamic world?",
@@ -486,7 +485,7 @@ describe("generateAiMove", () => {
     });
     const response = {
       ...createResponse({
-        id: "resp-chat-fallback-test",
+        id: "resp-chat-content-test",
         outputText: "Let me analyze the transcript first..."
       }),
       output_text: undefined,
@@ -503,9 +502,8 @@ describe("generateAiMove", () => {
     const { generateAiMove } = await import("./game-master");
     const generated = await generateAiMove(
       createSharedOpeningAnswerState("no"),
-      "chat-fallback-request",
-      2,
-      "gpt-5.4-mini"
+      "chat-content-request",
+      2
     );
 
     expect(generated.move).toEqual({
@@ -558,7 +556,7 @@ function createResponse({ id, outputText }: { id: string; outputText: string }) 
       }
     ],
     status: "completed",
-    model: "gpt-5.5",
+    model: "gpt-chat-latest",
     service_tier: "priority",
     incomplete_details: null,
     error: null,

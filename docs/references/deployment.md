@@ -46,10 +46,10 @@ Runtime LLM config lives on the Azure Web App as Key Vault references:
 Non-secret runtime defaults:
 
 - `LLM_MODEL=gpt-chat-latest`
-- `LLM_FALLBACK_MODELS=` with only GPT-family models if fallback is needed
 - `LLM_REASONING_EFFORT=high`
 - `LLM_SERVICE_TIER=priority`
 - `LLM_REQUEST_TIMEOUT_MS=20000`
+- `LATE_VERIFIER_ENABLED=true`
 - `MONGODB_DB_NAME=content_production`
 - `GAME_TELEMETRY_ENABLED=true`
 - `GAME_STATS_ABANDON_AFTER_MINUTES=20`

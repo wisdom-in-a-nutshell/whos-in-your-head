@@ -3,20 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 const MAX_QUESTIONS = 21;
-const liveGameModelValues = ["gpt-chat-latest", "gpt-5.4-mini"] as const;
 const DEFAULT_GAME_MODEL = "gpt-chat-latest";
-const gameModelOptions = [
-  {
-    value: "gpt-chat-latest",
-    label: "GPT Chat Latest",
-    disabled: false
-  },
-  {
-    value: "gpt-5.4-mini",
-    label: "GPT-5 Instant",
-    disabled: false
-  }
-] as const;
 const questionPrompts = [
   "Don’t overthink it",
   "Tiny clue, please",
@@ -115,7 +102,7 @@ function ThinkingDots() {
 
 type Phase = "start" | "asking" | "thinking" | "guessing" | "result";
 type Answer = "yes" | "no" | "maybe";
-type GameModel = (typeof liveGameModelValues)[number];
+type GameModel = typeof DEFAULT_GAME_MODEL;
 
 type Turn = {
   question: string;
@@ -182,7 +169,6 @@ export default function Home() {
   const [phase, setPhase] = useState<Phase>("start");
   const [game, setGame] = useState<GameState | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState<GameModel>(getInitialSelectedModel);
   const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus | null>(null);
   const [publicStats, setPublicStats] = useState<PublicStats | null>(null);
@@ -205,7 +191,7 @@ export default function Home() {
     questionPrompts[Math.max(0, questionNumber - 1) % questionPrompts.length];
   const thinkingPrompt = thinkingPrompts[answeredCount % thinkingPrompts.length];
   const currentPrompt = phase === "thinking" ? thinkingPrompt : questionPrompt;
-  const activeModel = game?.model ?? selectedModel ?? runtimeStatus?.model ?? DEFAULT_GAME_MODEL;
+  const activeModel = game?.model ?? runtimeStatus?.model ?? DEFAULT_GAME_MODEL;
   const modelName = formatModelName(activeModel);
   const shareText = game ? formatShareText(game) : "";
   const shareUrl = getShareUrl();
@@ -294,7 +280,7 @@ export default function Home() {
     try {
       const nextGame = await postGameTurn({
         action: "start",
-        model: selectedModel
+        model: DEFAULT_GAME_MODEL
       });
       commitGame(nextGame);
     } catch (nextError) {
@@ -480,38 +466,10 @@ export default function Home() {
                 ))}
               </div>
             </div>
-            <label className="model-picker">
+            <div className="model-picker" aria-label="Game model">
               <span>Playing with</span>
-              <span className="model-select-wrap">
-                <select
-                  aria-label="Choose model"
-                  onChange={(event) => {
-                    const nextModel = event.target.value;
-
-                    if (isLiveGameModel(nextModel)) {
-                      setSelectedModel(nextModel);
-                    }
-                  }}
-                  value={selectedModel}
-                >
-                  <optgroup label="Recommended">
-                    <option value="gpt-chat-latest">GPT Chat Latest</option>
-                  </optgroup>
-                  <optgroup label="Available">
-                    {gameModelOptions
-                      .filter((option) => option.value !== "gpt-chat-latest")
-                      .map((option) => (
-                        <option
-                          key={option.value}
-                          value={option.value}
-                        >
-                          {option.label}
-                        </option>
-                      ))}
-                  </optgroup>
-                </select>
-              </span>
-            </label>
+              <strong>{formatModelName(DEFAULT_GAME_MODEL)}</strong>
+            </div>
           </div>
         </section>
       ) : null}
@@ -745,36 +703,10 @@ function formatModelName(model: string): string {
     return "GPT Chat Latest";
   }
 
-  if (model === "gpt-5.4-mini") {
-    return "GPT-5 Instant";
-  }
-
   return model
     .replace(/^gpt/i, "GPT")
     .replace("-mini", " Mini")
     .replace("-nano", " Nano");
-}
-
-function isLiveGameModel(model: string): model is GameModel {
-  return (liveGameModelValues as readonly string[]).includes(model);
-}
-
-function getInitialSelectedModel(): GameModel {
-  if (typeof window === "undefined") {
-    return DEFAULT_GAME_MODEL;
-  }
-
-  return readModelFromUrl(window.location.search) ?? DEFAULT_GAME_MODEL;
-}
-
-function readModelFromUrl(search: string): GameModel | null {
-  const rawModel = new URLSearchParams(search).get("model")?.trim().toLowerCase();
-
-  if (!rawModel) {
-    return null;
-  }
-
-  return isLiveGameModel(rawModel) ? rawModel : null;
 }
 
 function formatPercent(value: number | null): string {

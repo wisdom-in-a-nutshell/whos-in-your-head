@@ -25,10 +25,10 @@ describe("game state transitions", () => {
     expect(state.modelResponseModel).toBeNull();
   });
 
-  it("keeps the assigned model on the game state", () => {
-    const state = createInitialGameState("high", "gpt-5.4-mini");
+  it("keeps the single GPT Chat Latest model on the game state", () => {
+    const state = createInitialGameState("high");
 
-    expect(state.model).toBe("gpt-5.4-mini");
+    expect(state.model).toBe("gpt-chat-latest");
     expect(
       applyAiMove(state, {
         action: "ask_question",
@@ -36,13 +36,13 @@ describe("game state transitions", () => {
         guess: null,
         shortRationale: null
       }).model
-    ).toBe("gpt-5.4-mini");
+    ).toBe("gpt-chat-latest");
   });
 
-  it("silently falls stale Gemini and Claude start models back to GPT Chat Latest", () => {
+  it("silently falls stale start models back to GPT Chat Latest", () => {
     const parsed = gameTurnRequestSchema.parse({
       action: "start",
-      model: "gemini-3.1-flash-lite"
+      model: "stale-model"
     });
 
     expect(parsed.action).toBe("start");
@@ -51,18 +51,6 @@ describe("game state transitions", () => {
     }
 
     expect(parsed.model).toBe("gpt-chat-latest");
-
-    const claudeParsed = gameTurnRequestSchema.parse({
-      action: "start",
-      model: "claude-sonnet-4-6"
-    });
-
-    expect(claudeParsed.action).toBe("start");
-    if (claudeParsed.action !== "start") {
-      throw new Error("Expected a start action.");
-    }
-
-    expect(claudeParsed.model).toBe("gpt-chat-latest");
   });
 
   it("defaults start requests to GPT Chat Latest", () => {

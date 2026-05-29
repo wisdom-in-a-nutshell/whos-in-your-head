@@ -72,10 +72,9 @@ Before merge readiness:
 Treat the GPT workflow as:
 
 - `gpt-chat-latest` turn telemetry.
-- The fast GPT path (`gpt-5.4-mini`) when users explicitly choose it.
 
-Do not judge the GPT path only by `gpt-chat-latest` completed-game rows when
-players can explicitly choose the fast GPT option.
+The public game is intentionally single-model. Ignore stale or unsupported
+model rows except as historical telemetry.
 
 Gemini, Claude, and unsupported GPT paths have been removed from the product.
 Do not optimize, compare, or route live games through them.
