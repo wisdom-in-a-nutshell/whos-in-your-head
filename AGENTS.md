@@ -12,7 +12,7 @@ The user thinks of a famous person. The app/AI asks one yes/no-style question at
 
 ## Scope Routing
 
-- For Azure App Service, ACR, GitHub Actions OIDC, Key Vault runtime config, or Cloudflare custom-domain deployment work, use [$azure-webapp-deploy](.agents/skills/azure-webapp-deploy/SKILL.md).
+- For production hosting, launchd, Cloudflare Tunnel, or runtime config work, read `docs/references/deployment.md`.
 
 ## Current product direction
 
@@ -35,6 +35,7 @@ The user thinks of a famous person. The app/AI asks one yes/no-style question at
 
 - Use `docs/references/agent-native-workflow.md` for repo-owned checks and docs maintenance rules.
 - Use `docs/references/openai-runtime-contract.md` for the OpenAI integration boundary.
+- Use `docs/references/deployment.md` for the Mac mini production service and Cloudflare Tunnel route.
 - For exploratory or multi-step implementation work, create a short-lived
   branch before editing so unfinished work is not swept into `main` by the
   machine-wide Stop hook.

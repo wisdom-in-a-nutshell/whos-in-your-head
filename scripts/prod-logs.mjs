@@ -1,15 +1,12 @@
 #!/usr/bin/env node
-import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
 
 const SCHEMA_VERSION = "1.0";
-const DEFAULT_RESOURCE_GROUP = "ghost";
-const DEFAULT_APP = "whos-in-your-head-adi";
+const DEFAULT_LOG_FILE =
+  "/Users/dobby/.local/state/whos-in-your-head/log/whos-in-your-head.out.log";
 
 const EXIT_GENERIC = 1;
 const EXIT_USAGE = 2;
-const EXIT_DEPENDENCY = 4;
 
 const startedAt = Date.now();
 const requestId = crypto.randomUUID();
@@ -36,8 +33,7 @@ try {
     command: "prod-logs.events",
     status: "ok",
     data: {
-      app: args.app,
-      resourceGroup: args.resourceGroup,
+      logFile: args.logFile,
       count: filtered.length,
       events: filtered
     },
@@ -64,8 +60,7 @@ function parseArgs(argv) {
     command: "events",
     output: "json",
     noInput: false,
-    resourceGroup: DEFAULT_RESOURCE_GROUP,
-    app: DEFAULT_APP,
+    logFile: DEFAULT_LOG_FILE,
     limit: 50,
     contains: null,
     event: null
@@ -90,12 +85,8 @@ function parseArgs(argv) {
       args.noInput = true;
       continue;
     }
-    if (arg === "--resource-group") {
-      args.resourceGroup = readValue(rest, arg);
-      continue;
-    }
-    if (arg === "--app") {
-      args.app = readValue(rest, arg);
+    if (arg === "--log-file") {
+      args.logFile = readValue(rest, arg);
       continue;
     }
     if (arg === "--limit") {
@@ -129,64 +120,24 @@ function readValue(rest, flag) {
 }
 
 function fetchEvents(args) {
-  const tmpDir = join(process.cwd(), "tmp");
-  mkdirSync(tmpDir, { recursive: true });
-  const zipPath = join(tmpDir, `prod-logs-${requestId}.zip`);
-
-  try {
-    console.error(`Downloading App Service logs for ${args.app}...`);
-    execFileSync(
-      "az",
-      [
-        "webapp",
-        "log",
-        "download",
-        "--resource-group",
-        args.resourceGroup,
-        "--name",
-        args.app,
-        "--log-file",
-        zipPath
-      ],
-      { stdio: ["ignore", "pipe", "pipe"] }
+  if (!existsSync(args.logFile)) {
+    throw cliError(
+      "E_LOG_FILE_MISSING",
+      `Production log file not found: ${args.logFile}`,
+      true,
+      "Start the launchd service or pass --log-file."
     );
+  }
 
-    const listing = execFileSync("unzip", ["-Z1", zipPath], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"]
-    })
-      .split("\n")
-      .filter((line) => line.endsWith("_docker.log"));
-
-    const events = [];
-    for (const file of listing) {
-      const content = execFileSync("unzip", ["-p", zipPath, file], {
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"],
-        maxBuffer: 20 * 1024 * 1024
-      });
-      for (const line of content.split("\n")) {
-        const event = parseWhiyhLogLine(line);
-        if (event) {
-          events.push(event);
-        }
-      }
-    }
-
-    return events;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (/az/.test(message) || /login|auth|credential/i.test(message)) {
-      throw cliError("E_DEPENDENCY", message, true, "Run `az login` and retry.", EXIT_DEPENDENCY);
-    }
-    throw cliError("E_LOG_DOWNLOAD_FAILED", message, true, "Check Azure Web App logging and retry.");
-  } finally {
-    if (existsSync(zipPath)) {
-      rmSync(zipPath, { force: true });
-    } else {
-      writeFileSync(join(tmpDir, ".keep"), "");
+  const content = readFileSync(args.logFile, "utf8");
+  const events = [];
+  for (const line of content.split("\n")) {
+    const event = parseWhiyhLogLine(line);
+    if (event) {
+      events.push(event);
     }
   }
+  return events;
 }
 
 function parseWhiyhLogLine(line) {

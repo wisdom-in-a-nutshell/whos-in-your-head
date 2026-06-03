@@ -40,9 +40,8 @@ Optional:
 The server also accepts the OpenAI SDK names `OPENAI_API_KEY`,
 `OPENAI_BASE_URL`, `OPENAI_MODEL`, `OPENAI_REASONING_EFFORT`,
 `OPENAI_SERVICE_TIER`, and `OPENAI_REQUEST_TIMEOUT_MS` as local fallbacks.
-Deployed Azure runtime should use
-`LLM_API_*` app settings backed by Key Vault references so the repo does not
-depend on ambient global OpenAI provider routing.
+Production runtime on the Mac mini uses the ignored local env file loaded by
+`scripts/run-local-production.sh`; do not store these values in tracked files.
 
 The public game uses only `gpt-chat-latest`. Empty, unknown, shorthand, stale,
 unsupported, or otherwise invalid model values fall back to `gpt-chat-latest`
@@ -66,7 +65,7 @@ prompt prefix, `prompt_cache_key`, and Responses state chain stay the same.
 `LLM_SERVICE_TIER` accepts `auto`, `default`, or `priority`; the default is
 `priority`. The value is sent as the Responses API request-level `service_tier`,
 so the app can choose priority processing per game-master call without changing
-the Azure deployment-level setting.
+the broader runtime configuration.
 
 `LLM_REQUEST_TIMEOUT_MS` caps each OpenAI SDK request. The default is `20000`
 milliseconds and accepted overrides must be between `5000` and `60000`. SDK
@@ -217,8 +216,8 @@ target. Player games still keep unique `gameId` values and branch into unique
 model response chains after the next answer.
 
 Local smoke on 2026-05-13 showed that prompt caching is supported through the
-current LiteLLM/Azure path when a stable user-message prefix is followed by a
-varying suffix; later calls reported nonzero `cached_tokens`. Caching is still
+current OpenAI-compatible proxy path when a stable user-message prefix is
+followed by a varying suffix; later calls reported nonzero `cached_tokens`. Caching is still
 provider-routed and should be observed through response usage plus the LiteLLM
 dashboard rather than assumed for every individual request.
 
@@ -258,7 +257,7 @@ turn request ids, game ids, model/runtime settings, response ids, token usage,
 cache counts, and sanitized error details. They intentionally do not include API
 keys or hidden prompt text.
 
-Use the repo client to download and inspect Azure App Service logs:
+Use the repo client to inspect local production launchd logs:
 
 ```bash
 npm run logs:prod -- --json --limit 50
@@ -324,7 +323,7 @@ change has settled:
 4. Make at most one prompt or mechanics change per loop, on a short-lived
    branch, and compare the next window before changing again.
 
-Use 15-minute checks only immediately after a deploy or routing change. Avoid
+Use 15-minute checks only immediately after a local production install or routing change. Avoid
 editing prompts from one isolated miss unless the transcript shows a clear,
 repeatable rule violation.
 
@@ -340,8 +339,8 @@ Mongo/Cosmos runtime database when `MONGODB_URI` is configured and
 
 Runtime secret ownership:
 
-- `MONGODB_URI` belongs in Azure Key Vault as `aipodcasting--mongodb-uri`.
-- The Web App consumes it through an App Service Key Vault reference.
+- `MONGODB_URI` belongs in the ignored Mac mini runtime env file.
+- The launchd wrapper loads that env file before starting the standalone server.
 - Do not store the Mongo URI in GitHub Actions secrets or tracked files.
 
 Collections:

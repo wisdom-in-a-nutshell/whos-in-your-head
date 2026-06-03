@@ -53,13 +53,14 @@ Default pattern:
 3. Make changes, inspect telemetry, and iterate on that branch.
 4. Run `scripts/check-fast.sh` when the change is ready.
 5. Merge back to `main` only when the user or repo automation is ready for the
-   Stop hook to commit, push, and trigger any normal deploy path.
+   Stop hook to commit and push.
 6. After the merge has been pushed, delete the merged local branch and any
    merged remote branch so stale agent branches do not accumulate.
 
 Reasoning:
 
-- `main` is treated as deployable.
+- `main` is treated as production-ready, but production updates still require
+  installing the local Mac mini launchd service.
 - The machine-wide Stop hook may stage, commit, rebase, and push at the end of
   an agent turn.
 - Keeping in-progress work off `main` prevents half-finished telemetry,

@@ -1,82 +1,63 @@
 # Deployment
 
-## Target
+`whos-in-your-head` is served on the Mac mini as a launchd-managed Next.js
+production service behind the shared Cloudflare Tunnel.
 
-Deploy the app as a standalone Next.js container to Azure Web App.
+## Local Service
 
-- GitHub repo: `wisdom-in-a-nutshell/whos-in-your-head`
-- Azure Web App: `whos-in-your-head-adi`
-- Resource group: `ghost`
-- App Service Plan: `ASP-aipodcastinggroup-aef6`
-- Container registry: `aipodcasting.azurecr.io`
-- Image repository: `whos-in-your-head`
+```text
+LaunchAgent: com.dobby.whos-in-your-head
+Local target: http://127.0.0.1:8794
+Health: http://127.0.0.1:8794/api/health
+Public hostname: mindreader.adithyan.io
+```
 
-## CI/CD
+The app repo owns the local service process:
 
-`.github/workflows/deploy.yml` follows the same pattern as `blog-personal`:
+```bash
+scripts/install-launchd-whos-in-your-head.sh
+scripts/install-launchd-whos-in-your-head.sh --status
+scripts/install-launchd-whos-in-your-head.sh --logs 150
+```
 
-1. Install with `npm ci`.
-2. Run typecheck, tests, lint, and build.
-3. Log in to Azure with GitHub OIDC.
-4. Build and push the Docker image to ACR.
-5. Update the Azure Web App container image.
+The installer runs `npm run build`, copies `.next/static` into the standalone
+Next.js output, and launchd starts `node .next/standalone/server.js` with
+`HOSTNAME=127.0.0.1` and `PORT=8794`.
 
-Push deploys intentionally ignore docs, tests, and local telemetry/logging
-clients. Runtime stats app changes such as `/api/stats`, `/stats`, and
-`src/lib/server/game-telemetry.ts` still deploy automatically so the production
-stats page reflects app behavior changes. Use `workflow_dispatch` for an
-explicit manual deploy when an ignored change should go live.
+Runtime secrets stay machine-local in the ignored env file loaded by
+`scripts/run-local-production.sh`. Do not put LLM keys, OpenAI-compatible proxy
+settings, or MongoDB URIs in GitHub Actions secrets or tracked files.
 
-Azure identifiers are GitHub repo variables:
+## Public Route
 
-- `AZURE_CLIENT_ID`
-- `AZURE_TENANT_ID`
-- `AZURE_SUBSCRIPTION_ID`
+```text
+Browser
+  -> Cloudflare DNS/proxy
+      -> dobby-mobile-gateway Cloudflare Tunnel
+          -> 127.0.0.1:8794
+              -> launchd
+                  -> standalone Next.js server
+```
 
-Do not put runtime LLM credentials in GitHub Actions secrets.
+The shared tunnel inventory and cross-service validation commands live in:
 
-## Runtime Secrets
+```text
+~/GitHub/scripts/docs/references/mac-mini-cloudflare-tunnel.md
+```
 
-Runtime LLM config lives on the Azure Web App as Key Vault references:
+## Deployment Model
 
-- `LLM_API_ENDPOINT` -> `aipodcasting--llm-api-endpoint`
-- `LLM_API_KEY` -> `aipodcasting--llm-api-key`
-- `MONGODB_URI` -> `aipodcasting--mongodb-uri`
+There is no GitHub Actions or Azure Web App production deploy path for this
+repo. Production updates are local Mac mini builds installed through:
 
-Non-secret runtime defaults:
+```bash
+scripts/install-launchd-whos-in-your-head.sh
+```
 
-- `LLM_MODEL=gpt-chat-latest`
-- `LLM_REASONING_EFFORT=high`
-- `LLM_SERVICE_TIER=priority`
-- `LLM_REQUEST_TIMEOUT_MS=20000`
-- `MONGODB_DB_NAME=content_production`
-- `GAME_TELEMETRY_ENABLED=true`
-- `GAME_STATS_ABANDON_AFTER_MINUTES=20`
+Use these validation endpoints after a local install or tunnel/DNS change:
 
-The Web App has a system-assigned managed identity with `Key Vault Secrets User`
-on `kv-shared-repos`.
-
-## DNS
-
-Primary public hostname:
-
-`https://mindreader.adithyan.io`
-
-Azure fallback hostname:
-
-`https://whos-in-your-head-adi.azurewebsites.net`
-
-Cloudflare records:
-
-- `mindreader.adithyan.io` CNAME -> `whos-in-your-head-adi.azurewebsites.net`, proxied.
-- `asuid.mindreader.adithyan.io` TXT -> the Web App `customDomainVerificationId`.
-
-Azure hostname binding:
-
-- `mindreader.adithyan.io` is verified on `whos-in-your-head-adi`.
-- SNI TLS uses the existing `cf-origin-adithyan-io` wildcard Cloudflare Origin
-  Certificate in Azure.
-
-When setting up another `adithyan.io` toy app, create the CNAME as DNS-only
-first so Azure can verify the hostname, bind the existing wildcard origin cert,
-then switch the CNAME to proxied in Cloudflare.
+```bash
+curl -fsS http://127.0.0.1:8794/api/health
+curl -fsS https://mindreader.adithyan.io/api/health
+curl -fsS https://mindreader.adithyan.io/api/openai/status
+```
