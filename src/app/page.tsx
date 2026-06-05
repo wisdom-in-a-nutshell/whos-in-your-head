@@ -734,7 +734,7 @@ function formatShareText(game: GameState): string {
 
 function getShareUrl() {
   if (typeof window === "undefined") {
-    return "https://mindreader.adithyan.io";
+    return "http://localhost:3000";
   }
 
   return window.location.origin;

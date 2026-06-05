@@ -45,8 +45,8 @@ LLM_SERVICE_TIER=priority
 The server also accepts `OPENAI_API_KEY`, `OPENAI_BASE_URL`,
 `OPENAI_MODEL`, `OPENAI_REASONING_EFFORT`, and `OPENAI_SERVICE_TIER` as local
 fallback names.
-For production on the Mac mini, keep runtime secrets in the ignored local env
-file consumed by the launchd wrapper.
+There is no active production hosting path for this prototype. Keep runtime
+secrets in ignored local env files only.
 
 The public game uses only `gpt-chat-latest`. Unknown, stale, or query-string
 model values silently fall back to that model instead of failing a public game.
@@ -57,12 +57,6 @@ Local validation:
 
 ```bash
 scripts/check-fast.sh
-```
-
-Production install/update on the Mac mini:
-
-```bash
-scripts/install-launchd-whos-in-your-head.sh
 ```
 
 Useful scaffold endpoints:

@@ -10,10 +10,6 @@ Subtitle: **Think of a famous person. The AI has 21 questions.**
 
 The user thinks of a famous person. The app/AI asks one yes/no-style question at a time and must guess within 21 questions.
 
-## Scope Routing
-
-- For production hosting, launchd, Cloudflare Tunnel, or runtime config work, read `docs/references/deployment.md`.
-
 ## Current product direction
 
 - Build the MVP as a simple text/web game first.
@@ -35,7 +31,7 @@ The user thinks of a famous person. The app/AI asks one yes/no-style question at
 
 - Use `docs/references/agent-native-workflow.md` for repo-owned checks and docs maintenance rules.
 - Use `docs/references/openai-runtime-contract.md` for the OpenAI integration boundary.
-- Use `docs/references/deployment.md` for the Mac mini production service and Cloudflare Tunnel route.
+- Use `docs/references/deployment.md` before adding or changing any hosting path.
 - For exploratory or multi-step implementation work, create a short-lived
   branch before editing so unfinished work is not swept into `main` by the
   machine-wide Stop hook.

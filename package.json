@@ -6,13 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "start:local": "bash scripts/run-local-production.sh",
-    "install:launchd": "bash scripts/install-launchd-whos-in-your-head.sh",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "play:api": "node scripts/play-game-api.mjs",
-    "logs:prod": "node scripts/prod-logs.mjs events",
     "telemetry": "node scripts/game-telemetry.mjs"
   },
   "overrides": {

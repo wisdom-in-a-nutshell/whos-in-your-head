@@ -1,63 +1,30 @@
 # Deployment
 
-`whos-in-your-head` is served on the Mac mini as a launchd-managed Next.js
-production service behind the shared Cloudflare Tunnel.
+`whos-in-your-head` has no active production hosting path.
 
-## Local Service
+## Retired Hosting
 
-```text
-LaunchAgent: com.dobby.whos-in-your-head
-Local target: http://127.0.0.1:8794
-Health: http://127.0.0.1:8794/api/health
-Public hostname: mindreader.adithyan.io
-```
+The previous Mac mini service and public hostname were retired on 2026-06-05:
 
-The app repo owns the local service process:
+- LaunchAgent `com.dobby.whos-in-your-head` was unloaded.
+- `~/Library/LaunchAgents/com.dobby.whos-in-your-head.plist` was removed.
+- `mindreader.adithyan.io` was removed from `~/.cloudflared/config.yml`.
+- The Cloudflare DNS record for `mindreader.adithyan.io` was deleted.
+- The repo-local launchd and production log helper scripts were removed.
 
-```bash
-scripts/install-launchd-whos-in-your-head.sh
-scripts/install-launchd-whos-in-your-head.sh --status
-scripts/install-launchd-whos-in-your-head.sh --logs 150
-```
+## Current Model
 
-The installer runs `npm run build`, copies `.next/static` into the standalone
-Next.js output, and launchd starts `node .next/standalone/server.js` with
-`HOSTNAME=127.0.0.1` and `PORT=8794`.
-
-Runtime secrets stay machine-local in the ignored env file loaded by
-`scripts/run-local-production.sh`. Do not put LLM keys, OpenAI-compatible proxy
-settings, or MongoDB URIs in GitHub Actions secrets or tracked files.
-
-## Public Route
-
-```text
-Browser
-  -> Cloudflare DNS/proxy
-      -> dobby-mobile-gateway Cloudflare Tunnel
-          -> 127.0.0.1:8794
-              -> launchd
-                  -> standalone Next.js server
-```
-
-The shared tunnel inventory and cross-service validation commands live in:
-
-```text
-~/GitHub/scripts/docs/references/mac-mini-cloudflare-tunnel.md
-```
-
-## Deployment Model
-
-There is no GitHub Actions or Azure Web App production deploy path for this
-repo. Production updates are local Mac mini builds installed through:
+Use the app locally through the normal Next.js development path:
 
 ```bash
-scripts/install-launchd-whos-in-your-head.sh
+npm run dev
 ```
 
-Use these validation endpoints after a local install or tunnel/DNS change:
+There is no GitHub Actions, Azure Web App, Mac mini launchd, or Cloudflare
+Tunnel production route for this repo. If hosting is reintroduced, update this
+document and the relevant shared inventory in `~/GitHub/scripts` in the same
+change.
 
-```bash
-curl -fsS http://127.0.0.1:8794/api/health
-curl -fsS https://mindreader.adithyan.io/api/health
-curl -fsS https://mindreader.adithyan.io/api/openai/status
-```
+Runtime secrets must stay in ignored local env files or the owning hosting
+provider's secret store. Do not put LLM keys, OpenAI-compatible proxy settings,
+or MongoDB URIs in tracked files.

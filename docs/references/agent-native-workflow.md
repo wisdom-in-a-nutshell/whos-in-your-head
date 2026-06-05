@@ -59,8 +59,7 @@ Default pattern:
 
 Reasoning:
 
-- `main` is treated as production-ready, but production updates still require
-  installing the local Mac mini launchd service.
+- `main` is treated as ready for local development and future hosting changes.
 - The machine-wide Stop hook may stage, commit, rebase, and push at the end of
   an agent turn.
 - Keeping in-progress work off `main` prevents half-finished telemetry,

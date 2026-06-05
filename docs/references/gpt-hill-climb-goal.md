@@ -9,7 +9,7 @@ handing the loop to another agent.
 Use this as the `/goal` command:
 
 ```text
-/goal Improve the Who's In Your Head GPT default path using the repo contract in docs/references/gpt-hill-climb-goal.md. Optimize for fast model turns and correct final guesses. Work on a short-lived branch, use telemetry and live API play to identify concrete failures, make focused prompt/mechanics/client/telemetry changes, validate with repo checks, and merge to main only when the branch is ready for the normal production update path.
+/goal Improve the Who's In Your Head GPT default path using the repo contract in docs/references/gpt-hill-climb-goal.md. Optimize for fast model turns and correct final guesses. Work on a short-lived branch, use telemetry and live API play to identify concrete failures, make focused prompt/mechanics/client/telemetry changes, validate with repo checks, and merge to main only when the branch is ready.
 ```
 
 If a future agent does not automatically read this file, explicitly mention it
@@ -58,8 +58,7 @@ While working:
 
 - Iterate freely on the branch.
 - Do not manually commit or push during normal work unless explicitly asked.
-- Do not merge to `main` until the change is validated and ready for the normal
-  production update path.
+- Do not merge to `main` until the change is validated and ready.
 
 Before merge readiness:
 
@@ -213,4 +212,4 @@ A hill-climb pass is ready to merge when:
 - The code change is focused and documented.
 - Tests and `scripts/check-fast.sh` pass.
 - The expected telemetry effect is stated.
-- The branch is ready for `main` and the normal production update path.
+- The branch is ready for `main`.

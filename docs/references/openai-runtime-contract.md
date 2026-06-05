@@ -40,8 +40,8 @@ Optional:
 The server also accepts the OpenAI SDK names `OPENAI_API_KEY`,
 `OPENAI_BASE_URL`, `OPENAI_MODEL`, `OPENAI_REASONING_EFFORT`,
 `OPENAI_SERVICE_TIER`, and `OPENAI_REQUEST_TIMEOUT_MS` as local fallbacks.
-Production runtime on the Mac mini uses the ignored local env file loaded by
-`scripts/run-local-production.sh`; do not store these values in tracked files.
+Use ignored local env files for local development; do not store these values in
+tracked files.
 
 The public game uses only `gpt-chat-latest`. Empty, unknown, shorthand, stale,
 unsupported, or otherwise invalid model values fall back to `gpt-chat-latest`
@@ -250,24 +250,15 @@ The `Yes`, `No`, and `Maybe` controls are app UI choices, not OpenAI function to
 
 Use function tools only if the model needs to call app-owned capabilities. For the MVP, the model should return a structured move and the server should apply deterministic game rules.
 
-## Production Log Client
+## Runtime Logs
 
 The app emits structured stdout lines with a `[whiyh]` prefix. These logs include
 turn request ids, game ids, model/runtime settings, response ids, token usage,
 cache counts, and sanitized error details. They intentionally do not include API
 keys or hidden prompt text.
 
-Use the repo client to inspect local production launchd logs:
-
-```bash
-npm run logs:prod -- --json --limit 50
-npm run logs:prod -- --plain --contains "Tamil film"
-npm run logs:prod -- --event game_master_request_failed
-```
-
-The default output is a stable JSON envelope with `schema_version`, `status`,
-`data`, `error`, and `meta` fields so agents can consume it without scraping
-operator prose.
+There is no active production log client because the Mac mini launchd service
+has been retired. Use terminal output from `npm run dev` for local debugging.
 
 Use the telemetry client for Mongo-backed operational questions that need
 structured game records rather than log lines:
@@ -323,9 +314,9 @@ change has settled:
 4. Make at most one prompt or mechanics change per loop, on a short-lived
    branch, and compare the next window before changing again.
 
-Use 15-minute checks only immediately after a local production install or routing change. Avoid
-editing prompts from one isolated miss unless the transcript shows a clear,
-repeatable rule violation.
+Use short-interval checks only immediately after a runtime or routing change.
+Avoid editing prompts from one isolated miss unless the transcript shows a
+clear, repeatable rule violation.
 
 Use measurable targets for this loop. The primary optimization goals are fast
 model turns and correct final guesses. Supporting diagnostics are reported-miss
@@ -339,8 +330,8 @@ Mongo/Cosmos runtime database when `MONGODB_URI` is configured and
 
 Runtime secret ownership:
 
-- `MONGODB_URI` belongs in the ignored Mac mini runtime env file.
-- The launchd wrapper loads that env file before starting the standalone server.
+- `MONGODB_URI` belongs in ignored local env files or the owning hosting
+  provider's secret store.
 - Do not store the Mongo URI in GitHub Actions secrets or tracked files.
 
 Collections:
