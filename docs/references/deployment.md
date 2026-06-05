@@ -10,6 +10,8 @@ The previous Mac mini service and public hostname were retired on 2026-06-05:
 - `~/Library/LaunchAgents/com.dobby.whos-in-your-head.plist` was removed.
 - `mindreader.adithyan.io` was removed from `~/.cloudflared/config.yml`.
 - The Cloudflare DNS record for `mindreader.adithyan.io` was deleted.
+- The stale Azure `Microsoft.Web/certificates/mindreader.adithyan.io`
+  resource in resource group `ghost` was deleted.
 - The repo-local launchd and production log helper scripts were removed.
 
 ## Current Model
